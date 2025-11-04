@@ -49,7 +49,7 @@ export async function sendChat(prompt: string, image?: File): Promise<string> {
   }
 
   const response = await fetch(
-    `${API_CONFIG.baseUrl}/${encodeURIComponent(prompt)}?model=${API_CONFIG.models.chat}`,
+    `${API_CONFIG.baseUrl}/prompt/${encodeURIComponent(prompt)}?model=${API_CONFIG.models.chat}`,
     {
       method: 'POST',
       headers: {
@@ -61,7 +61,9 @@ export async function sendChat(prompt: string, image?: File): Promise<string> {
   );
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error('API Error:', response.status, errorText);
+    throw new Error(`API error: ${response.status} - ${errorText}`);
   }
 
   return await response.text();
@@ -81,7 +83,7 @@ export async function sendWebSearch(prompt: string, image?: File): Promise<strin
   }
 
   const response = await fetch(
-    `${API_CONFIG.baseUrl}/${encodeURIComponent(prompt)}?model=${API_CONFIG.models.webSearch}`,
+    `${API_CONFIG.baseUrl}/prompt/${encodeURIComponent(prompt)}?model=${API_CONFIG.models.webSearch}`,
     {
       method: 'POST',
       headers: {
@@ -93,7 +95,9 @@ export async function sendWebSearch(prompt: string, image?: File): Promise<strin
   );
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error('API Error:', response.status, errorText);
+    throw new Error(`API error: ${response.status} - ${errorText}`);
   }
 
   return await response.text();
@@ -113,7 +117,7 @@ export async function sendReasoning(prompt: string, image?: File): Promise<strin
   }
 
   const response = await fetch(
-    `${API_CONFIG.baseUrl}/${encodeURIComponent(prompt)}?model=${API_CONFIG.models.reasoning}`,
+    `${API_CONFIG.baseUrl}/prompt/${encodeURIComponent(prompt)}?model=${API_CONFIG.models.reasoning}`,
     {
       method: 'POST',
       headers: {
@@ -125,7 +129,9 @@ export async function sendReasoning(prompt: string, image?: File): Promise<strin
   );
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error('API Error:', response.status, errorText);
+    throw new Error(`API error: ${response.status} - ${errorText}`);
   }
 
   return await response.text();
