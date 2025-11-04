@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
-import { sendChat, sendWebSearch, sendReasoning } from '@/lib/api';
+import { sendChat, sendWebSearch, sendReasoning, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 
@@ -39,12 +39,14 @@ const Index = () => {
     }
   };
 
-  const getLoadingText = (mode: 'chat' | 'webSearch' | 'reasoning'): string => {
+  const getLoadingText = (mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen'): string => {
     switch (mode) {
       case 'webSearch':
         return 'Searching the Web';
       case 'reasoning':
         return 'Reasoning';
+      case 'imageGen':
+        return 'Generating Image';
       default:
         return 'Thinking...';
     }
@@ -52,7 +54,7 @@ const Index = () => {
 
   const handleSendMessage = async (
     message: string, 
-    mode: 'chat' | 'webSearch' | 'reasoning',
+    mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen',
     image?: File
   ) => {
     if (!message.trim() && !image) return;
@@ -84,6 +86,7 @@ const Index = () => {
 
     try {
       let response: string;
+      let generatedImageUrl: string | undefined;
 
       switch (mode) {
         case 'webSearch':
@@ -92,6 +95,10 @@ const Index = () => {
         case 'reasoning':
           response = await sendReasoning(message, image);
           break;
+        case 'imageGen':
+          generatedImageUrl = await generateImage(message);
+          response = `Generated image for: "${message}"`;
+          break;
         default:
           response = await sendChat(message, image);
       }
@@ -99,7 +106,8 @@ const Index = () => {
       // Replace loading message with actual response
       const assistantMessage: Message = {
         role: 'assistant',
-        content: response
+        content: response,
+        image: generatedImageUrl
       };
 
       const finalMessages = [...newMessages, assistantMessage];

@@ -5,7 +5,7 @@ import { Image, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, mode: 'chat' | 'webSearch' | 'reasoning', image?: File) => void;
+  onSendMessage: (message: string, mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen', image?: File) => void;
   disabled?: boolean;
 }
 
@@ -13,7 +13,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   const [message, setMessage] = useState('');
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [activeMode, setActiveMode] = useState<'chat' | 'webSearch' | 'reasoning'>('chat');
+  const [activeMode, setActiveMode] = useState<'chat' | 'webSearch' | 'reasoning' | 'imageGen'>('chat');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -100,6 +100,15 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             Reasoning
           </Button>
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveMode(activeMode === 'imageGen' ? 'chat' : 'imageGen')}
+            className={activeMode === 'imageGen' ? 'bg-accent' : ''}
+          >
+            Generate Image
+          </Button>
+
           <input
             ref={fileInputRef}
             type="file"
@@ -142,7 +151,11 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
 
       {activeMode !== 'chat' && (
         <p className="mt-2 text-xs text-muted-foreground">
-          {activeMode === 'webSearch' ? '🔍 Web Search mode active' : '🧠 Reasoning mode active'}
+          {activeMode === 'webSearch' 
+            ? '🔍 Web Search mode active' 
+            : activeMode === 'reasoning' 
+            ? '🧠 Reasoning mode active'
+            : '🎨 Image Generation mode active'}
         </p>
       )}
     </div>

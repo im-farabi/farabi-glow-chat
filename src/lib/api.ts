@@ -23,7 +23,7 @@ export interface Message {
   image?: string;
 }
 
-export type ModelType = 'chat' | 'webSearch' | 'reasoning';
+export type ModelType = 'chat' | 'webSearch' | 'reasoning' | 'imageGen';
 
 /**
  * Build URL for API request
@@ -109,6 +109,37 @@ export async function sendWebSearch(prompt: string, image?: File): Promise<strin
  */
 export async function sendReasoning(prompt: string, image?: File): Promise<string> {
   return sendRequest(prompt, API_CONFIG.models.reasoning, image);
+}
+
+/**
+ * Generate an image with enhanced prompt
+ */
+export async function generateImage(userPrompt: string): Promise<string> {
+  try {
+    // First, enhance the prompt using the AI
+    const enhancementInstruction = `You are a prompt enhancement expert. Transform the following simple image description into a detailed, cinematic prompt with rich visual details. Include:
+- Specific physical descriptions (eyes, hair, clothing, etc.)
+- Setting and atmosphere details
+- Lighting and time of day
+- Camera angle/perspective
+- Artistic style (hyper-realistic, cinematic, etc.)
+- Emotional tone and mood
+
+User's simple prompt: "${userPrompt}"
+
+Return ONLY the enhanced prompt, nothing else. Make it 2-3 sentences maximum.`;
+
+    const enhancedPrompt = await sendRequest(enhancementInstruction, API_CONFIG.models.chat);
+    
+    // Build the image URL with the enhanced prompt
+    const encodedPrompt = encodeURIComponent(enhancedPrompt.trim());
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1344&height=768&model=flux&enhance=true&seed=${Math.floor(Math.random() * 1000)}&nologo=true`;
+    
+    return imageUrl;
+  } catch (error) {
+    console.error('Image generation error:', error);
+    throw error;
+  }
 }
 
 /**
