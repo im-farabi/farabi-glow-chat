@@ -120,6 +120,30 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                       const { children, node, ...rest } = props;
                       return <p className="whitespace-pre-wrap text-foreground mb-4 last:mb-0" {...rest}>{children}</p>;
                     },
+                    h1(props) {
+                      const { children, node, ...rest } = props;
+                      return <h1 className="text-3xl font-bold text-foreground mb-4 mt-6 first:mt-0" {...rest}>{children}</h1>;
+                    },
+                    h2(props) {
+                      const { children, node, ...rest } = props;
+                      return <h2 className="text-2xl font-bold text-foreground mb-3 mt-5 first:mt-0" {...rest}>{children}</h2>;
+                    },
+                    h3(props) {
+                      const { children, node, ...rest } = props;
+                      return <h3 className="text-xl font-bold text-foreground mb-3 mt-4 first:mt-0" {...rest}>{children}</h3>;
+                    },
+                    h4(props) {
+                      const { children, node, ...rest } = props;
+                      return <h4 className="text-lg font-bold text-foreground mb-2 mt-3 first:mt-0" {...rest}>{children}</h4>;
+                    },
+                    h5(props) {
+                      const { children, node, ...rest } = props;
+                      return <h5 className="text-base font-bold text-foreground mb-2 mt-3 first:mt-0" {...rest}>{children}</h5>;
+                    },
+                    h6(props) {
+                      const { children, node, ...rest } = props;
+                      return <h6 className="text-sm font-bold text-foreground mb-2 mt-2 first:mt-0" {...rest}>{children}</h6>;
+                    },
                   } as Components}
                 >
                   {content}
