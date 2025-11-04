@@ -1,7 +1,7 @@
 import { useState, useRef, KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Image, Send } from 'lucide-react';
+import { Image, Send, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ChatInputProps {
@@ -55,13 +55,13 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   };
 
   return (
-    <div className="border-t border-border bg-card p-4">
+    <div className="border-t border-border bg-card p-3 md:p-4">
       {imagePreview && (
         <div className="mb-3 relative inline-block">
           <img 
             src={imagePreview} 
             alt="Preview" 
-            className="h-20 rounded-lg border border-border"
+            className="h-16 md:h-20 rounded-lg border border-border"
           />
           <button
             onClick={() => {
@@ -80,33 +80,37 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
         </div>
       )}
 
-      <div className="flex gap-2">
-        <div className="flex gap-2">
+      <div className="space-y-2">
+        {/* Mode buttons - wrap on mobile */}
+        <div className="flex flex-wrap gap-1.5 md:gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setActiveMode(activeMode === 'webSearch' ? 'chat' : 'webSearch')}
-            className={activeMode === 'webSearch' ? 'bg-accent' : ''}
+            className={`text-xs md:text-sm ${activeMode === 'webSearch' ? 'bg-accent' : ''}`}
           >
-            Web Search
+            <Search className="h-3 w-3 md:h-4 md:w-4 md:mr-1" />
+            <span className="hidden sm:inline">Web Search</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => setActiveMode(activeMode === 'reasoning' ? 'chat' : 'reasoning')}
-            className={activeMode === 'reasoning' ? 'bg-accent' : ''}
+            className={`text-xs md:text-sm ${activeMode === 'reasoning' ? 'bg-accent' : ''}`}
           >
-            Reasoning
+            <span className="text-base md:text-lg">🧠</span>
+            <span className="hidden sm:inline ml-1">Reasoning</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => setActiveMode(activeMode === 'imageGen' ? 'chat' : 'imageGen')}
-            className={activeMode === 'imageGen' ? 'bg-accent' : ''}
+            className={`text-xs md:text-sm ${activeMode === 'imageGen' ? 'bg-accent' : ''}`}
           >
-            Generate Image
+            <span className="text-base md:text-lg">🎨</span>
+            <span className="hidden sm:inline ml-1">Generate Image</span>
           </Button>
 
           <input
@@ -119,15 +123,17 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           
           <Button
             variant="outline"
-            size="icon"
+            size="sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled}
+            className="px-2 md:px-3"
           >
-            <Image className="h-4 w-4" />
+            <Image className="h-3 w-3 md:h-4 md:w-4" />
           </Button>
         </div>
 
-        <div className="flex-1 flex gap-2">
+        {/* Input row */}
+        <div className="flex gap-2">
           <Textarea
             ref={textareaRef}
             value={message}
@@ -135,16 +141,16 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             onKeyDown={handleKeyDown}
             placeholder="Type your message..."
             disabled={disabled}
-            className="min-h-[60px] max-h-[200px] resize-none"
+            className="min-h-[50px] md:min-h-[60px] max-h-[150px] md:max-h-[200px] resize-none text-sm md:text-base"
           />
 
           <Button
             onClick={handleSend}
             disabled={disabled || (!message.trim() && !selectedImage)}
             size="icon"
-            className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 h-[60px] w-[60px]"
+            className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 h-[50px] w-[50px] md:h-[60px] md:w-[60px] shrink-0"
           >
-            <Send className="h-5 w-5" />
+            <Send className="h-4 w-4 md:h-5 md:w-5" />
           </Button>
         </div>
       </div>

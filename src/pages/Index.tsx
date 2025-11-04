@@ -25,6 +25,7 @@ const Index = () => {
   const [currentChat, setCurrentChat] = useState<ChatSession>(createNewChat());
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleNewChat = () => {
     const newChat = createNewChat();
@@ -150,13 +151,15 @@ const Index = () => {
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      <Header />
+      <Header onMenuClick={() => setIsSidebarOpen(true)} />
       
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         <Sidebar
           currentChatId={currentChat.id}
           onNewChat={handleNewChat}
           onSelectChat={handleSelectChat}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
         />
         
         <ChatArea
