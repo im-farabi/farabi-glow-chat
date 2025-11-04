@@ -68,7 +68,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
             <span className="text-sm">{loadingText || 'Thinking...'}</span>
           </div>
         ) : (
-          <div className="max-w-none">
+          <div className="max-w-none overflow-x-auto">
             {isDownloadMessage ? (
               <p className="whitespace-pre-wrap text-foreground">
                 {content.split('Click here to download')[0]}
@@ -80,7 +80,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                 </button>
               </p>
             ) : (
-              <div className="prose prose-invert max-w-none">
+              <div className="prose prose-invert max-w-none overflow-x-auto">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
@@ -93,7 +93,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                           {String(children).replace(/\n$/, '')}
                         </CodeBlock>
                       ) : (
-                        <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground" {...rest}>
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground break-words" {...rest}>
                           {children}
                         </code>
                       );

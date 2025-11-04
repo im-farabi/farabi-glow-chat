@@ -3,7 +3,8 @@ import { calculateTotalCost } from '@/lib/storage';
 import { DollarSign } from 'lucide-react';
 
 const UsageBanner = () => {
-  const [cost, setCost] = useState<string>('0.00');
+  const [costRounded, setCostRounded] = useState<string>('0.00');
+  const [costFull, setCostFull] = useState<string>('0.0000000000');
 
   useEffect(() => {
     updateCost();
@@ -25,8 +26,12 @@ const UsageBanner = () => {
   }, []);
 
   const updateCost = () => {
-    const totalCost = calculateTotalCost();
-    setCost(totalCost.toFixed(2));
+    const { rounded, full } = calculateTotalCost();
+    setCostRounded(rounded.toFixed(2));
+    
+    // Format full precision up to 10 decimals
+    const fullStr = full.toFixed(10);
+    setCostFull(fullStr);
   };
 
   return (
@@ -34,11 +39,14 @@ const UsageBanner = () => {
       <div className="flex items-center gap-2 mb-1">
         <DollarSign className="h-4 w-4 text-green-500" />
         <p className="text-sm font-semibold text-foreground">
-          You've used ${cost} worth of answers.
+          You've used ${costRounded} worth of answers.
         </p>
       </div>
-      <p className="text-xs text-muted-foreground pl-6">
+      <p className="text-xs text-muted-foreground">
         This amount won't be charged to you.
+      </p>
+      <p className="text-xs text-muted-foreground mt-1">
+        Approx: ${costFull}
       </p>
     </div>
   );

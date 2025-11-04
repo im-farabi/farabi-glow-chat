@@ -157,19 +157,12 @@ export function calculateUsageFromAllChats(): UsageStats {
 }
 
 /**
- * Get current usage stats
+ * Get current usage stats - always recalculates from all chats
  */
 export function getUsageStats(): UsageStats {
   try {
-    const data = localStorage.getItem(USAGE_STORAGE_KEY);
-    if (data) {
-      return JSON.parse(data);
-    }
-    
-    // First time: calculate from all existing chats
-    const stats = calculateUsageFromAllChats();
-    localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(stats));
-    return stats;
+    // ALWAYS recalculate from all existing chats to ensure accuracy
+    return calculateUsageFromAllChats();
   } catch (error) {
     console.error('Error loading usage stats:', error);
     return {
@@ -181,31 +174,18 @@ export function getUsageStats(): UsageStats {
 }
 
 /**
- * Update usage stats with new message
- */
-export function updateUsageStats(inputChars: number, outputChars: number): void {
-  try {
-    const stats = getUsageStats();
-    stats.totalInputChars += inputChars;
-    stats.totalOutputChars += outputChars;
-    stats.lastUpdated = Date.now();
-    localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(stats));
-  } catch (error) {
-    console.error('Error updating usage stats:', error);
-  }
-}
-
-/**
  * Calculate total cost in dollars
  */
-export function calculateTotalCost(): number {
+export function calculateTotalCost(): { rounded: number; full: number } {
   const stats = getUsageStats();
   const inputCost = stats.totalInputChars * INPUT_COST_PER_CHAR;
   const outputCost = stats.totalOutputChars * OUTPUT_COST_PER_CHAR;
   const totalCost = inputCost + outputCost;
   
-  // Return with 2 decimal places
-  return Math.round(totalCost * 100) / 100;
+  return {
+    rounded: Math.round(totalCost * 100) / 100,  // 2 decimal places
+    full: totalCost  // Full precision
+  };
 }
 
 /**
