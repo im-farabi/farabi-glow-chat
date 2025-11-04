@@ -114,9 +114,14 @@ export async function sendReasoning(prompt: string, image?: File): Promise<strin
 /**
  * Generate an image with enhanced prompt
  */
-export async function generateImage(userPrompt: string): Promise<string> {
+export async function generateImage(
+  userPrompt: string, 
+  onStatusUpdate?: (status: string) => void
+): Promise<{ imageUrl: string; imageBlob: Blob }> {
   try {
     // First, enhance the prompt using the AI
+    onStatusUpdate?.('Enhancing Prompt...');
+    
     const enhancementInstruction = `You are a prompt enhancement expert. Transform the following simple image description into a detailed, cinematic prompt with rich visual details. Include:
 - Specific physical descriptions (eyes, hair, clothing, etc.)
 - Setting and atmosphere details
@@ -132,10 +137,21 @@ Return ONLY the enhanced prompt, nothing else. Make it 2-3 sentences maximum.`;
     const enhancedPrompt = await sendRequest(enhancementInstruction, API_CONFIG.models.chat);
     
     // Build the image URL with the enhanced prompt
-    const encodedPrompt = encodeURIComponent(enhancedPrompt.trim());
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1344&height=768&model=flux&enhance=true&seed=${Math.floor(Math.random() * 1000)}&nologo=true`;
+    onStatusUpdate?.('Generating Image...');
     
-    return imageUrl;
+    const encodedPrompt = encodeURIComponent(enhancedPrompt.trim());
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1344&height=768&model=flux&enhance=true&seed=${Math.floor(Math.random() * 1000)}&nologo=true`;
+    
+    // Fetch the image and convert to blob
+    const imageResponse = await fetch(pollinationsUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to generate image: ${imageResponse.status}`);
+    }
+    
+    const imageBlob = await imageResponse.blob();
+    const imageUrl = URL.createObjectURL(imageBlob);
+    
+    return { imageUrl, imageBlob };
   } catch (error) {
     console.error('Image generation error:', error);
     throw error;

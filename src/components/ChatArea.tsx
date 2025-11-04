@@ -7,6 +7,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   image?: string;
+  imageBlob?: Blob;
   isLoading?: boolean;
   loadingText?: string;
 }
@@ -59,6 +60,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading }: ChatAreaProps) => {
                   role={message.role}
                   content={message.content}
                   image={message.image}
+                  imageBlob={message.imageBlob}
                   isLoading={message.isLoading}
                   loadingText={message.loadingText}
                 />

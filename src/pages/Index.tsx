@@ -16,6 +16,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   image?: string;
+  imageBlob?: Blob;
   isLoading?: boolean;
   loadingText?: string;
 }
@@ -87,6 +88,7 @@ const Index = () => {
     try {
       let response: string;
       let generatedImageUrl: string | undefined;
+      let generatedImageBlob: Blob | undefined;
 
       switch (mode) {
         case 'webSearch':
@@ -95,20 +97,32 @@ const Index = () => {
         case 'reasoning':
           response = await sendReasoning(message, image);
           break;
-        case 'imageGen':
-          generatedImageUrl = await generateImage(message);
-          response = `Generated image for: "${message}"`;
-          break;
+      case 'imageGen':
+        const { imageUrl, imageBlob } = await generateImage(message, (status) => {
+          setMessages(prev => {
+            const updated = [...prev];
+            const lastMsg = updated[updated.length - 1];
+            if (lastMsg?.isLoading) {
+              lastMsg.loadingText = status;
+            }
+            return updated;
+          });
+        });
+        generatedImageUrl = imageUrl;
+        generatedImageBlob = imageBlob;
+        response = 'Successfully created image. Click here to download';
+        break;
         default:
           response = await sendChat(message, image);
       }
 
       // Replace loading message with actual response
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: response,
-        image: generatedImageUrl
-      };
+    const assistantMessage: Message = {
+      role: 'assistant',
+      content: response,
+      image: generatedImageUrl,
+      imageBlob: generatedImageBlob
+    };
 
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
