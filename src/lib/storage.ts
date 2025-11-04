@@ -70,6 +70,22 @@ export function deleteChat(id: string): void {
 }
 
 /**
+ * Update chat title
+ */
+export function updateChatTitle(id: string, newTitle: string): void {
+  try {
+    const chats = getAllChats();
+    const chatIndex = chats.findIndex(c => c.id === id);
+    if (chatIndex >= 0) {
+      chats[chatIndex].title = truncateTitle(newTitle.trim() || 'New Chat');
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+    }
+  } catch (error) {
+    console.error('Error updating chat title:', error);
+  }
+}
+
+/**
  * Create a new chat session
  */
 export function createNewChat(): ChatSession {

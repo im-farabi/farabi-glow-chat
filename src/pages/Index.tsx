@@ -61,6 +61,12 @@ const Index = () => {
   ) => {
     if (!message.trim() && !image) return;
 
+    // Auto-create new chat if current chat hasn't been saved yet (no messages)
+    if (currentChat.messages.length === 0) {
+      const newChat = createNewChat();
+      setCurrentChat(newChat);
+    }
+
     let imagePreview: string | undefined;
     if (image) {
       imagePreview = URL.createObjectURL(image);
