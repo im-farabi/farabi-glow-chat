@@ -97,49 +97,86 @@ async function imageToBase64(file: File): Promise<string> {
  */
 async function sendRequest(
   prompt: string, 
-  model: string, 
+  baseModel: string, 
   instruction: string,
   messages: Message[] = [],
   image?: File
 ): Promise<string> {
-  try {
-    // Build conversation history
-    const history = buildConversationHistory(messages);
-    
-    // Build full prompt with instruction + history + current message
-    const fullPrompt = history 
-      ? `${instruction}\n${history}\nUser: ${prompt}\nAssistant:`
-      : `${instruction}\nUser: ${prompt}\nAssistant:`;
-    
-    const url = buildUrl(fullPrompt, model);
-    
-    let images: string[] | null = null;
-    if (image) {
-      const base64 = await imageToBase64(image);
-      images = [base64];
+  // Define fallback models
+  const modelConfigs = [
+    { model: baseModel, label: `Primary: ${baseModel}` },
+    { model: 'mistral', label: 'Fallback: mistral' },
+    { model: null, label: 'Fallback: auto-select' }
+  ];
+
+  let lastError: Error | null = null;
+
+  // Try each model in order
+  for (const config of modelConfigs) {
+    try {
+      // Build conversation history
+      const history = buildConversationHistory(messages);
+      
+      // Build full prompt with instruction + history + current message
+      const fullPrompt = history 
+        ? `${instruction}\n${history}\nUser: ${prompt}\nAssistant:`
+        : `${instruction}\nUser: ${prompt}\nAssistant:`;
+      
+      // Build URL with or without model parameter
+      const encodedPrompt = encodeURIComponent(fullPrompt);
+      const randomSeed = Math.random();
+      const url = config.model
+        ? `${API_CONFIG.baseUrl}/${encodedPrompt}?model=${config.model}&seed=${randomSeed}`
+        : `${API_CONFIG.baseUrl}/${encodedPrompt}?seed=${randomSeed}`;
+      
+      let images: string[] | null = null;
+      if (image) {
+        const base64 = await imageToBase64(image);
+        images = [base64];
+      }
+
+      const body = images && images.length > 0 ? { images } : {};
+
+      const response = await fetch(url, {
+        method: images && images.length > 0 ? 'POST' : 'GET',
+        headers: getHeaders(),
+        ...(images && images.length > 0 && { body: JSON.stringify(body) })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn(`${config.label} failed:`, response.status, errorText);
+        
+        // If content filter error, try next model
+        if (response.status === 400 && errorText.toLowerCase().includes('content')) {
+          lastError = new Error('Content filtered by AI safety policy');
+          continue;
+        }
+        
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const text = await response.text();
+      
+      // Validate response
+      if (text && text.trim().length > 0) {
+        console.log(`✓ Success with ${config.label}`);
+        return text.trim();
+      }
+      
+      // Empty response, try next model
+      console.warn(`${config.label} returned empty response`);
+      continue;
+      
+    } catch (error) {
+      console.warn(`${config.label} error:`, error);
+      lastError = error as Error;
+      continue;
     }
-
-    const body = images && images.length > 0 ? {
-      images: images
-    } : {};
-
-    const response = await fetch(url, {
-      method: images && images.length > 0 ? 'POST' : 'GET',
-      headers: getHeaders(),
-      ...(images && images.length > 0 && { body: JSON.stringify(body) })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error:', response.status, errorText);
-      throw new Error(`API Error: ${response.status} - ${errorText}`);
-    }
-
-    return await response.text();
-  } catch (error) {
-    console.error('API request error:', error);
-    throw error;
   }
+
+  // All models failed
+  throw lastError || new Error('All AI models failed to respond');
 }
 
 /**

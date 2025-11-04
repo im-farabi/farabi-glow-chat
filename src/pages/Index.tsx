@@ -140,7 +140,17 @@ const Index = () => {
 
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Failed to send message. Please try again.');
+      
+      // Show specific error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      if (errorMessage.includes('Content filtered')) {
+        toast.error('Message was filtered by content policy. Please rephrase and try again.');
+      } else if (errorMessage.includes('All AI models')) {
+        toast.error('All AI models are currently unavailable. Please try again later.');
+      } else {
+        toast.error('Failed to send message. Please try again.');
+      }
       
       // Remove loading message on error
       setMessages(newMessages);
