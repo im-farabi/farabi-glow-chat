@@ -113,3 +113,113 @@ export async function generateTitle(firstMessage: string): Promise<string> {
     return truncateTitle(cleaned);
   }
 }
+
+/**
+ * Usage tracking for cost calculation
+ */
+
+const USAGE_STORAGE_KEY = 'farabi_usage_stats';
+
+export interface UsageStats {
+  totalInputChars: number;
+  totalOutputChars: number;
+  lastUpdated: number;
+}
+
+// Cost per character (based on token pricing)
+const INPUT_COST_PER_CHAR = 0.0000000075;  // $30 per 1M tokens
+const OUTPUT_COST_PER_CHAR = 0.000000015;  // $60 per 1M tokens
+
+/**
+ * Calculate usage from all existing chats
+ */
+export function calculateUsageFromAllChats(): UsageStats {
+  const chats = getAllChats();
+  let totalInputChars = 0;
+  let totalOutputChars = 0;
+
+  chats.forEach(chat => {
+    chat.messages.forEach(msg => {
+      const charCount = msg.content.length;
+      if (msg.role === 'user') {
+        totalInputChars += charCount;
+      } else if (msg.role === 'assistant') {
+        totalOutputChars += charCount;
+      }
+    });
+  });
+
+  return {
+    totalInputChars,
+    totalOutputChars,
+    lastUpdated: Date.now()
+  };
+}
+
+/**
+ * Get current usage stats
+ */
+export function getUsageStats(): UsageStats {
+  try {
+    const data = localStorage.getItem(USAGE_STORAGE_KEY);
+    if (data) {
+      return JSON.parse(data);
+    }
+    
+    // First time: calculate from all existing chats
+    const stats = calculateUsageFromAllChats();
+    localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(stats));
+    return stats;
+  } catch (error) {
+    console.error('Error loading usage stats:', error);
+    return {
+      totalInputChars: 0,
+      totalOutputChars: 0,
+      lastUpdated: Date.now()
+    };
+  }
+}
+
+/**
+ * Update usage stats with new message
+ */
+export function updateUsageStats(inputChars: number, outputChars: number): void {
+  try {
+    const stats = getUsageStats();
+    stats.totalInputChars += inputChars;
+    stats.totalOutputChars += outputChars;
+    stats.lastUpdated = Date.now();
+    localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(stats));
+  } catch (error) {
+    console.error('Error updating usage stats:', error);
+  }
+}
+
+/**
+ * Calculate total cost in dollars
+ */
+export function calculateTotalCost(): number {
+  const stats = getUsageStats();
+  const inputCost = stats.totalInputChars * INPUT_COST_PER_CHAR;
+  const outputCost = stats.totalOutputChars * OUTPUT_COST_PER_CHAR;
+  const totalCost = inputCost + outputCost;
+  
+  // Return with 2 decimal places
+  return Math.round(totalCost * 100) / 100;
+}
+
+/**
+ * Reset usage stats
+ */
+export function resetUsageStats(): void {
+  try {
+    const emptyStats: UsageStats = {
+      totalInputChars: 0,
+      totalOutputChars: 0,
+      lastUpdated: Date.now()
+    };
+    localStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(emptyStats));
+  } catch (error) {
+    console.error('Error resetting usage stats:', error);
+  }
+}

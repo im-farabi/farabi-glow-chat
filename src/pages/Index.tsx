@@ -9,6 +9,7 @@ import {
   saveChat, 
   getChat, 
   generateTitle,
+  updateUsageStats,
   type ChatSession 
 } from '@/lib/storage';
 
@@ -127,6 +128,11 @@ const Index = () => {
 
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
+
+      // Track usage for cost calculation
+      const inputCharCount = message.length;
+      const outputCharCount = response.length;
+      updateUsageStats(inputCharCount, outputCharCount);
 
       // Update chat title if this is the first message
       if (currentChat.messages.length === 0 && message.trim()) {

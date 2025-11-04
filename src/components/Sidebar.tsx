@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Search, MessageSquare, X } from 'lucide-react';
 import { getAllChats, truncateTitle, type ChatSession } from '@/lib/storage';
+import UsageBanner from '@/components/UsageBanner';
 
 interface SidebarProps {
   currentChatId: string | null;
@@ -64,6 +65,8 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
         </div>
 
         <div className="p-4 space-y-4">
+        <UsageBanner />
+        
         <Button
           onClick={onNewChat}
           className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90"
