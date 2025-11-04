@@ -1,4 +1,8 @@
 import { User, Sparkles } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import type { Components } from 'react-markdown';
+import CodeBlock from './CodeBlock';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';
@@ -64,7 +68,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
             <span className="text-sm">{loadingText || 'Thinking...'}</span>
           </div>
         ) : (
-          <div className="prose prose-invert max-w-none">
+          <div className="max-w-none">
             {isDownloadMessage ? (
               <p className="whitespace-pre-wrap text-foreground">
                 {content.split('Click here to download')[0]}
@@ -76,7 +80,51 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                 </button>
               </p>
             ) : (
-              <p className="whitespace-pre-wrap text-foreground">{content}</p>
+              <div className="prose prose-invert max-w-none">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code(props) {
+                      const { children, className, node, ...rest } = props;
+                      const match = /language-(\w+)/.exec(className || '');
+                      const isInline = !className;
+                      return !isInline ? (
+                        <CodeBlock language={match ? match[1] : 'text'}>
+                          {String(children).replace(/\n$/, '')}
+                        </CodeBlock>
+                      ) : (
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground" {...rest}>
+                          {children}
+                        </code>
+                      );
+                    },
+                    a(props) {
+                      const { children, href, node, ...rest } = props;
+                      return (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:text-primary/80 underline underline-offset-4 transition-colors font-medium"
+                          {...rest}
+                        >
+                          {children}
+                        </a>
+                      );
+                    },
+                    strong(props) {
+                      const { children, node, ...rest } = props;
+                      return <strong className="font-bold text-foreground" {...rest}>{children}</strong>;
+                    },
+                    p(props) {
+                      const { children, node, ...rest } = props;
+                      return <p className="whitespace-pre-wrap text-foreground mb-4 last:mb-0" {...rest}>{children}</p>;
+                    },
+                  } as Components}
+                >
+                  {content}
+                </ReactMarkdown>
+              </div>
             )}
           </div>
         )}
