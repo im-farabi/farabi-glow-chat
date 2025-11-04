@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, MessageSquare, X, Pencil, Check } from 'lucide-react';
-import { getAllChats, truncateTitle, updateChatTitle, type ChatSession } from '@/lib/storage';
+import { Plus, Search, MessageSquare, X } from 'lucide-react';
+import { getAllChats, truncateTitle, type ChatSession } from '@/lib/storage';
 
 interface SidebarProps {
   currentChatId: string | null;
@@ -16,8 +16,6 @@ interface SidebarProps {
 const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClose }: SidebarProps) => {
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingChatId, setEditingChatId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState('');
 
   useEffect(() => {
     loadChats();
@@ -34,28 +32,6 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
   const handleChatSelect = (chatId: string) => {
     onSelectChat(chatId);
     onClose?.(); // Close sidebar on mobile after selecting a chat
-  };
-
-  const handleStartEdit = (chat: ChatSession, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingChatId(chat.id);
-    setEditingTitle(chat.title);
-  };
-
-  const handleSaveEdit = (chatId: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (editingTitle.trim()) {
-      updateChatTitle(chatId, editingTitle);
-      loadChats();
-    }
-    setEditingChatId(null);
-    setEditingTitle('');
-  };
-
-  const handleCancelEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingChatId(null);
-    setEditingTitle('');
   };
 
   return (
@@ -110,11 +86,11 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
       <ScrollArea className="flex-1">
         <div className="space-y-1 p-2">
           {filteredChats.map((chat) => (
-            <div
+            <button
               key={chat.id}
-              onClick={() => editingChatId !== chat.id && handleChatSelect(chat.id)}
+              onClick={() => handleChatSelect(chat.id)}
               className={`
-                w-full rounded-lg px-4 py-3 transition-colors cursor-pointer
+                w-full rounded-lg px-4 py-3 text-left transition-colors
                 ${currentChatId === chat.id
                   ? 'bg-accent text-accent-foreground'
                   : 'hover:bg-accent/50'
@@ -124,60 +100,15 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
               <div className="flex items-start gap-3">
                 <MessageSquare className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
-                  {editingChatId === chat.id ? (
-                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Input
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveEdit(chat.id);
-                          if (e.key === 'Escape') {
-                            setEditingChatId(null);
-                            setEditingTitle('');
-                          }
-                        }}
-                        className="h-7 text-sm"
-                        autoFocus
-                        maxLength={30}
-                      />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 shrink-0"
-                        onClick={(e) => handleSaveEdit(chat.id, e)}
-                      >
-                        <Check className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 shrink-0"
-                        onClick={handleCancelEdit}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 group">
-                      <p className="truncate text-sm font-medium flex-1">
-                        {truncateTitle(chat.title)}
-                      </p>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 hover:bg-accent"
-                        onClick={(e) => handleStartEdit(chat, e)}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
+                  <p className="truncate text-sm font-medium">
+                    {truncateTitle(chat.title)}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(chat.timestamp).toLocaleDateString()}
                   </p>
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </ScrollArea>
