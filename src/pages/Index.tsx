@@ -1,11 +1,147 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import Header from '@/components/Header';
+import Sidebar from '@/components/Sidebar';
+import ChatArea from '@/components/ChatArea';
+import { sendChat, sendWebSearch, sendReasoning } from '@/lib/api';
+import { 
+  createNewChat, 
+  saveChat, 
+  getChat, 
+  generateTitle,
+  type ChatSession 
+} from '@/lib/storage';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  image?: string;
+  isLoading?: boolean;
+  loadingText?: string;
+}
 
 const Index = () => {
+  const [currentChat, setCurrentChat] = useState<ChatSession>(createNewChat());
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleNewChat = () => {
+    const newChat = createNewChat();
+    setCurrentChat(newChat);
+    setMessages([]);
+  };
+
+  const handleSelectChat = (chatId: string) => {
+    const chat = getChat(chatId);
+    if (chat) {
+      setCurrentChat(chat);
+      setMessages(chat.messages);
+    }
+  };
+
+  const getLoadingText = (mode: 'chat' | 'webSearch' | 'reasoning'): string => {
+    switch (mode) {
+      case 'webSearch':
+        return 'Searching the Web';
+      case 'reasoning':
+        return 'Reasoning';
+      default:
+        return 'Thinking...';
+    }
+  };
+
+  const handleSendMessage = async (
+    message: string, 
+    mode: 'chat' | 'webSearch' | 'reasoning',
+    image?: File
+  ) => {
+    if (!message.trim() && !image) return;
+
+    let imagePreview: string | undefined;
+    if (image) {
+      imagePreview = URL.createObjectURL(image);
+    }
+
+    // Add user message
+    const userMessage: Message = {
+      role: 'user',
+      content: message,
+      image: imagePreview
+    };
+
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setIsLoading(true);
+
+    // Add loading message
+    const loadingMessage: Message = {
+      role: 'assistant',
+      content: '',
+      isLoading: true,
+      loadingText: getLoadingText(mode)
+    };
+    setMessages([...newMessages, loadingMessage]);
+
+    try {
+      let response: string;
+
+      switch (mode) {
+        case 'webSearch':
+          response = await sendWebSearch(message, image);
+          break;
+        case 'reasoning':
+          response = await sendReasoning(message, image);
+          break;
+        default:
+          response = await sendChat(message, image);
+      }
+
+      // Replace loading message with actual response
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: response
+      };
+
+      const finalMessages = [...newMessages, assistantMessage];
+      setMessages(finalMessages);
+
+      // Update chat title if this is the first message
+      if (currentChat.messages.length === 0 && message.trim()) {
+        currentChat.title = generateTitle(message);
+      }
+
+      // Save to storage
+      currentChat.messages = finalMessages;
+      currentChat.timestamp = Date.now();
+      saveChat(currentChat);
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message. Please try again.');
+      
+      // Remove loading message on error
+      setMessages(newMessages);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="flex h-screen flex-col bg-background">
+      <Header />
+      
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar
+          currentChatId={currentChat.id}
+          onNewChat={handleNewChat}
+          onSelectChat={handleSelectChat}
+        />
+        
+        <ChatArea
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

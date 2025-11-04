@@ -1,0 +1,152 @@
+import { useState, useRef, KeyboardEvent } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Image, Send } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface ChatInputProps {
+  onSendMessage: (message: string, mode: 'chat' | 'webSearch' | 'reasoning', image?: File) => void;
+  disabled?: boolean;
+}
+
+const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
+  const [message, setMessage] = useState('');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [activeMode, setActiveMode] = useState<'chat' | 'webSearch' | 'reasoning'>('chat');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file');
+        return;
+      }
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSend = () => {
+    if (!message.trim() && !selectedImage) return;
+    
+    onSendMessage(message, activeMode, selectedImage || undefined);
+    setMessage('');
+    setSelectedImage(null);
+    setImagePreview(null);
+    setActiveMode('chat');
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <div className="border-t border-border bg-card p-4">
+      {imagePreview && (
+        <div className="mb-3 relative inline-block">
+          <img 
+            src={imagePreview} 
+            alt="Preview" 
+            className="h-20 rounded-lg border border-border"
+          />
+          <button
+            onClick={() => {
+              setSelectedImage(null);
+              setImagePreview(null);
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+              }
+            }}
+            className="absolute -right-2 -top-2 rounded-full bg-destructive p-1 text-destructive-foreground hover:bg-destructive/90"
+          >
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveMode(activeMode === 'webSearch' ? 'chat' : 'webSearch')}
+            className={activeMode === 'webSearch' ? 'bg-accent' : ''}
+          >
+            Web Search
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveMode(activeMode === 'reasoning' ? 'chat' : 'reasoning')}
+            className={activeMode === 'reasoning' ? 'bg-accent' : ''}
+          >
+            Reasoning
+          </Button>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled}
+          >
+            <Image className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="flex-1 flex gap-2">
+          <Textarea
+            ref={textareaRef}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message..."
+            disabled={disabled}
+            className="min-h-[60px] max-h-[200px] resize-none"
+          />
+
+          <Button
+            onClick={handleSend}
+            disabled={disabled || (!message.trim() && !selectedImage)}
+            size="icon"
+            className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 h-[60px] w-[60px]"
+          >
+            <Send className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
+      {activeMode !== 'chat' && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {activeMode === 'webSearch' ? '🔍 Web Search mode active' : '🧠 Reasoning mode active'}
+        </p>
+      )}
+    </div>
+  );
+};
+
+export default ChatInput;
