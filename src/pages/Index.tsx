@@ -130,7 +130,7 @@ const Index = () => {
 
       // Update chat title if this is the first message
       if (currentChat.messages.length === 0 && message.trim()) {
-        currentChat.title = generateTitle(message);
+        currentChat.title = await generateTitle(message);
       }
 
       // Save to storage

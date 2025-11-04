@@ -92,9 +92,24 @@ export function truncateTitle(title: string): string {
 }
 
 /**
- * Generate title from first message
+ * Generate title from first message using AI
  */
-export function generateTitle(firstMessage: string): string {
+export async function generateTitle(firstMessage: string): Promise<string> {
   const cleaned = firstMessage.trim();
-  return truncateTitle(cleaned || 'New Chat');
+  if (!cleaned) return 'New Chat';
+  
+  try {
+    const prompt = encodeURIComponent(cleaned);
+    const response = await fetch(`https://text.pollinations.ai/Generate a prompt minimum will be 3 and max will be 30 character long. If the prompt is like "hi" ur prompt will be like Greetings if "code me javascript about website" ur prompt will be "Javascript Coding About Website". If anything inappropiate say "Filtered chat". One shot answer no extra stuff like sure heres the prompt avoid those only prompt. Heres the prompt: ${prompt}`);
+    
+    if (!response.ok) {
+      return truncateTitle(cleaned);
+    }
+    
+    const title = await response.text();
+    return truncateTitle(title.trim());
+  } catch (error) {
+    console.error('Error generating title:', error);
+    return truncateTitle(cleaned);
+  }
 }
