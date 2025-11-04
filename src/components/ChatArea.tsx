@@ -14,7 +14,7 @@ interface Message {
 
 interface ChatAreaProps {
   messages: Message[];
-  onSendMessage: (message: string, mode: 'chat' | 'webSearch' | 'reasoning', image?: File) => void;
+  onSendMessage: (message: string, mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen') => void;
   isLoading: boolean;
 }
 
@@ -37,17 +37,19 @@ const ChatArea = ({ messages, onSendMessage, isLoading }: ChatAreaProps) => {
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8">
               <div className="text-center space-y-4">
-                <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary">
-                  <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                  </svg>
+                <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary p-2">
+                  <img 
+                    src="/favicon.ico" 
+                    alt="FARABI.me" 
+                    className="h-full w-full object-contain"
+                  />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                     Welcome to FARABI.me
                   </h2>
                   <p className="mt-2 text-muted-foreground">
-                    Start a conversation or upload an image
+                    Start a conversation with AI
                   </p>
                 </div>
               </div>

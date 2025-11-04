@@ -56,21 +56,14 @@ const Index = () => {
 
   const handleSendMessage = async (
     message: string, 
-    mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen',
-    image?: File
+    mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen'
   ) => {
-    if (!message.trim() && !image) return;
-
-    let imagePreview: string | undefined;
-    if (image) {
-      imagePreview = URL.createObjectURL(image);
-    }
+    if (!message.trim()) return;
 
     // Add user message
     const userMessage: Message = {
       role: 'user',
-      content: message,
-      image: imagePreview
+      content: message
     };
 
     const newMessages = [...messages, userMessage];
@@ -93,10 +86,10 @@ const Index = () => {
 
       switch (mode) {
         case 'webSearch':
-          response = await sendWebSearch(message, messages, image);
+          response = await sendWebSearch(message, messages);
           break;
         case 'reasoning':
-          response = await sendReasoning(message, messages, image);
+          response = await sendReasoning(message, messages);
           break;
       case 'imageGen':
         const { imageUrl, imageBlob } = await generateImage(message, (status) => {
@@ -114,7 +107,7 @@ const Index = () => {
         response = 'Successfully created image. Click here to download';
         break;
         default:
-          response = await sendChat(message, messages, image);
+          response = await sendChat(message, messages);
       }
 
       // Replace loading message with actual response
