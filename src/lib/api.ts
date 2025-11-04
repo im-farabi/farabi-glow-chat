@@ -17,6 +17,30 @@ const API_CONFIG = {
   maxContextMessages: 100000
 };
 
+const SYSTEM_INSTRUCTIONS = {
+  chat: `You are FARABI, an AI chatbot made by Ariyan Farabi.
+You are professional, friendly, and respectful. Always reply clearly.
+IMPORTANT: Always prioritize the latest user prompt first before considering conversation memory.
+Rules:
+- Friendly and child-safe
+- No personal info sharing
+- Short, clear, but detailed when needed
+- No impersonation
+- Avoid confusion between topic context and AI behavior`,
+  
+  webSearch: `You are FARABI with web search capabilities.
+Provide accurate, up-to-date information based on web search results.
+Always cite sources when possible.
+Prioritize the latest user query over conversation history.`,
+  
+  reasoning: `You are FARABI with advanced reasoning capabilities.
+Think step-by-step, show your reasoning process.
+Break down complex problems logically.
+Prioritize the latest user query over conversation history.`
+};
+
+const MEMORY_LIMIT = 3; // last 3 exchanges (6 messages)
+
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -43,6 +67,20 @@ function getHeaders() {
 }
 
 /**
+ * Build conversation history from recent messages
+ */
+function buildConversationHistory(messages: Message[]): string {
+  // Get last 6 messages (3 exchanges), filter out loading/error states
+  const recentMessages = messages
+    .filter(msg => msg.content.trim() && msg.role)
+    .slice(-MEMORY_LIMIT * 2);
+  
+  return recentMessages
+    .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+    .join('\n');
+}
+
+/**
  * Convert image file to base64
  */
 async function imageToBase64(file: File): Promise<string> {
@@ -57,9 +95,23 @@ async function imageToBase64(file: File): Promise<string> {
 /**
  * Send request to API
  */
-async function sendRequest(prompt: string, model: string, image?: File): Promise<string> {
+async function sendRequest(
+  prompt: string, 
+  model: string, 
+  instruction: string,
+  messages: Message[] = [],
+  image?: File
+): Promise<string> {
   try {
-    const url = buildUrl(prompt, model);
+    // Build conversation history
+    const history = buildConversationHistory(messages);
+    
+    // Build full prompt with instruction + history + current message
+    const fullPrompt = history 
+      ? `${instruction}\n${history}\nUser: ${prompt}\nAssistant:`
+      : `${instruction}\nUser: ${prompt}\nAssistant:`;
+    
+    const url = buildUrl(fullPrompt, model);
     
     let images: string[] | null = null;
     if (image) {
@@ -93,22 +145,22 @@ async function sendRequest(prompt: string, model: string, image?: File): Promise
 /**
  * Send a chat message to the API
  */
-export async function sendChat(prompt: string, image?: File): Promise<string> {
-  return sendRequest(prompt, API_CONFIG.models.chat, image);
+export async function sendChat(prompt: string, messages: Message[] = [], image?: File): Promise<string> {
+  return sendRequest(prompt, API_CONFIG.models.chat, SYSTEM_INSTRUCTIONS.chat, messages, image);
 }
 
 /**
  * Send a web search query
  */
-export async function sendWebSearch(prompt: string, image?: File): Promise<string> {
-  return sendRequest(prompt, API_CONFIG.models.webSearch, image);
+export async function sendWebSearch(prompt: string, messages: Message[] = [], image?: File): Promise<string> {
+  return sendRequest(prompt, API_CONFIG.models.webSearch, SYSTEM_INSTRUCTIONS.webSearch, messages, image);
 }
 
 /**
  * Send a reasoning query
  */
-export async function sendReasoning(prompt: string, image?: File): Promise<string> {
-  return sendRequest(prompt, API_CONFIG.models.reasoning, image);
+export async function sendReasoning(prompt: string, messages: Message[] = [], image?: File): Promise<string> {
+  return sendRequest(prompt, API_CONFIG.models.reasoning, SYSTEM_INSTRUCTIONS.reasoning, messages, image);
 }
 
 /**
@@ -134,7 +186,7 @@ User's simple prompt: "${userPrompt}"
 
 Return ONLY the enhanced prompt, nothing else. Make it 2-3 sentences maximum.`;
 
-    const enhancedPrompt = await sendRequest(enhancementInstruction, API_CONFIG.models.chat);
+    const enhancedPrompt = await sendRequest(enhancementInstruction, API_CONFIG.models.chat, '', []);
     
     // Build the image URL with the enhanced prompt
     onStatusUpdate?.('Generating Image...');

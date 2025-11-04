@@ -93,10 +93,10 @@ const Index = () => {
 
       switch (mode) {
         case 'webSearch':
-          response = await sendWebSearch(message, image);
+          response = await sendWebSearch(message, messages, image);
           break;
         case 'reasoning':
-          response = await sendReasoning(message, image);
+          response = await sendReasoning(message, messages, image);
           break;
       case 'imageGen':
         const { imageUrl, imageBlob } = await generateImage(message, (status) => {
@@ -114,7 +114,7 @@ const Index = () => {
         response = 'Successfully created image. Click here to download';
         break;
         default:
-          response = await sendChat(message, image);
+          response = await sendChat(message, messages, image);
       }
 
       // Replace loading message with actual response
