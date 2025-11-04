@@ -1,7 +1,7 @@
 import { useState, useRef, KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Image, Send, Search } from 'lucide-react';
+import { Image, Send, Search, Brain, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ChatInputProps {
@@ -99,8 +99,8 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             onClick={() => setActiveMode(activeMode === 'reasoning' ? 'chat' : 'reasoning')}
             className={`text-xs md:text-sm ${activeMode === 'reasoning' ? 'bg-accent' : ''}`}
           >
-            <span className="text-base md:text-lg">🧠</span>
-            <span className="hidden sm:inline ml-1">Reasoning</span>
+            <Brain className="h-3 w-3 md:h-4 md:w-4 md:mr-1 font-bold" strokeWidth={2.5} />
+            <span className="hidden sm:inline">Reasoning</span>
           </Button>
 
           <Button
@@ -109,8 +109,8 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             onClick={() => setActiveMode(activeMode === 'imageGen' ? 'chat' : 'imageGen')}
             className={`text-xs md:text-sm ${activeMode === 'imageGen' ? 'bg-accent' : ''}`}
           >
-            <span className="text-base md:text-lg">🎨</span>
-            <span className="hidden sm:inline ml-1">Generate Image</span>
+            <Palette className="h-3 w-3 md:h-4 md:w-4 md:mr-1 font-bold" strokeWidth={2.5} />
+            <span className="hidden sm:inline">Generate Image</span>
           </Button>
 
           <input
@@ -156,12 +156,23 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
       </div>
 
       {activeMode !== 'chat' && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {activeMode === 'webSearch' 
-            ? '🔍 Web Search mode active' 
-            : activeMode === 'reasoning' 
-            ? '🧠 Reasoning mode active'
-            : '🎨 Image Generation mode active'}
+        <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
+          {activeMode === 'webSearch' ? (
+            <>
+              <Search className="h-3 w-3 font-bold" strokeWidth={2.5} />
+              <span>Web Search mode active</span>
+            </>
+          ) : activeMode === 'reasoning' ? (
+            <>
+              <Brain className="h-3 w-3 font-bold" strokeWidth={2.5} />
+              <span>Reasoning mode active</span>
+            </>
+          ) : (
+            <>
+              <Palette className="h-3 w-3 font-bold" strokeWidth={2.5} />
+              <span>Image Generation mode active</span>
+            </>
+          )}
         </p>
       )}
     </div>
