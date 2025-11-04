@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
+import Footer from '@/components/Footer';
 import { sendChat, sendWebSearch, sendReasoning, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
@@ -165,11 +166,14 @@ const Index = () => {
           onClose={() => setIsSidebarOpen(false)}
         />
         
-        <ChatArea
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-        />
+        <div className="flex flex-col flex-1">
+          <ChatArea
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+          />
+          <Footer />
+        </div>
       </div>
     </div>
   );

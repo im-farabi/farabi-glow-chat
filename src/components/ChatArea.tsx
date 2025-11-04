@@ -45,9 +45,9 @@ const ChatArea = ({ messages, onSendMessage, isLoading }: ChatAreaProps) => {
                   />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                     Welcome to FARABI.me
-                  </h2>
+                  </h1>
                   <p className="mt-2 text-muted-foreground">
                     Start a conversation with AI
                   </p>

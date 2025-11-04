@@ -3,11 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Farabi's AI Chatbot</title>
-    <meta name="title" content="Farabi's AI Chatbot" />
-    <meta name="description" content="Use web search, reasoning and chat with high model of AI for completely Free!" />
+    <title>Farabi's AI Chatbot - Free AI Chat with Web Search, Reasoning & Image Generation</title>
+    <meta name="title" content="Farabi's AI Chatbot - Free AI Chat with Web Search, Reasoning & Image Generation" />
+    <meta name="description" content="Free AI Chatbot by FARABI.me - Chat with advanced AI models, use web search for real-time information, leverage reasoning capabilities, and generate images. Completely free AI assistant with no signup required!" />
+    <meta name="keywords" content="AI chatbot, free AI, web search AI, reasoning AI, image generation, artificial intelligence, free chatbot, AI assistant, FARABI.me" />
     <meta name="author" content="FARABI.me" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#000000" />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,24 +21,57 @@
     <!-- Open Graph / Facebook / Discord -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://farabi.me/" />
-    <meta property="og:title" content="Farabi's AI Chatbot" />
-    <meta property="og:description" content="Use web search, reasoning and chat with high model of AI for completely Free!" />
+    <meta property="og:title" content="Farabi's AI Chatbot - Free AI Chat with Web Search, Reasoning & Image Generation" />
+    <meta property="og:description" content="Free AI Chatbot by FARABI.me - Chat with advanced AI models, use web search for real-time information, leverage reasoning capabilities, and generate images. Completely free AI assistant with no signup required!" />
     <meta property="og:image" content="https://farabi.me/favicon.ico" />
     <meta property="og:site_name" content="Farabi's AI Chatbot" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://farabi.me/" />
-    <meta property="twitter:title" content="Farabi's AI Chatbot" />
-    <meta property="twitter:description" content="Use web search, reasoning and chat with high model of AI for completely Free!" />
+    <meta property="twitter:title" content="Farabi's AI Chatbot - Free AI Chat with Web Search, Reasoning & Image Generation" />
+    <meta property="twitter:description" content="Free AI Chatbot by FARABI.me - Chat with advanced AI models, use web search for real-time information, leverage reasoning capabilities, and generate images. Completely free AI assistant with no signup required!" />
     <meta property="twitter:image" content="https://farabi.me/favicon.ico" />
 
     <!-- Telegram -->
     <meta property="telegram:channel" content="@farabi" />
     <meta property="telegram:card" content="summary_large_image" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Farabi's AI Chatbot",
+      "description": "Free AI chatbot with web search, reasoning and image generation capabilities",
+      "url": "https://farabi.me/",
+      "applicationCategory": "Artificial Intelligence",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "FARABI"
+      }
+    }
+    </script>
   </head>
 
   <body>
+    <noscript>
+      <h1>Farabi's AI Chatbot - Free AI Chat with Advanced Features</h1>
+      <p>Welcome to FARABI.me - your free AI chatbot with web search, reasoning capabilities, and image generation.</p>
+      <h2>Features</h2>
+      <ul>
+        <li>Free AI Chat powered by advanced language models</li>
+        <li>Web Search integration for up-to-date information</li>
+        <li>Advanced Reasoning for complex problem-solving</li>
+        <li>AI Image Generation</li>
+      </ul>
+      <p>Start chatting now for completely free! JavaScript is required to use this application.</p>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
