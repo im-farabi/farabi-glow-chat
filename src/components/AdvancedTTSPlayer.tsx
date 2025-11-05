@@ -119,8 +119,8 @@ const AdvancedTTSPlayer = ({ text, onClose }: AdvancedTTSPlayerProps) => {
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-primary to-secondary p-4 shadow-lg animate-fade-in">
-      <div className="container mx-auto flex items-center justify-between max-w-4xl">
+    <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-primary to-secondary p-4 animate-fade-in" style={{ boxShadow: '0 0 40px rgba(236, 72, 153, 0.6), 0 0 80px rgba(147, 51, 234, 0.4), 0 10px 30px rgba(0, 0, 0, 0.5)' }}>
+      <div className="container mx-auto flex items-center justify-between max-w-6xl">
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
           <span className="text-white font-medium">
