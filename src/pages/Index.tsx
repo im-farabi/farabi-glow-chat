@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import Footer from '@/components/Footer';
+import TTSPlayer from '@/components/TTSPlayer';
 import { sendChat, sendWebSearch, sendReasoning, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
@@ -27,6 +28,7 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [ttsText, setTtsText] = useState<string | null>(null);
 
   // Swipe gesture to open sidebar
   useEffect(() => {
@@ -191,6 +193,13 @@ const Index = () => {
 
   return (
     <div className="flex h-screen flex-col bg-background">
+      {ttsText && (
+        <TTSPlayer 
+          text={ttsText} 
+          onClose={() => setTtsText(null)} 
+        />
+      )}
+      
       <Header onMenuClick={() => setIsSidebarOpen(true)} />
       
       <div className="flex flex-1 overflow-hidden relative">
@@ -207,6 +216,7 @@ const Index = () => {
             messages={messages}
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
+            onRead={(text) => setTtsText(text)}
           />
           <Footer />
         </div>

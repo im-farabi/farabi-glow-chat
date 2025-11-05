@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, MessageSquare, X } from 'lucide-react';
-import { getAllChats, truncateTitle, type ChatSession } from '@/lib/storage';
+import { Plus, Search, MessageSquare, X, MoreVertical, Edit2, Trash2, FileEdit } from 'lucide-react';
+import { getAllChats, truncateTitle, deleteChat, renameChat, type ChatSession } from '@/lib/storage';
 import UsageBanner from '@/components/UsageBanner';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface SidebarProps {
   currentChatId: string | null;
@@ -17,6 +20,10 @@ interface SidebarProps {
 const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClose }: SidebarProps) => {
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const { toast } = useToast();
 
   useEffect(() => {
     loadChats();
@@ -33,6 +40,44 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
   const handleChatSelect = (chatId: string) => {
     onSelectChat(chatId);
     onClose?.(); // Close sidebar on mobile after selecting a chat
+  };
+
+  const handleRename = (chatId: string) => {
+    const chat = chats.find(c => c.id === chatId);
+    if (chat) {
+      setSelectedChatId(chatId);
+      setNewTitle(chat.title);
+      setRenameDialogOpen(true);
+    }
+  };
+
+  const handleRenameConfirm = () => {
+    if (selectedChatId && newTitle.trim()) {
+      renameChat(selectedChatId, newTitle.trim());
+      loadChats();
+      setRenameDialogOpen(false);
+      toast({
+        title: "Renamed!",
+        description: "Chat renamed successfully",
+      });
+    }
+  };
+
+  const handleDelete = (chatId: string) => {
+    deleteChat(chatId);
+    loadChats();
+    if (currentChatId === chatId) {
+      onNewChat();
+    }
+    toast({
+      title: "Deleted!",
+      description: "Chat deleted successfully",
+    });
+  };
+
+  const handleEdit = (chatId: string) => {
+    onSelectChat(chatId);
+    onClose?.();
   };
 
   return (
@@ -89,32 +134,94 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
       <ScrollArea className="flex-1">
         <div className="space-y-1 p-2">
           {filteredChats.map((chat) => (
-            <button
+            <div
               key={chat.id}
-              onClick={() => handleChatSelect(chat.id)}
               className={`
-                w-full rounded-lg px-4 py-3 text-left transition-colors
+                group relative w-full rounded-lg transition-colors
                 ${currentChatId === chat.id
                   ? 'bg-accent text-accent-foreground'
                   : 'hover:bg-accent/50'
                 }
               `}
             >
-              <div className="flex items-start gap-3">
-                <MessageSquare className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {truncateTitle(chat.title)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(chat.timestamp).toLocaleDateString()}
-                  </p>
+              <button
+                onClick={() => handleChatSelect(chat.id)}
+                className="w-full px-4 py-3 text-left"
+              >
+                <div className="flex items-start gap-3">
+                  <MessageSquare className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {truncateTitle(chat.title)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(chat.timestamp).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
+              </button>
+              
+              <div className="absolute right-2 top-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleRename(chat.id)}>
+                      <Edit2 className="mr-2 h-4 w-4" />
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleEdit(chat.id)}>
+                      <FileEdit className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleDelete(chat.id)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </ScrollArea>
+      
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Chat</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Enter new title"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleRenameConfirm();
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameConfirm}>
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
     </>
   );

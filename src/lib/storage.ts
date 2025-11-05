@@ -70,6 +70,22 @@ export function deleteChat(id: string): void {
 }
 
 /**
+ * Rename a chat session
+ */
+export function renameChat(id: string, newTitle: string): void {
+  try {
+    const chats = getAllChats();
+    const chat = chats.find(c => c.id === id);
+    if (chat) {
+      chat.title = newTitle;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+    }
+  } catch (error) {
+    console.error('Error renaming chat:', error);
+  }
+}
+
+/**
  * Create a new chat session
  */
 export function createNewChat(): ChatSession {

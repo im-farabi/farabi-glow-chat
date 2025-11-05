@@ -17,9 +17,10 @@ interface ChatAreaProps {
   messages: Message[];
   onSendMessage: (message: string, mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen') => void;
   isLoading: boolean;
+  onRead?: (text: string) => void;
 }
 
-const ChatArea = ({ messages, onSendMessage, isLoading }: ChatAreaProps) => {
+const ChatArea = ({ messages, onSendMessage, isLoading, onRead }: ChatAreaProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery('(max-width: 1024px)');
@@ -67,6 +68,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading }: ChatAreaProps) => {
                   imageBlob={message.imageBlob}
                   isLoading={message.isLoading}
                   loadingText={message.loadingText}
+                  onRead={onRead}
                 />
               ))}
               <div ref={messagesEndRef} />
@@ -107,6 +109,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading }: ChatAreaProps) => {
                   imageBlob={message.imageBlob}
                   isLoading={message.isLoading}
                   loadingText={message.loadingText}
+                  onRead={onRead}
                 />
               ))}
               <div ref={messagesEndRef} />

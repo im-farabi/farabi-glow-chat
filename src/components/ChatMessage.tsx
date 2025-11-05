@@ -1,9 +1,12 @@
-import { User, Sparkles } from 'lucide-react';
+import { User, MoreVertical, Copy, Volume2 } from 'lucide-react';
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
 import CodeBlock from './CodeBlock';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';
@@ -12,6 +15,7 @@ interface ChatMessageProps {
   imageBlob?: Blob;
   isLoading?: boolean;
   loadingText?: string;
+  onRead?: (text: string) => void;
 }
 
 // Add glow effect to ! and ? symbols
@@ -35,8 +39,9 @@ function addGlowToExclamations(text: string): React.ReactNode[] {
   });
 }
 
-const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, onRead }: ChatMessageProps) => {
   const isUser = role === 'user';
+  const { toast } = useToast();
 
   const handleDownload = () => {
     if (imageBlob && image) {
@@ -50,6 +55,20 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
   };
 
   const isDownloadMessage = content.includes('Click here to download');
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(content);
+    toast({
+      title: "Copied!",
+      description: "Response copied to clipboard",
+    });
+  };
+
+  const handleRead = () => {
+    if (onRead) {
+      onRead(content);
+    }
+  };
 
   return (
     <div className={`flex gap-4 px-6 py-6 ${isUser ? 'bg-card' : 'bg-muted/30'} animate-fade-in`}>
@@ -70,10 +89,30 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
       </div>
 
       <div className="flex-1 space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
           <span className="font-semibold">
             {isUser ? 'You' : 'FARABI'}
           </span>
+          
+          {!isUser && !isLoading && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleRead}>
+                  <Volume2 className="mr-2 h-4 w-4" />
+                  Read
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopy}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {image && (
