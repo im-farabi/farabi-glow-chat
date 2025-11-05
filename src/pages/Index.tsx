@@ -3,8 +3,8 @@ import { toast } from 'sonner';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
-import Footer from '@/components/Footer';
 import TTSPlayer from '@/components/TTSPlayer';
+import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
 import { sendChat, sendWebSearch, sendReasoning, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
@@ -29,6 +29,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [ttsText, setTtsText] = useState<string | null>(null);
+  const [isAdvancedTTS, setIsAdvancedTTS] = useState(false);
 
   // Swipe gesture to open sidebar
   useEffect(() => {
@@ -91,6 +92,11 @@ const Index = () => {
       default:
         return 'Thinking...';
     }
+  };
+
+  const handleRead = (text: string, advanced: boolean = false) => {
+    setTtsText(text);
+    setIsAdvancedTTS(advanced);
   };
 
   const handleSendMessage = async (
@@ -194,10 +200,20 @@ const Index = () => {
   return (
     <div className="flex h-screen flex-col bg-background">
       {ttsText && (
-        <TTSPlayer 
-          text={ttsText} 
-          onClose={() => setTtsText(null)} 
-        />
+        isAdvancedTTS ? (
+          <AdvancedTTSPlayer 
+            text={ttsText} 
+            onClose={() => {
+              setTtsText(null);
+              setIsAdvancedTTS(false);
+            }} 
+          />
+        ) : (
+          <TTSPlayer 
+            text={ttsText} 
+            onClose={() => setTtsText(null)} 
+          />
+        )
       )}
       
       <Header onMenuClick={() => setIsSidebarOpen(true)} />
@@ -216,9 +232,9 @@ const Index = () => {
             messages={messages}
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
-            onRead={(text) => setTtsText(text)}
+            onRead={handleRead}
           />
-          <Footer />
+          
         </div>
       </div>
     </div>

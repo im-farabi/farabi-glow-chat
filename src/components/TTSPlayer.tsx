@@ -13,7 +13,27 @@ const TTSPlayer = ({ text, onClose }: TTSPlayerProps) => {
 
   useEffect(() => {
     const synth = window.speechSynthesis;
-    const u = new SpeechSynthesisUtterance(text);
+    
+    // Clean text: remove emojis, hashtags, and special symbols
+    const cleanText = text
+      .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+      .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Misc symbols & pictographs
+      .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport & map symbols
+      .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '') // Flags
+      .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Misc symbols
+      .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+      .replace(/[\u{FE00}-\u{FE0F}]/gu, '')   // Variation selectors
+      .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental symbols
+      .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '') // Chess symbols
+      .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '') // Symbols and pictographs
+      .replace(/#\w+/g, '')                    // Hashtags
+      .replace(/\*\*/g, '')                    // Bold markdown
+      .replace(/\*/g, '')                      // Italic markdown
+      .replace(/`/g, '')                       // Code markdown
+      .replace(/\s+/g, ' ')                    // Multiple spaces
+      .trim();
+    
+    const u = new SpeechSynthesisUtterance(cleanText);
     
     u.onend = () => {
       onClose();

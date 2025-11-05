@@ -17,7 +17,7 @@ interface ChatAreaProps {
   messages: Message[];
   onSendMessage: (message: string, mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen') => void;
   isLoading: boolean;
-  onRead?: (text: string) => void;
+  onRead?: (text: string, advanced?: boolean) => void;
 }
 
 const ChatArea = ({ messages, onSendMessage, isLoading, onRead }: ChatAreaProps) => {

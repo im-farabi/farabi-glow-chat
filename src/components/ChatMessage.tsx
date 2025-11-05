@@ -15,7 +15,7 @@ interface ChatMessageProps {
   imageBlob?: Blob;
   isLoading?: boolean;
   loadingText?: string;
-  onRead?: (text: string) => void;
+  onRead?: (text: string, advanced?: boolean) => void;
 }
 
 // Add glow effect to ! and ? symbols
@@ -65,9 +65,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
   };
 
   const handleRead = () => {
-    if (onRead) {
-      onRead(content);
-    }
+    onRead?.(content, false);
   };
 
   return (
@@ -102,13 +100,17 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleCopy}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleRead}>
                   <Volume2 className="mr-2 h-4 w-4" />
                   Read
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleCopy}>
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy
+                <DropdownMenuItem onClick={() => onRead?.(content, true)}>
+                  <Volume2 className="mr-2 h-4 w-4" />
+                  Advanced Reader
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
