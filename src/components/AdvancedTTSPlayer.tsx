@@ -39,7 +39,22 @@ const AdvancedTTSPlayer = ({ text, onClose }: AdvancedTTSPlayerProps) => {
         const encodedText = encodeURIComponent(`repeat after me " ${cleanText} "`);
         const audioUrl = `https://text.pollinations.ai/${encodedText}?model=openai-audio&voice=nova`;
         
-        const audio = new Audio(audioUrl);
+        // Fetch with authorization header
+        const response = await fetch(audioUrl, {
+          headers: {
+            'Authorization': 'Bearer diO2AcUEcZmCDP_I'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch audio');
+        }
+
+        // Convert to blob and create blob URL
+        const audioBlob = await response.blob();
+        const blobUrl = URL.createObjectURL(audioBlob);
+
+        const audio = new Audio(blobUrl);
         audioRef.current = audio;
         
         audio.oncanplaythrough = () => {
@@ -75,6 +90,10 @@ const AdvancedTTSPlayer = ({ text, onClose }: AdvancedTTSPlayerProps) => {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
+        // Revoke blob URL to free memory
+        if (audioRef.current.src.startsWith('blob:')) {
+          URL.revokeObjectURL(audioRef.current.src);
+        }
         audioRef.current = null;
       }
     };
