@@ -8,7 +8,7 @@ interface HeaderProps {
 const Header = ({ onMenuClick }: HeaderProps) => {
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-      <div className="flex items-center justify-between px-4 py-3 md:justify-center md:py-4">
+      <div className="flex items-center justify-between px-4 py-2 md:justify-center md:py-3">
         <Button
           variant="ghost"
           size="icon"

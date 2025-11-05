@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 const Footer = () => {
   return (
     <footer className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-2 md:px-4 py-2 md:py-3">
+      <div className="container mx-auto px-2 md:px-4 py-1.5 md:py-2">
         <div className="flex flex-col md:flex-row items-center justify-between gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <span>© 2024 FARABI.me</span>

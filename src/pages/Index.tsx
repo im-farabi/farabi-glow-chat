@@ -28,6 +28,42 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Swipe gesture to open sidebar
+  useEffect(() => {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    };
+    
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const deltaX = touchStartX - touchEndX;
+      const deltaY = Math.abs(touchStartY - touchEndY);
+      
+      // Swipe left detected (and mostly horizontal)
+      if (deltaX > 50 && deltaY < 50) {
+        setIsSidebarOpen(true);
+      }
+    };
+    
+    const chatArea = document.querySelector('.chat-main-area');
+    if (chatArea) {
+      chatArea.addEventListener('touchstart', handleTouchStart);
+      chatArea.addEventListener('touchend', handleTouchEnd);
+    }
+    
+    return () => {
+      if (chatArea) {
+        chatArea.removeEventListener('touchstart', handleTouchStart);
+        chatArea.removeEventListener('touchend', handleTouchEnd);
+      }
+    };
+  }, []);
+
   const handleNewChat = () => {
     const newChat = createNewChat();
     setCurrentChat(newChat);
@@ -166,7 +202,7 @@ const Index = () => {
           onClose={() => setIsSidebarOpen(false)}
         />
         
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 chat-main-area">
           <ChatArea
             messages={messages}
             onSendMessage={handleSendMessage}

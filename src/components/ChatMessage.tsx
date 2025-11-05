@@ -14,27 +14,25 @@ interface ChatMessageProps {
   loadingText?: string;
 }
 
-// Generate consistent colors for symbols
-const symbolColors = new Map<string, string>();
-const darkColors = [
-  'text-green-600',
-  'text-blue-600', 
-  'text-purple-600',
-  'text-red-600',
-  'text-yellow-600',
-  'text-cyan-600',
-  'text-pink-600',
-  'text-indigo-600',
-  'text-orange-600',
-  'text-teal-600'
-];
-
-function getSymbolColor(symbol: string): string {
-  if (!symbolColors.has(symbol)) {
-    const color = darkColors[Math.floor(Math.random() * darkColors.length)];
-    symbolColors.set(symbol, color);
-  }
-  return symbolColors.get(symbol)!;
+// Add glow effect to ! and ? symbols
+function addGlowToExclamations(text: string): React.ReactNode[] {
+  const parts = text.split(/([!?])/g);
+  return parts.map((part, i) => {
+    if (part === '!' || part === '?') {
+      return (
+        <span 
+          key={i} 
+          className="font-bold" 
+          style={{ 
+            textShadow: '0 0 8px rgba(255, 255, 255, 0.6), 0 0 12px rgba(255, 255, 255, 0.4)' 
+          }}
+        >
+          {part}
+        </span>
+      );
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
 }
 
 const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }: ChatMessageProps) => {
@@ -144,14 +142,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                       const { children, ...rest } = props;
                       const processedChildren = React.Children.map(children, (child) => {
                         if (typeof child === 'string') {
-                          const parts = child.split(/([^\w\s])/g);
-                          return parts.map((part, i) => {
-                            if (part.match(/[^\w\s]/)) {
-                              const color = getSymbolColor(part);
-                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
-                            }
-                            return part;
-                          });
+                          return addGlowToExclamations(child);
                         }
                         return child;
                       });
@@ -161,14 +152,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                       const { children, ...rest } = props;
                       const processedChildren = React.Children.map(children, (child) => {
                         if (typeof child === 'string') {
-                          const parts = child.split(/([^\w\s])/g);
-                          return parts.map((part, i) => {
-                            if (part.match(/[^\w\s]/)) {
-                              const color = getSymbolColor(part);
-                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
-                            }
-                            return part;
-                          });
+                          return addGlowToExclamations(child);
                         }
                         return child;
                       });
@@ -178,14 +162,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                       const { children, ...rest } = props;
                       const processedChildren = React.Children.map(children, (child) => {
                         if (typeof child === 'string') {
-                          const parts = child.split(/([^\w\s])/g);
-                          return parts.map((part, i) => {
-                            if (part.match(/[^\w\s]/)) {
-                              const color = getSymbolColor(part);
-                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
-                            }
-                            return part;
-                          });
+                          return addGlowToExclamations(child);
                         }
                         return child;
                       });
@@ -195,14 +172,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                       const { children, ...rest } = props;
                       const processedChildren = React.Children.map(children, (child) => {
                         if (typeof child === 'string') {
-                          const parts = child.split(/([^\w\s])/g);
-                          return parts.map((part, i) => {
-                            if (part.match(/[^\w\s]/)) {
-                              const color = getSymbolColor(part);
-                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
-                            }
-                            return part;
-                          });
+                          return addGlowToExclamations(child);
                         }
                         return child;
                       });
@@ -212,14 +182,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                       const { children, ...rest } = props;
                       const processedChildren = React.Children.map(children, (child) => {
                         if (typeof child === 'string') {
-                          const parts = child.split(/([^\w\s])/g);
-                          return parts.map((part, i) => {
-                            if (part.match(/[^\w\s]/)) {
-                              const color = getSymbolColor(part);
-                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
-                            }
-                            return part;
-                          });
+                          return addGlowToExclamations(child);
                         }
                         return child;
                       });
@@ -229,14 +192,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                       const { children, ...rest } = props;
                       const processedChildren = React.Children.map(children, (child) => {
                         if (typeof child === 'string') {
-                          const parts = child.split(/([^\w\s])/g);
-                          return parts.map((part, i) => {
-                            if (part.match(/[^\w\s]/)) {
-                              const color = getSymbolColor(part);
-                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
-                            }
-                            return part;
-                          });
+                          return addGlowToExclamations(child);
                         }
                         return child;
                       });
@@ -246,14 +202,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                       const { children, ...rest } = props;
                       const processedChildren = React.Children.map(children, (child) => {
                         if (typeof child === 'string') {
-                          const parts = child.split(/([^\w\s])/g);
-                          return parts.map((part, i) => {
-                            if (part.match(/[^\w\s]/)) {
-                              const color = getSymbolColor(part);
-                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
-                            }
-                            return part;
-                          });
+                          return addGlowToExclamations(child);
                         }
                         return child;
                       });
@@ -263,14 +212,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                       const { children, ...rest } = props;
                       const processedChildren = React.Children.map(children, (child) => {
                         if (typeof child === 'string') {
-                          const parts = child.split(/([^\w\s])/g);
-                          return parts.map((part, i) => {
-                            if (part.match(/[^\w\s]/)) {
-                              const color = getSymbolColor(part);
-                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
-                            }
-                            return part;
-                          });
+                          return addGlowToExclamations(child);
                         }
                         return child;
                       });

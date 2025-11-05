@@ -20,6 +20,11 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
     onSendMessage(message, activeMode);
     setMessage('');
     setActiveMode('chat');
+    
+    // Re-focus textarea after sending
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -73,7 +78,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type your message..."
-            disabled={disabled}
+            autoFocus
             className="min-h-[40px] md:min-h-[50px] max-h-[120px] md:max-h-[150px] resize-none text-sm md:text-base"
           />
 
