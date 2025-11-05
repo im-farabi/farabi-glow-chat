@@ -1,4 +1,5 @@
 import { User, Sparkles } from 'lucide-react';
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
@@ -62,7 +63,11 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
         {isUser ? (
           <User className="h-5 w-5 text-primary-foreground" />
         ) : (
-          <Sparkles className="h-5 w-5 text-accent-foreground" />
+              <img 
+                src="/bot-logo.ico" 
+                alt="FARABI" 
+                className="h-5 w-5 object-contain"
+              />
         )}
       </div>
 
@@ -136,53 +141,140 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                       );
                     },
                     strong(props) {
-                      const { children, node, ...rest } = props;
-                      return <strong className="font-bold text-foreground" {...rest}>{children}</strong>;
-                    },
-                    p(props) {
-                      const { children, node, ...rest } = props;
-                      return <p className="whitespace-pre-wrap text-foreground mb-4 last:mb-0" {...rest}>{children}</p>;
-                    },
-                    text(props) {
-                      const { children, node, ...rest } = props;
-                      const text = String(children);
-                      // Match symbols like $, ,, ., !, ?, etc.
-                      const parts = text.split(/([^\w\s])/g);
-                      return (
-                        <>
-                          {parts.map((part, i) => {
+                      const { children, ...rest } = props;
+                      const processedChildren = React.Children.map(children, (child) => {
+                        if (typeof child === 'string') {
+                          const parts = child.split(/([^\w\s])/g);
+                          return parts.map((part, i) => {
                             if (part.match(/[^\w\s]/)) {
                               const color = getSymbolColor(part);
                               return <span key={i} className={`${color} font-bold`}>{part}</span>;
                             }
                             return part;
-                          })}
-                        </>
-                      );
+                          });
+                        }
+                        return child;
+                      });
+                      return <strong className="font-bold text-foreground" {...rest}>{processedChildren}</strong>;
+                    },
+                    p(props) {
+                      const { children, ...rest } = props;
+                      const processedChildren = React.Children.map(children, (child) => {
+                        if (typeof child === 'string') {
+                          const parts = child.split(/([^\w\s])/g);
+                          return parts.map((part, i) => {
+                            if (part.match(/[^\w\s]/)) {
+                              const color = getSymbolColor(part);
+                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
+                            }
+                            return part;
+                          });
+                        }
+                        return child;
+                      });
+                      return <p className="whitespace-pre-wrap text-foreground mb-4 last:mb-0" {...rest}>{processedChildren}</p>;
                     },
                     h1(props) {
-                      const { children, node, ...rest } = props;
-                      return <h1 className="text-3xl font-bold text-foreground mb-4 mt-6 first:mt-0" {...rest}>{children}</h1>;
+                      const { children, ...rest } = props;
+                      const processedChildren = React.Children.map(children, (child) => {
+                        if (typeof child === 'string') {
+                          const parts = child.split(/([^\w\s])/g);
+                          return parts.map((part, i) => {
+                            if (part.match(/[^\w\s]/)) {
+                              const color = getSymbolColor(part);
+                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
+                            }
+                            return part;
+                          });
+                        }
+                        return child;
+                      });
+                      return <h1 className="text-3xl font-bold text-foreground mb-4 mt-6 first:mt-0" {...rest}>{processedChildren}</h1>;
                     },
                     h2(props) {
-                      const { children, node, ...rest } = props;
-                      return <h2 className="text-2xl font-bold text-foreground mb-3 mt-5 first:mt-0" {...rest}>{children}</h2>;
+                      const { children, ...rest } = props;
+                      const processedChildren = React.Children.map(children, (child) => {
+                        if (typeof child === 'string') {
+                          const parts = child.split(/([^\w\s])/g);
+                          return parts.map((part, i) => {
+                            if (part.match(/[^\w\s]/)) {
+                              const color = getSymbolColor(part);
+                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
+                            }
+                            return part;
+                          });
+                        }
+                        return child;
+                      });
+                      return <h2 className="text-2xl font-bold text-foreground mb-3 mt-5 first:mt-0" {...rest}>{processedChildren}</h2>;
                     },
                     h3(props) {
-                      const { children, node, ...rest } = props;
-                      return <h3 className="text-xl font-bold text-foreground mb-3 mt-4 first:mt-0" {...rest}>{children}</h3>;
+                      const { children, ...rest } = props;
+                      const processedChildren = React.Children.map(children, (child) => {
+                        if (typeof child === 'string') {
+                          const parts = child.split(/([^\w\s])/g);
+                          return parts.map((part, i) => {
+                            if (part.match(/[^\w\s]/)) {
+                              const color = getSymbolColor(part);
+                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
+                            }
+                            return part;
+                          });
+                        }
+                        return child;
+                      });
+                      return <h3 className="text-xl font-bold text-foreground mb-3 mt-4 first:mt-0" {...rest}>{processedChildren}</h3>;
                     },
                     h4(props) {
-                      const { children, node, ...rest } = props;
-                      return <h4 className="text-lg font-bold text-foreground mb-2 mt-3 first:mt-0" {...rest}>{children}</h4>;
+                      const { children, ...rest } = props;
+                      const processedChildren = React.Children.map(children, (child) => {
+                        if (typeof child === 'string') {
+                          const parts = child.split(/([^\w\s])/g);
+                          return parts.map((part, i) => {
+                            if (part.match(/[^\w\s]/)) {
+                              const color = getSymbolColor(part);
+                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
+                            }
+                            return part;
+                          });
+                        }
+                        return child;
+                      });
+                      return <h4 className="text-lg font-bold text-foreground mb-2 mt-3 first:mt-0" {...rest}>{processedChildren}</h4>;
                     },
                     h5(props) {
-                      const { children, node, ...rest } = props;
-                      return <h5 className="text-base font-bold text-foreground mb-2 mt-3 first:mt-0" {...rest}>{children}</h5>;
+                      const { children, ...rest } = props;
+                      const processedChildren = React.Children.map(children, (child) => {
+                        if (typeof child === 'string') {
+                          const parts = child.split(/([^\w\s])/g);
+                          return parts.map((part, i) => {
+                            if (part.match(/[^\w\s]/)) {
+                              const color = getSymbolColor(part);
+                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
+                            }
+                            return part;
+                          });
+                        }
+                        return child;
+                      });
+                      return <h5 className="text-base font-bold text-foreground mb-2 mt-3 first:mt-0" {...rest}>{processedChildren}</h5>;
                     },
                     h6(props) {
-                      const { children, node, ...rest } = props;
-                      return <h6 className="text-sm font-bold text-foreground mb-2 mt-2 first:mt-0" {...rest}>{children}</h6>;
+                      const { children, ...rest } = props;
+                      const processedChildren = React.Children.map(children, (child) => {
+                        if (typeof child === 'string') {
+                          const parts = child.split(/([^\w\s])/g);
+                          return parts.map((part, i) => {
+                            if (part.match(/[^\w\s]/)) {
+                              const color = getSymbolColor(part);
+                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
+                            }
+                            return part;
+                          });
+                        }
+                        return child;
+                      });
+                      return <h6 className="text-sm font-bold text-foreground mb-2 mt-2 first:mt-0" {...rest}>{processedChildren}</h6>;
                     },
                   } as Components}
                 >

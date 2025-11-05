@@ -94,7 +94,7 @@ const CodePreview = ({ code, language, isOpen, onClose }: CodePreviewProps) => {
           <iframe
             ref={iframeRef}
             className="w-full flex-1 border border-border rounded-md bg-background"
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-same-origin"
             title="Code Preview"
           />
         ) : (
