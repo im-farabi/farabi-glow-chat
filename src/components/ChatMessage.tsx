@@ -13,6 +13,29 @@ interface ChatMessageProps {
   loadingText?: string;
 }
 
+// Generate consistent colors for symbols
+const symbolColors = new Map<string, string>();
+const darkColors = [
+  'text-green-600',
+  'text-blue-600', 
+  'text-purple-600',
+  'text-red-600',
+  'text-yellow-600',
+  'text-cyan-600',
+  'text-pink-600',
+  'text-indigo-600',
+  'text-orange-600',
+  'text-teal-600'
+];
+
+function getSymbolColor(symbol: string): string {
+  if (!symbolColors.has(symbol)) {
+    const color = darkColors[Math.floor(Math.random() * darkColors.length)];
+    symbolColors.set(symbol, color);
+  }
+  return symbolColors.get(symbol)!;
+}
+
 const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }: ChatMessageProps) => {
   const isUser = role === 'user';
 
@@ -119,6 +142,23 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText }
                     p(props) {
                       const { children, node, ...rest } = props;
                       return <p className="whitespace-pre-wrap text-foreground mb-4 last:mb-0" {...rest}>{children}</p>;
+                    },
+                    text(props) {
+                      const { children, node, ...rest } = props;
+                      const text = String(children);
+                      // Match symbols like $, ,, ., !, ?, etc.
+                      const parts = text.split(/([^\w\s])/g);
+                      return (
+                        <>
+                          {parts.map((part, i) => {
+                            if (part.match(/[^\w\s]/)) {
+                              const color = getSymbolColor(part);
+                              return <span key={i} className={`${color} font-bold`}>{part}</span>;
+                            }
+                            return part;
+                          })}
+                        </>
+                      );
                     },
                     h1(props) {
                       const { children, node, ...rest } = props;

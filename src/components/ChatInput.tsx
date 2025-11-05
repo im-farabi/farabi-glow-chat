@@ -30,8 +30,8 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   };
 
   return (
-    <div className="border-t border-border bg-card p-3 md:p-4">
-      <div className="space-y-2">
+    <div className="border-t border-border bg-card p-2 md:p-3">
+      <div className="space-y-1.5 md:space-y-2">
         {/* Mode buttons - wrap on mobile */}
         <div className="flex flex-wrap gap-1.5 md:gap-2">
           <Button
@@ -74,14 +74,14 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             onKeyDown={handleKeyDown}
             placeholder="Type your message..."
             disabled={disabled}
-            className="min-h-[50px] md:min-h-[60px] max-h-[150px] md:max-h-[200px] resize-none text-sm md:text-base"
+            className="min-h-[40px] md:min-h-[50px] max-h-[120px] md:max-h-[150px] resize-none text-sm md:text-base"
           />
 
           <Button
             onClick={handleSend}
             disabled={disabled || !message.trim()}
             size="icon"
-            className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 h-[50px] w-[50px] md:h-[60px] md:w-[60px] shrink-0"
+            className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0"
           >
             <Send className="h-4 w-4 md:h-5 md:w-5" />
           </Button>

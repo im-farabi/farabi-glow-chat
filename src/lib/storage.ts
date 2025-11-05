@@ -127,8 +127,8 @@ export interface UsageStats {
 }
 
 // Cost per character (based on token pricing)
-const INPUT_COST_PER_CHAR = 0.0000000075;  // $30 per 1M tokens
-const OUTPUT_COST_PER_CHAR = 0.000000015;  // $60 per 1M tokens
+const INPUT_COST_PER_CHAR = 0.0000075;  // $0.0000075 per character
+const OUTPUT_COST_PER_CHAR = 0.000015;  // $0.000015 per character
 
 /**
  * Calculate usage from all existing chats
