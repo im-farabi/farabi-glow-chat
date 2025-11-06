@@ -5,6 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
+import AdBanner from '@/components/AdBanner';
 import { sendChat, sendWebSearch, sendReasoning, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
@@ -30,6 +31,8 @@ const Index = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [ttsText, setTtsText] = useState<string | null>(null);
   const [isAdvancedTTS, setIsAdvancedTTS] = useState(false);
+  const [aiMessageCount, setAiMessageCount] = useState(0);
+  const [showAdBanner, setShowAdBanner] = useState(false);
 
   // Swipe gesture to open sidebar
   useEffect(() => {
@@ -71,6 +74,8 @@ const Index = () => {
     const newChat = createNewChat();
     setCurrentChat(newChat);
     setMessages([]);
+    setAiMessageCount(0);
+    setShowAdBanner(false);
   };
 
   const handleSelectChat = (chatId: string) => {
@@ -78,6 +83,9 @@ const Index = () => {
     if (chat) {
       setCurrentChat(chat);
       setMessages(chat.messages);
+      const aiMsgs = chat.messages.filter(m => m.role === 'assistant').length;
+      setAiMessageCount(aiMsgs);
+      setShowAdBanner(aiMsgs > 0 && aiMsgs % 2 === 0);
     }
   };
 
@@ -166,6 +174,13 @@ const Index = () => {
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
 
+      // Update AI message count and show banner after every 2 AI messages
+      const newAiCount = aiMessageCount + 1;
+      setAiMessageCount(newAiCount);
+      if (newAiCount % 2 === 0) {
+        setShowAdBanner(true);
+      }
+
       // Update chat title if this is the first message
       if (currentChat.messages.length === 0 && message.trim()) {
         currentChat.title = await generateTitle(message);
@@ -235,6 +250,9 @@ const Index = () => {
             onRead={handleRead}
           />
           
+          {showAdBanner && (
+            <AdBanner onClose={() => setShowAdBanner(false)} />
+          )}
         </div>
       </div>
     </div>
