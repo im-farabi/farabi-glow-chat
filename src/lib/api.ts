@@ -6,6 +6,8 @@
  * NEVER commit API keys to public repositories!
  */
 
+import { buildUserDetailsString } from './storage';
+
 const API_CONFIG = {
   baseUrl: 'https://text.pollinations.ai',
   apiKey: 'diO2AcUEcZmCDP_I', // DEV: do NOT commit to public repo
@@ -64,6 +66,16 @@ Use emojis not much but often, use ** to bold and use # to make it a header like
 You are a reasoner. You take a while to respond because you think longer before you reply. You don't have internet access or daily life news. Tell the user there is a button called "Web Search" which uses another model to access internet.
 Lately I saw you. When I said hi, you said hi too, but you mentioned using web search. Only use that word when it’s needed, not for everything—not just web search.`
 };
+
+function getSystemInstructions() {
+  const userDetails = buildUserDetailsString();
+  
+  return {
+    chat: SYSTEM_INSTRUCTIONS.chat + userDetails,
+    webSearch: SYSTEM_INSTRUCTIONS.webSearch + userDetails,
+    reasoning: SYSTEM_INSTRUCTIONS.reasoning + userDetails
+  };
+}
 
 const MEMORY_LIMIT = 3; // last 3 exchanges (6 messages)
 
@@ -143,10 +155,13 @@ async function sendRequest(
       // Build conversation history
       const history = buildConversationHistory(messages);
       
+      // Get fresh system instructions with user details
+      const freshInstruction = instruction || getSystemInstructions().chat;
+      
       // Build full prompt with instruction + history + current message
       const fullPrompt = history 
-        ? `${instruction}\n${history}\nUser: ${prompt}\nAssistant:`
-        : `${instruction}\nUser: ${prompt}\nAssistant:`;
+        ? `${freshInstruction}\n${history}\nUser: ${prompt}\nAssistant:`
+        : `${freshInstruction}\nUser: ${prompt}\nAssistant:`;
       
       // Build URL with or without model parameter
       const encodedPrompt = encodeURIComponent(fullPrompt);
@@ -209,21 +224,24 @@ async function sendRequest(
  * Send a chat message to the API
  */
 export async function sendChat(prompt: string, messages: Message[] = [], image?: File): Promise<string> {
-  return sendRequest(prompt, API_CONFIG.models.chat, SYSTEM_INSTRUCTIONS.chat, messages, image);
+  const instructions = getSystemInstructions();
+  return sendRequest(prompt, API_CONFIG.models.chat, instructions.chat, messages, image);
 }
 
 /**
  * Send a web search query
  */
 export async function sendWebSearch(prompt: string, messages: Message[] = [], image?: File): Promise<string> {
-  return sendRequest(prompt, API_CONFIG.models.webSearch, SYSTEM_INSTRUCTIONS.webSearch, messages, image);
+  const instructions = getSystemInstructions();
+  return sendRequest(prompt, API_CONFIG.models.webSearch, instructions.webSearch, messages, image);
 }
 
 /**
  * Send a reasoning query
  */
 export async function sendReasoning(prompt: string, messages: Message[] = [], image?: File): Promise<string> {
-  return sendRequest(prompt, API_CONFIG.models.reasoning, SYSTEM_INSTRUCTIONS.reasoning, messages, image);
+  const instructions = getSystemInstructions();
+  return sendRequest(prompt, API_CONFIG.models.reasoning, instructions.reasoning, messages, image);
 }
 
 /**

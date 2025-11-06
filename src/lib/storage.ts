@@ -219,3 +219,65 @@ export function resetUsageStats(): void {
     console.error('Error resetting usage stats:', error);
   }
 }
+
+/**
+ * User Preferences for AI personalization
+ */
+
+const PREFERENCES_STORAGE_KEY = 'farabi_user_preferences';
+
+export interface UserPreferences {
+  name: string;
+  occupation: string;
+  interests: string[];
+}
+
+/**
+ * Get user preferences
+ */
+export function getUserPreferences(): UserPreferences {
+  try {
+    const data = localStorage.getItem(PREFERENCES_STORAGE_KEY);
+    return data ? JSON.parse(data) : { name: '', occupation: '', interests: [] };
+  } catch (error) {
+    console.error('Error loading preferences:', error);
+    return { name: '', occupation: '', interests: [] };
+  }
+}
+
+/**
+ * Save user preferences
+ */
+export function saveUserPreferences(preferences: UserPreferences): void {
+  try {
+    localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
+  } catch (error) {
+    console.error('Error saving preferences:', error);
+  }
+}
+
+/**
+ * Build user details string for AI instructions
+ */
+export function buildUserDetailsString(): string {
+  const prefs = getUserPreferences();
+  const lines: string[] = [];
+
+  if (prefs.name.trim()) {
+    lines.push(`You should call him ${prefs.name.trim()}`);
+  }
+  
+  if (prefs.occupation.trim()) {
+    lines.push(`He is a ${prefs.occupation.trim()}`);
+  }
+  
+  if (prefs.interests.length > 0) {
+    lines.push(`He is most into ${prefs.interests.join(', ')}`);
+  }
+
+  if (lines.length === 0) {
+    return '';
+  }
+
+  return `\n\nThe user details:\n${lines.join('\n')}`;
+}
