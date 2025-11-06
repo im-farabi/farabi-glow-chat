@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
+import AdBanner from './AdBanner';
 import { useMediaQuery } from '@/hooks/use-mobile';
 
 interface Message {
@@ -18,9 +19,11 @@ interface ChatAreaProps {
   onSendMessage: (message: string, mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen') => void;
   isLoading: boolean;
   onRead?: (text: string, advanced?: boolean) => void;
+  showAdBanner?: boolean;
+  onCloseAdBanner?: () => void;
 }
 
-const ChatArea = ({ messages, onSendMessage, isLoading, onRead }: ChatAreaProps) => {
+const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, onCloseAdBanner }: ChatAreaProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery('(max-width: 1024px)');
@@ -71,6 +74,9 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead }: ChatAreaProps)
                   onRead={onRead}
                 />
               ))}
+              {showAdBanner && onCloseAdBanner && (
+                <AdBanner onClose={onCloseAdBanner} />
+              )}
               <div ref={messagesEndRef} />
             </>
           )}
@@ -112,6 +118,9 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead }: ChatAreaProps)
                   onRead={onRead}
                 />
               ))}
+              {showAdBanner && onCloseAdBanner && (
+                <AdBanner onClose={onCloseAdBanner} />
+              )}
               <div ref={messagesEndRef} />
             </>
             )}

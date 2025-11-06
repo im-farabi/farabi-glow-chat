@@ -5,7 +5,6 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
-import AdBanner from '@/components/AdBanner';
 import { sendChat, sendWebSearch, sendReasoning, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
@@ -176,8 +175,10 @@ const Index = () => {
 
       // Update AI message count and show banner after every 2 AI messages
       const newAiCount = aiMessageCount + 1;
+      console.log('🎯 AI Response Count:', newAiCount, 'Show Banner:', newAiCount % 2 === 0);
       setAiMessageCount(newAiCount);
       if (newAiCount % 2 === 0) {
+        console.log('✅ Banner should now appear!');
         setShowAdBanner(true);
       }
 
@@ -248,11 +249,9 @@ const Index = () => {
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
             onRead={handleRead}
+            showAdBanner={showAdBanner}
+            onCloseAdBanner={() => setShowAdBanner(false)}
           />
-          
-          {showAdBanner && (
-            <AdBanner onClose={() => setShowAdBanner(false)} />
-          )}
         </div>
       </div>
     </div>
