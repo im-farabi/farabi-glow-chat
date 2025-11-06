@@ -34,7 +34,7 @@ const AdBanner = ({ onClose }: AdBannerProps) => {
   if (!isVisible) return null;
 
   return (
-    <div className={`relative w-full max-w-[350px] mx-auto mt-4 mb-2 transition-all duration-300 ${isVisible ? 'animate-fade-in' : 'animate-fade-out'}`}>
+    <div className={`relative w-full max-w-3xl mx-auto mt-4 mb-2 transition-all duration-300 ${isVisible ? 'animate-fade-in' : 'animate-fade-out'}`}>
       <Link to={selectedBanner.link} className="block relative group">
         <img 
           src={selectedBanner.image} 
