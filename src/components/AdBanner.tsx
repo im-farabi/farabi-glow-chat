@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import horizonBanner from '@/assets/horizon.png';
-import lovableBanner from '@/assets/lovable.png';
+import horizonBanner from '@/assets/horizonad.png';
+import lovableBanner from '@/assets/lovablead.png';
 
 interface AdBannerProps {
   onClose: () => void;
 }
 
 const AdBanner = ({ onClose }: AdBannerProps) => {
-  const [timeLeft, setTimeLeft] = useState(5);
+  const [timeLeft, setTimeLeft] = useState(7);
   const [isVisible, setIsVisible] = useState(true);
   
   // Randomly select banner

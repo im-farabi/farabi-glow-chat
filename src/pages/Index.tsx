@@ -173,11 +173,11 @@ const Index = () => {
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
 
-      // Update AI message count and show banner after every 2 AI messages
+      // Update AI message count and show banner: first at 3 messages, then every 2 messages
       const newAiCount = aiMessageCount + 1;
-      console.log('🎯 AI Response Count:', newAiCount, 'Show Banner:', newAiCount % 2 === 0);
+      console.log('🎯 AI Response Count:', newAiCount);
       setAiMessageCount(newAiCount);
-      if (newAiCount % 2 === 0) {
+      if (newAiCount === 3 || (newAiCount > 3 && (newAiCount - 3) % 2 === 0)) {
         console.log('✅ Banner should now appear!');
         setShowAdBanner(true);
       }
