@@ -178,9 +178,9 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             onClick={handleSend}
             disabled={disabled || !message.trim()}
             size="icon"
-            className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0"
+            className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 hover:scale-105 h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0 transition-all duration-200 active:scale-95"
           >
-            <Send className="h-4 w-4 md:h-5 md:w-5" />
+            <Send className="h-5 w-5 md:h-6 md:w-6 font-bold" strokeWidth={2.5} />
           </Button>
         </div>
       </div>

@@ -124,6 +124,11 @@ const Index = () => {
     setIsAdvancedTTS(advanced);
   };
 
+  const handleExplain = (messageContent: string, type: 'shorter' | 'longer') => {
+    const suffix = type === 'shorter' ? ' Explain in shorter way' : ' Explain more longer';
+    handleSendMessage(messageContent + suffix, currentMode);
+  };
+
   const handleSendMessage = async (
     message: string, 
     mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen'
@@ -338,6 +343,7 @@ const Index = () => {
             onRead={handleRead}
             showAdBanner={showAdBanner}
             onCloseAdBanner={() => setShowAdBanner(false)}
+            onExplain={handleExplain}
           />
         </div>
       </div>

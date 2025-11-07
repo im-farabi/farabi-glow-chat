@@ -144,11 +144,25 @@ Output ONLY the enhanced prompt text:`
         description: 'Image generated successfully',
       });
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to generate image',
-        variant: 'destructive'
-      });
+      // Try fallback without enhance and different seed
+      try {
+        const encoded = encodeURIComponent(trimmedPrompt);
+        const fallbackSeed = Date.now() + Math.floor(Math.random() * 9999999);
+        const fallbackUrl = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${fallbackSeed}&enhance=true&nologo=true`;
+        const fallbackImageUrl = await preloadImage(fallbackUrl);
+        setImage(fallbackImageUrl);
+        
+        toast({
+          title: 'Success!',
+          description: 'Image generated successfully (fallback)',
+        });
+      } catch (fallbackError) {
+        toast({
+          title: 'Error',
+          description: 'Failed to generate. Try refreshing page and editing the prompt!',
+          variant: 'destructive'
+        });
+      }
     } finally {
       setLoading(false);
       setStatus('');

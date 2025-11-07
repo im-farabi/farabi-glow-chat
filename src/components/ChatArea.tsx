@@ -23,9 +23,10 @@ interface ChatAreaProps {
   onRead?: (text: string, advanced?: boolean) => void;
   showAdBanner?: boolean;
   onCloseAdBanner?: () => void;
+  onExplain?: (messageContent: string, type: 'shorter' | 'longer') => void;
 }
 
-const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, onCloseAdBanner }: ChatAreaProps) => {
+const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, onCloseAdBanner, onExplain }: ChatAreaProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery('(max-width: 1024px)');
@@ -93,6 +94,16 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   loadingText={message.loadingText}
                   responseTime={message.responseTime}
                   onRead={onRead}
+                  onExplain={message.role === 'assistant' && index === messages.length - 1 && !message.isLoading 
+                    ? (type) => {
+                        // Find the user message that triggered this assistant response
+                        const userMessage = messages[index - 1];
+                        if (userMessage && userMessage.role === 'user') {
+                          onExplain?.(userMessage.content, type);
+                        }
+                      }
+                    : undefined
+                  }
                 />
               ))}
               {showAdBanner && onCloseAdBanner && (
@@ -156,6 +167,16 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   loadingText={message.loadingText}
                   responseTime={message.responseTime}
                   onRead={onRead}
+                  onExplain={message.role === 'assistant' && index === messages.length - 1 && !message.isLoading 
+                    ? (type) => {
+                        // Find the user message that triggered this assistant response
+                        const userMessage = messages[index - 1];
+                        if (userMessage && userMessage.role === 'user') {
+                          onExplain?.(userMessage.content, type);
+                        }
+                      }
+                    : undefined
+                  }
                 />
               ))}
               {showAdBanner && onCloseAdBanner && (

@@ -1,5 +1,5 @@
-import { User, MoreVertical, Copy, Volume2 } from 'lucide-react';
-import React from 'react';
+import { User, MoreVertical, Copy, Volume2, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
@@ -17,6 +17,7 @@ interface ChatMessageProps {
   loadingText?: string;
   responseTime?: number;
   onRead?: (text: string, advanced?: boolean) => void;
+  onExplain?: (type: 'shorter' | 'longer') => void;
 }
 
 // Add glow effect to ! and ? symbols
@@ -40,9 +41,10 @@ function addGlowToExclamations(text: string): React.ReactNode[] {
   });
 }
 
-const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, responseTime, onRead }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, responseTime, onRead, onExplain }: ChatMessageProps) => {
   const isUser = role === 'user';
   const { toast } = useToast();
+  const [explainClicked, setExplainClicked] = useState(false);
 
   const handleDownload = () => {
     if (imageBlob && image) {
@@ -82,7 +84,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
               <img 
                 src="/bot-logo.ico" 
                 alt="FARABI" 
-                className="h-5 w-5 object-contain"
+                className="h-5 w-5 object-contain brightness-0 invert"
               />
         )}
       </div>
@@ -281,6 +283,35 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
                 </ReactMarkdown>
               </div>
             )}
+          </div>
+        )}
+
+        {role === 'assistant' && onExplain && !isLoading && !explainClicked && (
+          <div className="flex gap-2 mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setExplainClicked(true);
+                onExplain('shorter');
+              }}
+              className="text-xs"
+            >
+              <ChevronDown className="h-3 w-3 mr-1" />
+              Explain in shorter
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setExplainClicked(true);
+                onExplain('longer');
+              }}
+              className="text-xs"
+            >
+              <ChevronUp className="h-3 w-3 mr-1" />
+              Explain more longer
+            </Button>
           </div>
         )}
       </div>
