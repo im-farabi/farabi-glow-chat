@@ -13,10 +13,11 @@ const ImageGen = () => {
   const { toast } = useToast();
 
   const generatePromptVariations = (basePrompt: string): string[] => {
+    const timestamp = Date.now();
     return [
-      `${basePrompt}, highly detailed, digital art`,
-      `${basePrompt}, photorealistic, 4k quality`,
-      `${basePrompt}, artistic style, vibrant colors`
+      `${basePrompt}, highly detailed, digital art, cinematic lighting, 8k ultra HD, masterpiece --seed ${timestamp}`,
+      `${basePrompt}, photorealistic style, studio lighting, professional photography, sharp focus --seed ${timestamp + 1000}`,
+      `${basePrompt}, artistic illustration, vibrant colors, fantasy art style, dramatic composition --seed ${timestamp + 2000}`
     ];
   };
 
@@ -35,9 +36,10 @@ const ImageGen = () => {
     
     try {
       const variations = generatePromptVariations(prompt);
-      const imagePromises = variations.map(async (variation) => {
+      const imagePromises = variations.map(async (variation, index) => {
         const encodedPrompt = encodeURIComponent(variation);
-        return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1344&height=768&model=flux&enhance=true&seed=${Math.floor(Math.random() * 10000)}&nologo=true`;
+        const uniqueSeed = Date.now() + index * 5000;
+        return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&seed=${uniqueSeed}&nologo=true&enhance=false`;
       });
 
       const generatedImages = await Promise.all(imagePromises);
@@ -114,7 +116,7 @@ const ImageGen = () => {
                   </div>
                   <div className="p-4">
                     <p className="text-sm text-muted-foreground">
-                      Style {index + 1}
+                      {index === 0 ? 'Digital Art Style' : index === 1 ? 'Photorealistic Style' : 'Artistic Illustration'}
                     </p>
                   </div>
                 </Card>
