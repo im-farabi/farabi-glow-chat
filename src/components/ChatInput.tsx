@@ -17,7 +17,7 @@ interface ChatInputProps {
 
 const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   const [message, setMessage] = useState('');
-  const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen'>('chat');
+  const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen'>('normal');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
@@ -25,7 +25,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
     
     onSendMessage(message, activeMode);
     setMessage('');
-    setActiveMode('chat');
+    setActiveMode('normal');
     
     // Re-focus textarea after sending
     setTimeout(() => {
@@ -48,7 +48,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setActiveMode(activeMode === 'fast' ? 'chat' : 'fast')}
+            onClick={() => setActiveMode(activeMode === 'fast' ? 'normal' : 'fast')}
             className={`text-xs md:text-sm ${activeMode === 'fast' ? 'bg-accent' : ''}`}
           >
             <Bolt className="h-3 w-3 md:h-4 md:w-4 md:mr-1 font-bold text-red-500" strokeWidth={2.5} />
@@ -58,7 +58,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setActiveMode(activeMode === 'normal' ? 'chat' : 'normal')}
+            onClick={() => setActiveMode(activeMode === 'normal' ? 'normal' : 'normal')}
             className={`text-xs md:text-sm ${activeMode === 'normal' ? 'bg-accent' : ''}`}
           >
             <Circle className="h-3 w-3 md:h-4 md:w-4 md:mr-1 text-yellow-500" />
@@ -68,7 +68,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setActiveMode(activeMode === 'super' ? 'chat' : 'super')}
+            onClick={() => setActiveMode(activeMode === 'super' ? 'normal' : 'super')}
             className={`text-xs md:text-sm ${activeMode === 'super' ? 'bg-accent' : ''}`}
           >
             <Zap className="h-3 w-3 md:h-4 md:w-4 md:mr-1 font-bold text-green-500" strokeWidth={2.5} />
@@ -122,17 +122,12 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
         </div>
       </div>
 
-      {activeMode !== 'chat' && (
+      {activeMode !== 'normal' && (
         <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
           {activeMode === 'fast' ? (
             <>
               <Bolt className="h-3 w-3 font-bold text-red-500" strokeWidth={2.5} />
               <span>Fast mode active</span>
-            </>
-          ) : activeMode === 'normal' ? (
-            <>
-              <Circle className="h-3 w-3 text-yellow-500" strokeWidth={2.5} />
-              <span>Normal mode active</span>
             </>
           ) : activeMode === 'super' ? (
             <>

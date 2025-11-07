@@ -26,14 +26,6 @@ const Header = ({ onMenuClick }: HeaderProps) => {
             </span>
             <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">.me</span>
           </h1>
-          <p className="mt-1 md:mt-2 text-xs md:text-sm">
-            <span className="text-white">Welcome to </span>
-            <span className="text-white font-semibold">FARABI</span>
-            <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">.me</span>
-          </p>
-          <p className="text-xs md:text-sm text-muted-foreground">
-            Start a conversation with FARABI
-          </p>
         </div>
 
         {/* Spacer for mobile to keep title centered */}

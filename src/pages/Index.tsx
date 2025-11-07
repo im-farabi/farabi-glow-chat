@@ -21,6 +21,7 @@ interface Message {
   imageBlob?: Blob;
   isLoading?: boolean;
   loadingText?: string;
+  responseTime?: number;
 }
 
 const Index = () => {
@@ -124,6 +125,8 @@ const Index = () => {
     setMessages(newMessages);
     setIsLoading(true);
 
+    const startTime = performance.now();
+
     // Add loading message
     const loadingMessage: Message = {
       role: 'assistant',
@@ -168,11 +171,15 @@ const Index = () => {
       }
 
       // Replace loading message with actual response
+      const endTime = performance.now();
+      const responseTime = (endTime - startTime) / 1000;
+
     const assistantMessage: Message = {
       role: 'assistant',
       content: response,
       image: generatedImageUrl,
-      imageBlob: generatedImageBlob
+      imageBlob: generatedImageBlob,
+      responseTime: responseTime
     };
 
       const finalMessages = [...newMessages, assistantMessage];

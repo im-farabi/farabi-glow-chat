@@ -15,6 +15,7 @@ interface ChatMessageProps {
   imageBlob?: Blob;
   isLoading?: boolean;
   loadingText?: string;
+  responseTime?: number;
   onRead?: (text: string, advanced?: boolean) => void;
 }
 
@@ -39,7 +40,7 @@ function addGlowToExclamations(text: string): React.ReactNode[] {
   });
 }
 
-const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, onRead }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, responseTime, onRead }: ChatMessageProps) => {
   const isUser = role === 'user';
   const { toast } = useToast();
 
@@ -88,9 +89,16 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
 
       <div className="flex-1 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-semibold">
-            {isUser ? 'You' : 'FARABI'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">
+              {isUser ? 'You' : 'FARABI'}
+            </span>
+            {!isUser && responseTime && (
+              <span className="text-xs text-muted-foreground">
+                {responseTime.toFixed(2)}s
+              </span>
+            )}
+          </div>
           
           {!isUser && !isLoading && (
             <DropdownMenu>

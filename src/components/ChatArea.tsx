@@ -12,6 +12,7 @@ interface Message {
   imageBlob?: Blob;
   isLoading?: boolean;
   loadingText?: string;
+  responseTime?: number;
 }
 
 interface ChatAreaProps {
@@ -51,11 +52,8 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    Welcome to FARABI.me
-                  </h1>
-                  <p className="mt-2 text-muted-foreground">
-                    Start a conversation with AI
+                  <p className="text-lg text-muted-foreground">
+                    Start a conversation with FARABI
                   </p>
                 </div>
               </div>
@@ -71,6 +69,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   imageBlob={message.imageBlob}
                   isLoading={message.isLoading}
                   loadingText={message.loadingText}
+                  responseTime={message.responseTime}
                   onRead={onRead}
                 />
               ))}
@@ -95,11 +94,8 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    Welcome to FARABI.me
-                  </h1>
-                  <p className="mt-2 text-muted-foreground">
-                    Start a conversation with AI
+                  <p className="text-lg text-muted-foreground">
+                    Start a conversation with FARABI
                   </p>
                 </div>
               </div>
@@ -115,6 +111,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   imageBlob={message.imageBlob}
                   isLoading={message.isLoading}
                   loadingText={message.loadingText}
+                  responseTime={message.responseTime}
                   onRead={onRead}
                 />
               ))}
