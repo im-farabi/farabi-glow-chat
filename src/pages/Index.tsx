@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
-import { sendChat, sendFast, sendNormal, sendSuper, sendReasoning, generateImage } from '@/lib/api';
+import { sendChat, sendFast, sendNormal, sendSuper, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 

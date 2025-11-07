@@ -21,13 +21,18 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 
         <div className="text-center">
           <h1 className="text-3xl md:text-4xl font-bold">
-            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <span className="text-white">
               FARABI
             </span>
-            <span className="text-muted-foreground/50">.me</span>
+            <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">.me</span>
           </h1>
-          <p className="mt-1 md:mt-2 text-xs md:text-sm text-muted-foreground">
-            Let's start chatting
+          <p className="mt-1 md:mt-2 text-xs md:text-sm">
+            <span className="text-white">Welcome to </span>
+            <span className="text-white font-semibold">FARABI</span>
+            <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">.me</span>
+          </p>
+          <p className="text-xs md:text-sm text-muted-foreground">
+            Start a conversation with FARABI
           </p>
         </div>
 
