@@ -116,13 +116,18 @@ Output ONLY the enhanced prompt text:`
     setLoading(true);
     setStatus('Generating image...');
 
-    const preloadImage = (url: string) =>
-      new Promise<string>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(url);
-        img.onerror = () => reject(new Error('Image failed to load'));
-        img.src = url;
-      });
+    const fetchImageAsBlob = async (url: string): Promise<string> => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch image');
+      const blob = await response.blob();
+      
+      // Revoke old blob URL if exists
+      if (image.startsWith('blob:')) {
+        URL.revokeObjectURL(image);
+      }
+      
+      return URL.createObjectURL(blob);
+    };
     
     try {
       const encoded = encodeURIComponent(trimmedPrompt);
@@ -136,8 +141,8 @@ Output ONLY the enhanced prompt text:`
 
       const url = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${seed}&enhance=false&nologo=true&key=plln_pk_DSf8DvxaLKn2LbP9QQAlA5hFpQGXePYiSY1AHZQn2CiKgtO7VBKQ1FNw1xCEpRYK`;
       
-      const imageUrl = await preloadImage(url);
-      setImage(imageUrl);
+      const blobUrl = await fetchImageAsBlob(url);
+      setImage(blobUrl);
       
       toast({
         title: 'Success!',
@@ -149,8 +154,8 @@ Output ONLY the enhanced prompt text:`
         const encoded = encodeURIComponent(trimmedPrompt);
         const fallbackSeed = Date.now() + Math.floor(Math.random() * 9999999);
         const fallbackUrl = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${fallbackSeed}&enhance=true&nologo=true`;
-        const fallbackImageUrl = await preloadImage(fallbackUrl);
-        setImage(fallbackImageUrl);
+        const blobUrl = await fetchImageAsBlob(fallbackUrl);
+        setImage(blobUrl);
         
         toast({
           title: 'Success!',
