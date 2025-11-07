@@ -124,8 +124,12 @@ const Index = () => {
     setIsAdvancedTTS(advanced);
   };
 
-  const handleExplain = (messageContent: string, type: 'shorter' | 'longer') => {
-    const suffix = type === 'shorter' ? ' Explain in shorter way' : ' Explain more longer';
+  const handleExplain = (messageContent: string, type: 'shorter' | 'easy' | 'longer') => {
+    const suffix = type === 'shorter' 
+      ? ' Explain in shorter way' 
+      : type === 'easy'
+      ? ' Explain in easy way'
+      : ' Explain more longer';
     handleSendMessage(messageContent + suffix, currentMode);
   };
 
@@ -220,6 +224,49 @@ const Index = () => {
         break;
         default:
           response = await sendNormal(message, messages);
+      }
+
+      // Check for {image:prompt} syntax at the end
+      const imageRegex = /\{image:(.+?)\}$/;
+      const imageMatch = response.match(imageRegex);
+
+      if (imageMatch) {
+        // Extract prompt and clean response
+        const imagePrompt = imageMatch[1].trim();
+        const cleanedResponse = response.replace(imageRegex, '').trim();
+        
+        // Update loading message for image generation
+        setMessages(prev => {
+          const updated = [...prev];
+          const lastMsg = updated[updated.length - 1];
+          if (lastMsg?.isLoading) {
+            lastMsg.loadingText = 'Generating Image...';
+          }
+          return updated;
+        });
+        
+        // Generate image
+        try {
+          const { imageUrl, imageBlob } = await generateImage(imagePrompt, (status) => {
+            setMessages(prev => {
+              const updated = [...prev];
+              const lastMsg = updated[updated.length - 1];
+              if (lastMsg?.isLoading) {
+                lastMsg.loadingText = status;
+              }
+              return updated;
+            });
+          });
+          
+          // Update response with cleaned text and generated image
+          response = cleanedResponse;
+          generatedImageUrl = imageUrl;
+          generatedImageBlob = imageBlob;
+        } catch (error) {
+          console.error('Failed to generate image from AI prompt:', error);
+          // Continue with cleaned response even if image fails
+          response = cleanedResponse;
+        }
       }
 
       // Replace loading message with actual response

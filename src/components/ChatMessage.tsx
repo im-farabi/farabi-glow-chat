@@ -17,7 +17,7 @@ interface ChatMessageProps {
   loadingText?: string;
   responseTime?: number;
   onRead?: (text: string, advanced?: boolean) => void;
-  onExplain?: (type: 'shorter' | 'longer') => void;
+  onExplain?: (type: 'shorter' | 'easy' | 'longer') => void;
 }
 
 // Add glow effect to ! and ? symbols
@@ -299,6 +299,17 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
             >
               <ChevronDown className="h-3 w-3 mr-1" />
               Explain in shorter
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setExplainClicked(true);
+                onExplain('easy');
+              }}
+              className="text-xs"
+            >
+              Explain in easy
             </Button>
             <Button
               variant="outline"

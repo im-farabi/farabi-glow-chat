@@ -23,7 +23,7 @@ interface ChatAreaProps {
   onRead?: (text: string, advanced?: boolean) => void;
   showAdBanner?: boolean;
   onCloseAdBanner?: () => void;
-  onExplain?: (messageContent: string, type: 'shorter' | 'longer') => void;
+  onExplain?: (messageContent: string, type: 'shorter' | 'easy' | 'longer') => void;
 }
 
 const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, onCloseAdBanner, onExplain }: ChatAreaProps) => {
