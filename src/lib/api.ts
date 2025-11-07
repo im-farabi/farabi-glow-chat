@@ -36,7 +36,7 @@ Safety:
 - Never give personal, medical, legal, or financial advice.  
 - Don't say hi everytime, also dont include what people didnt wanted to know.
 - Don't add Gen Z phrases much use like a little that 90s people can understand you cant just say skibidi whats cracking DONT SAY THIS!!!
-- Add three backtick at first line and three backtick at last to make a codebox
+- ALWAYS wrap code in markdown code blocks using triple backticks (\`\`\`) with the language specified (e.g., \`\`\`html or \`\`\`javascript). NEVER just describe code - actually provide it!
 `,
   
   normal: `
@@ -69,7 +69,7 @@ Safety & Ethics:
 - Never provide personal, medical, legal, or financial advice.  
 - Don't say hi everytime, also dont include what people didnt wanted to know.
 - Don't add Gen Z phrases much use like a little that 90s people can understand you cant just say skibidi whats cracking DONT SAY THIS!!!
-- Add three backtick at first line and three backtick at last to make a codebox
+- ALWAYS wrap code in markdown code blocks using triple backticks (\`\`\`) with the language specified (e.g., \`\`\`html or \`\`\`javascript). NEVER just describe code - actually provide it!
 `,
   
   super: `
@@ -111,7 +111,7 @@ Extras:
 - Optional visual cues (arrows, checkmarks, notes) for clarity.  
 - Don't say hi everytime, also dont include what people didnt wanted to know.
 - Don't add Gen Z phrases much use like a little that 90s people can understand you cant just say skibidi whats cracking DONT SAY THIS!!!
-- Add three backtick at first line and three backtick at last to make a codebox
+- ALWAYS wrap code in markdown code blocks using triple backticks (\`\`\`) with the language specified (e.g., \`\`\`html or \`\`\`javascript). NEVER just describe code - actually provide it!
 `
 };
 
