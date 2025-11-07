@@ -36,8 +36,8 @@ const ImageGen = () => {
     try {
       const variations = generatePromptVariations(prompt);
       const imagePromises = variations.map(async (variation) => {
-        // Placeholder for now - will implement actual image generation later
-        return `https://placehold.co/512x512/2a2a2a/ffffff?text=${encodeURIComponent(variation.slice(0, 20))}`;
+        const encodedPrompt = encodeURIComponent(variation);
+        return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1344&height=768&model=flux&enhance=true&seed=${Math.floor(Math.random() * 10000)}&nologo=true`;
       });
 
       const generatedImages = await Promise.all(imagePromises);
