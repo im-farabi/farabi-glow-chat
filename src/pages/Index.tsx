@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
-import { sendChat, sendWebSearch, sendReasoning, generateImage } from '@/lib/api';
+import { sendChat, sendFast, sendNormal, sendSuper, sendReasoning, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 
@@ -88,12 +88,14 @@ const Index = () => {
     }
   };
 
-  const getLoadingText = (mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen'): string => {
+  const getLoadingText = (mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen'): string => {
     switch (mode) {
-      case 'webSearch':
-        return 'Searching the Web';
-      case 'reasoning':
-        return 'Reasoning';
+      case 'fast':
+        return 'Fast Mode';
+      case 'normal':
+        return 'Normal Mode';
+      case 'super':
+        return 'Super Mode';
       case 'imageGen':
         return 'Generating Image';
       default:
@@ -108,7 +110,7 @@ const Index = () => {
 
   const handleSendMessage = async (
     message: string, 
-    mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen'
+    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen'
   ) => {
     if (!message.trim()) return;
 
@@ -137,11 +139,14 @@ const Index = () => {
       let generatedImageBlob: Blob | undefined;
 
       switch (mode) {
-        case 'webSearch':
-          response = await sendWebSearch(message, messages);
+        case 'fast':
+          response = await sendFast(message, messages);
           break;
-        case 'reasoning':
-          response = await sendReasoning(message, messages);
+        case 'normal':
+          response = await sendNormal(message, messages);
+          break;
+        case 'super':
+          response = await sendSuper(message, messages);
           break;
       case 'imageGen':
         const { imageUrl, imageBlob } = await generateImage(message, (status) => {

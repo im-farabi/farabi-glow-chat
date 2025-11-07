@@ -16,7 +16,7 @@ interface Message {
 
 interface ChatAreaProps {
   messages: Message[];
-  onSendMessage: (message: string, mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen') => void;
+  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen') => void;
   isLoading: boolean;
   onRead?: (text: string, advanced?: boolean) => void;
   showAdBanner?: boolean;

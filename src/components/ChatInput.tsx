@@ -1,17 +1,17 @@
 import { useState, useRef, KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Search, Brain, Palette } from 'lucide-react';
+import { Send, Zap, Circle, Bolt, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, mode: 'chat' | 'webSearch' | 'reasoning' | 'imageGen') => void;
+  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen') => void;
   disabled?: boolean;
 }
 
 const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   const [message, setMessage] = useState('');
-  const [activeMode, setActiveMode] = useState<'chat' | 'webSearch' | 'reasoning' | 'imageGen'>('chat');
+  const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen'>('chat');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
@@ -42,21 +42,31 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setActiveMode(activeMode === 'webSearch' ? 'chat' : 'webSearch')}
-            className={`text-xs md:text-sm ${activeMode === 'webSearch' ? 'bg-accent' : ''}`}
+            onClick={() => setActiveMode(activeMode === 'fast' ? 'chat' : 'fast')}
+            className={`text-xs md:text-sm ${activeMode === 'fast' ? 'bg-accent' : ''}`}
           >
-            <Search className="h-3 w-3 md:h-4 md:w-4 md:mr-1" />
-            <span className="hidden sm:inline">Web Search</span>
+            <Zap className="h-3 w-3 md:h-4 md:w-4 md:mr-1" />
+            <span className="hidden sm:inline">Fast</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setActiveMode(activeMode === 'reasoning' ? 'chat' : 'reasoning')}
-            className={`text-xs md:text-sm ${activeMode === 'reasoning' ? 'bg-accent' : ''}`}
+            onClick={() => setActiveMode(activeMode === 'normal' ? 'chat' : 'normal')}
+            className={`text-xs md:text-sm ${activeMode === 'normal' ? 'bg-accent' : ''}`}
           >
-            <Brain className="h-3 w-3 md:h-4 md:w-4 md:mr-1 font-bold" strokeWidth={2.5} />
-            <span className="hidden sm:inline">Reasoning</span>
+            <Circle className="h-3 w-3 md:h-4 md:w-4 md:mr-1" />
+            <span className="hidden sm:inline">Normal</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveMode(activeMode === 'super' ? 'chat' : 'super')}
+            className={`text-xs md:text-sm ${activeMode === 'super' ? 'bg-accent' : ''}`}
+          >
+            <Bolt className="h-3 w-3 md:h-4 md:w-4 md:mr-1 font-bold" strokeWidth={2.5} />
+            <span className="hidden sm:inline">Super</span>
           </Button>
 
           <Button
@@ -95,15 +105,20 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
 
       {activeMode !== 'chat' && (
         <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
-          {activeMode === 'webSearch' ? (
+          {activeMode === 'fast' ? (
             <>
-              <Search className="h-3 w-3 font-bold" strokeWidth={2.5} />
-              <span>Web Search mode active</span>
+              <Zap className="h-3 w-3 font-bold" strokeWidth={2.5} />
+              <span>Fast mode active</span>
             </>
-          ) : activeMode === 'reasoning' ? (
+          ) : activeMode === 'normal' ? (
             <>
-              <Brain className="h-3 w-3 font-bold" strokeWidth={2.5} />
-              <span>Reasoning mode active</span>
+              <Circle className="h-3 w-3 font-bold" strokeWidth={2.5} />
+              <span>Normal mode active</span>
+            </>
+          ) : activeMode === 'super' ? (
+            <>
+              <Bolt className="h-3 w-3 font-bold" strokeWidth={2.5} />
+              <span>Super mode active</span>
             </>
           ) : (
             <>
