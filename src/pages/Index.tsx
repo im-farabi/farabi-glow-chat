@@ -14,7 +14,6 @@ import {
   generateTitle,
   type ChatSession 
 } from '@/lib/storage';
-import { useLoadingStages } from '@/hooks/useLoadingStages';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -38,8 +37,6 @@ const Index = () => {
   const [isAdvancedTTS, setIsAdvancedTTS] = useState(false);
   const [aiMessageCount, setAiMessageCount] = useState(0);
   const [showAdBanner, setShowAdBanner] = useState(false);
-  
-  const loadingText = useLoadingStages(currentMode, isLoading);
 
   // Load chat from URL on mount
   useEffect(() => {
@@ -156,16 +153,27 @@ const Index = () => {
     
     // Update loading text dynamically for non-imageGen modes
     let updateInterval: NodeJS.Timeout | null = null;
-    if (mode !== 'imageGen') {
+    if (mode !== 'imageGen' && (mode === 'fast' || mode === 'normal' || mode === 'super')) {
+      const stages = mode === 'fast' 
+        ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Reading Instructions...' }, { time: 1500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }]
+        : mode === 'normal'
+        ? [{ time: 500, text: 'Sending...' }, { time: 1500, text: 'Reading Instructions...' }, { time: 2000, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }]
+        : [{ time: 500, text: 'Sending...' }, { time: 2000, text: 'Reading Instructions...' }, { time: 2500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }];
+      
+      const startTime = Date.now();
       updateInterval = setInterval(() => {
-        setMessages(prev => {
-          const updated = [...prev];
-          const lastMsg = updated[updated.length - 1];
-          if (lastMsg?.isLoading) {
-            lastMsg.loadingText = loadingText;
-          }
-          return updated;
-        });
+        const elapsed = Date.now() - startTime;
+        const currentStage = stages.find(stage => elapsed < stage.time);
+        if (currentStage) {
+          setMessages(prev => {
+            const updated = [...prev];
+            const lastMsg = updated[updated.length - 1];
+            if (lastMsg?.isLoading) {
+              lastMsg.loadingText = currentStage.text;
+            }
+            return updated;
+          });
+        }
       }, 100);
     }
 
