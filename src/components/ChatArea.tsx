@@ -52,6 +52,11 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   />
                 </div>
                 <div>
+                  <h2 className="text-2xl font-bold mb-2">
+                    <span className="text-white">Welcome to </span>
+                    <span className="text-white">FARABI</span>
+                    <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">.me</span>
+                  </h2>
                   <p className="text-lg text-muted-foreground">
                     Start a conversation with FARABI
                   </p>
@@ -94,6 +99,11 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   />
                 </div>
                 <div>
+                  <h2 className="text-2xl font-bold mb-2">
+                    <span className="text-white">Welcome to </span>
+                    <span className="text-white">FARABI</span>
+                    <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">.me</span>
+                  </h2>
                   <p className="text-lg text-muted-foreground">
                     Start a conversation with FARABI
                   </p>

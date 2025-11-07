@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
-import { sendChat, sendFast, sendNormal, sendSuper, generateImage } from '@/lib/api';
+import { sendFast, sendNormal, sendSuper, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 
@@ -167,7 +167,7 @@ const Index = () => {
         response = 'Successfully created image. Click here to download';
         break;
         default:
-          response = await sendChat(message, messages);
+          response = await sendNormal(message, messages);
       }
 
       // Replace loading message with actual response
