@@ -37,6 +37,7 @@ const Index = () => {
   const [isAdvancedTTS, setIsAdvancedTTS] = useState(false);
   const [aiMessageCount, setAiMessageCount] = useState(0);
   const [showAdBanner, setShowAdBanner] = useState(false);
+  const [isTemporaryChat, setIsTemporaryChat] = useState(false);
 
   // Load chat from URL on mount
   useEffect(() => {
@@ -98,6 +99,10 @@ const Index = () => {
     setAiMessageCount(0);
     setShowAdBanner(false);
     navigate(`/c/${newChat.id}`);
+    
+    if (!isTemporaryChat) {
+      saveChat(newChat);
+    }
   };
 
   const handleSelectChat = (selectedChatId: string) => {
@@ -243,7 +248,10 @@ const Index = () => {
       // Save to storage and ensure URL is correct
       currentChat.messages = finalMessages;
       currentChat.timestamp = Date.now();
-      saveChat(currentChat);
+      
+      if (!isTemporaryChat) {
+        saveChat(currentChat);
+      }
       
       // Update URL if not already set
       if (!chatId || chatId !== currentChat.id) {
@@ -293,7 +301,11 @@ const Index = () => {
         )
       )}
       
-      <Header onMenuClick={() => setIsSidebarOpen(true)} />
+      <Header 
+        onMenuClick={() => setIsSidebarOpen(true)} 
+        isTemporaryChat={isTemporaryChat}
+        onToggleTemporaryChat={() => setIsTemporaryChat(!isTemporaryChat)}
+      />
       
       <div className="flex flex-1 overflow-hidden relative">
         <Sidebar

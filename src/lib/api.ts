@@ -321,12 +321,19 @@ Return ONLY the enhanced prompt, nothing else. Make it 2-3 sentences maximum.`;
     onStatusUpdate?.('Generating Image...');
     
     const encodedPrompt = encodeURIComponent(enhancedPrompt.trim());
-    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1344&height=768&model=flux&enhance=true&seed=${Math.floor(Math.random() * 1000)}&nologo=true`;
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?nologo=true`;
     
-    // Fetch the image and convert to blob
-    const imageResponse = await fetch(pollinationsUrl);
+    // Fetch the image and convert to blob with fallback
+    let imageResponse = await fetch(pollinationsUrl);
     if (!imageResponse.ok) {
-      throw new Error(`Failed to generate image: ${imageResponse.status}`);
+      // Fallback: use simple prompt directly
+      console.warn('Enhanced prompt failed, trying fallback with user prompt');
+      const fallbackUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(userPrompt)}?nologo=true`;
+      imageResponse = await fetch(fallbackUrl);
+      
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to generate image: ${imageResponse.status}`);
+      }
     }
     
     const imageBlob = await imageResponse.blob();

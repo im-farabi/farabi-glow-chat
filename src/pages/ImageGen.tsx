@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Sparkles, Download, RefreshCw } from 'lucide-react';
+import { Loader2, Sparkles, Download, RefreshCw, ArrowLeft } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { sendNormal } from '@/lib/api';
+import { useNavigate } from 'react-router-dom';
 
 const ImageGen = () => {
   const [prompt, setPrompt] = useState('');
@@ -21,6 +22,7 @@ const ImageGen = () => {
   const [sizePreset, setSizePreset] = useState<'banner' | 'logo' | 'custom'>('banner');
   const [customWidth, setCustomWidth] = useState('1024');
   const [customHeight, setCustomHeight] = useState('1024');
+  const navigate = useNavigate();
 
   const enhancePrompt = async () => {
     const trimmedPrompt = prompt.trim();
@@ -180,12 +182,24 @@ Output ONLY the enhanced prompt text:`
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Image Generator
-            </h1>
-            <p className="text-muted-foreground">
-              Generate AI images from your prompts
-            </p>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/')}
+                className="shrink-0"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  Image Generator
+                </h1>
+                <p className="text-muted-foreground">
+                  Generate AI images from your prompts
+                </p>
+              </div>
+            </div>
           </div>
 
           <Card className="p-6 space-y-4 bg-card border-border">

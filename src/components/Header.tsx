@@ -1,14 +1,22 @@
-import { Menu } from 'lucide-react';
+import { Menu, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  isTemporaryChat?: boolean;
+  onToggleTemporaryChat?: () => void;
 }
 
-const Header = ({ onMenuClick }: HeaderProps) => {
+const Header = ({ onMenuClick, isTemporaryChat, onToggleTemporaryChat }: HeaderProps) => {
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-      <div className="flex items-center justify-between px-4 py-2 md:justify-center md:py-3">
+      <div className="flex items-center justify-between px-4 py-2 md:py-3">
         <Button
           variant="ghost"
           size="icon"
@@ -19,7 +27,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <Menu className="h-5 w-5" />
         </Button>
 
-        <div className="text-center">
+        <div className="text-center flex-1 md:flex-none">
           <h1 className="text-3xl md:text-4xl font-bold">
             <span className="text-white">
               FARABI
@@ -28,8 +36,24 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           </h1>
         </div>
 
-        {/* Spacer for mobile to keep title centered */}
-        <div className="w-10 md:hidden" />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={isTemporaryChat ? "default" : "ghost"}
+                size="icon"
+                onClick={onToggleTemporaryChat}
+                className={isTemporaryChat ? "bg-gradient-to-r from-primary to-secondary" : ""}
+                aria-label="Toggle temporary chat"
+              >
+                <Clock className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{isTemporaryChat ? 'Temporary mode active - chats won\'t be saved' : 'Enable temporary chat mode'}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </header>
   );
