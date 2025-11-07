@@ -37,9 +37,30 @@ const ImageGen = () => {
     setEnhancing(true);
     try {
       const enhanced = await sendNormal(
-        `Enhance this image generation prompt to be more detailed and vivid. Keep it under 500 characters. Only return the enhanced prompt, nothing else: "${trimmedPrompt}"`
+        `CRITICAL INSTRUCTION: Respond with ONLY the enhanced image prompt. NO greetings, NO explanations, NO markdown formatting (**, etc), NO emojis, NO extra text whatsoever.
+
+Task: Transform this image prompt into a detailed, vivid description with rich visual details (lighting, setting, mood, camera angle, style). Keep it under 500 characters and maintain natural language flow.
+
+Input: "${trimmedPrompt}"
+
+Output ONLY the enhanced prompt text:`
       );
-      setPrompt(enhanced.trim());
+      
+      // Clean up response: remove markdown, quotes, and conversational fluff
+      let cleaned = enhanced
+        .replace(/\*\*/g, '') // Remove bold markdown
+        .replace(/^["']|["']$/g, '') // Remove surrounding quotes
+        .replace(/^.*?(?:prompt|version|here|output):\s*/im, '') // Remove prefixes
+        .replace(/[🤙💀😉👇📸✨]/g, '') // Remove emojis
+        .trim();
+      
+      // Extract text between quotes if present
+      const quotedMatch = cleaned.match(/"([^"]+)"/);
+      if (quotedMatch) {
+        cleaned = quotedMatch[1];
+      }
+      
+      setPrompt(cleaned);
       toast({
         title: 'Prompt Enhanced!',
         description: 'Your prompt has been improved',
