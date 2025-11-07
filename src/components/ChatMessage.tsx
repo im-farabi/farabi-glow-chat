@@ -73,16 +73,16 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
     <div className={`flex gap-4 px-6 lg:px-12 xl:px-24 py-6 ${isUser ? 'bg-card' : 'bg-muted/30'} ${!isUser && !isLoading ? 'animate-text-reveal' : 'animate-fade-in'}`}>
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
         isUser 
-          ? 'bg-gradient-to-br from-primary to-secondary' 
+          ? 'bg-muted' 
           : 'bg-accent'
       }`}>
         {isUser ? (
-          <User className="h-5 w-5 text-primary-foreground" />
+          <User className="h-5 w-5 text-white" />
         ) : (
               <img 
                 src="/bot-logo.ico" 
                 alt="FARABI" 
-                className="h-5 w-5 object-contain invert"
+                className="h-5 w-5 object-contain"
               />
         )}
       </div>
@@ -116,9 +116,17 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
                   <Volume2 className="mr-2 h-4 w-4" />
                   Read
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onRead?.(content, true)}>
-                  <Volume2 className="mr-2 h-4 w-4" />
-                  Advanced Reader
+                <DropdownMenuItem 
+                  onClick={() => onRead?.(content, true)}
+                  className="bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20"
+                  style={{
+                    textShadow: '0 0 10px rgba(236, 72, 153, 0.3)',
+                  }}
+                >
+                  <Volume2 className="mr-2 h-4 w-4 text-pink-500" />
+                  <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">
+                    Advanced Reader
+                  </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

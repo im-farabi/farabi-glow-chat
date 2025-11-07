@@ -68,12 +68,8 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                       <button
                         key={idx}
                         onClick={() => {
-                          const textarea = document.querySelector('textarea');
-                          if (textarea) {
-                            textarea.value = question;
-                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                            textarea.focus();
-                          }
+                          const event = new CustomEvent('fillChatInput', { detail: question });
+                          window.dispatchEvent(event);
                         }}
                         className="p-4 text-left rounded-lg bg-card border border-border hover:border-primary/50 hover:bg-accent transition-all text-sm"
                       >
@@ -135,12 +131,8 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                       <button
                         key={idx}
                         onClick={() => {
-                          const textarea = document.querySelector('textarea');
-                          if (textarea) {
-                            textarea.value = question;
-                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                            textarea.focus();
-                          }
+                          const event = new CustomEvent('fillChatInput', { detail: question });
+                          window.dispatchEvent(event);
                         }}
                         className="p-4 text-left rounded-lg bg-card border border-border hover:border-primary/50 hover:bg-accent transition-all text-sm"
                       >

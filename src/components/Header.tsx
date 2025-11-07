@@ -1,4 +1,4 @@
-import { Menu, Clock } from 'lucide-react';
+import { Menu, MessageSquareDashed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -46,7 +46,7 @@ const Header = ({ onMenuClick, isTemporaryChat, onToggleTemporaryChat }: HeaderP
                 className={isTemporaryChat ? "bg-gradient-to-r from-primary to-secondary" : ""}
                 aria-label="Toggle temporary chat"
               >
-                <Clock className="h-5 w-5" />
+                <MessageSquareDashed className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>

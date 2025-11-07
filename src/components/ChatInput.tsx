@@ -20,6 +20,17 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen'>('normal');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showRecommended, setShowRecommended] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleFillInput = (event: CustomEvent<string>) => {
+      setMessage(event.detail);
+      textareaRef.current?.focus();
+    };
+    
+    window.addEventListener('fillChatInput', handleFillInput as EventListener);
+    return () => window.removeEventListener('fillChatInput', handleFillInput as EventListener);
+  }, []);
 
   const handleSend = () => {
     if (!message.trim()) return;
@@ -42,10 +53,20 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   };
 
   useEffect(() => {
-    const handleClickOutside = () => setShowRecommended(false);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(event.target as Node) &&
+        textareaRef.current &&
+        !textareaRef.current.contains(event.target as Node)
+      ) {
+        setShowRecommended(false);
+      }
+    };
+    
     if (showRecommended) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showRecommended]);
 
@@ -115,20 +136,26 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
                 }
               }}
               onKeyDown={handleKeyDown}
-              onFocus={(e) => {
+              onFocus={() => {
                 if (!message.trim()) {
                   setShowRecommended(true);
                 }
-                e.stopPropagation();
               }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={() => {
+                if (!message.trim()) {
+                  setShowRecommended(true);
+                }
+              }}
               placeholder="Type your message..."
               autoFocus
               className="min-h-[40px] md:min-h-[50px] max-h-[120px] md:max-h-[150px] resize-none text-sm md:text-base"
             />
             
             {showRecommended && recommendedQuestions.length > 0 && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto z-50">
+              <div 
+                ref={dropdownRef}
+                className="absolute bottom-full left-0 right-0 mb-2 bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto z-50"
+              >
                 {recommendedQuestions.map((question, idx) => (
                   <button
                     key={idx}
