@@ -26,7 +26,7 @@ const ImageGen = () => {
 
     setLoading(true);
     setImages([]);
-    setStatus('Enhancing prompt (1/3)...');
+    setStatus('Enhancing prompt...');
 
     const preloadImage = (url: string) =>
       new Promise<string>((resolve, reject) => {
@@ -37,11 +37,8 @@ const ImageGen = () => {
       });
     
     try {
-      let currentBase = prompt.trim();
-
-      for (let i = 1; i <= 3; i++) {
-        setStatus(`Enhancing prompt (${i}/3)...`);
-        const enhancementInstruction = `You are a prompt enhancement expert. Transform the following simple image description into a detailed, cinematic prompt with rich visual details. Include:
+      // Single enhancement call
+      const enhancementInstruction = `You are a prompt enhancement expert. Transform the following simple image description into a detailed, cinematic prompt with rich visual details. Include:
 - Specific physical descriptions (eyes, hair, clothing, etc.)
 - Setting and atmosphere details
 - Lighting and time of day
@@ -49,45 +46,60 @@ const ImageGen = () => {
 - Artistic style (hyper-realistic, cinematic, etc.)
 - Emotional tone and mood
 
-User's simple prompt: "${currentBase}"
+User's simple prompt: "${prompt.trim()}"
 
 Return ONLY the enhanced prompt, nothing else. Make it 2-3 sentences maximum.`;
 
-        const enhancedPrompt = (await sendNormal(enhancementInstruction)).trim();
+      const enhancedPrompt = (await sendNormal(enhancementInstruction)).trim();
 
-        setStatus(`Generating image ${i}/3...`);
+      setStatus('Generating 3 images...');
 
-        let finalUrl = '';
-        for (let attempt = 0; attempt < 2; attempt++) {
-          const seed = Date.now() + i * 100000 + Math.floor(Math.random() * 100000);
-          const cb = Math.random().toString(36).slice(2);
-          const encoded = encodeURIComponent(enhancedPrompt);
-          const url = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&seed=${seed}&nologo=true&enhance=false&cb=${cb}`;
+      // Generate all 3 images in parallel with different styles
+      const styleVariations = [
+        { style: 'digital art, cinematic lighting, 8k ultra HD', label: 'Digital Art Style' },
+        { style: 'photorealistic, studio lighting, professional photography', label: 'Photorealistic Style' },
+        { style: 'artistic illustration, vibrant colors, fantasy art', label: 'Artistic Illustration' }
+      ];
+
+      const imagePromises = styleVariations.map(async ({ style }, index) => {
+        const fullPrompt = `${enhancedPrompt}, ${style}`;
+        const seed = Date.now() + index * 100000 + Math.floor(Math.random() * 100000);
+        const cb = Math.random().toString(36).slice(2);
+        const encoded = encodeURIComponent(fullPrompt);
+        const url = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&seed=${seed}&nologo=true&enhance=false&cb=${cb}`;
+        
+        try {
+          return await preloadImage(url);
+        } catch {
+          // Retry once
+          const retrySeed = Date.now() + index * 100000 + Math.floor(Math.random() * 100000);
+          const retryCb = Math.random().toString(36).slice(2);
+          const retryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&seed=${retrySeed}&nologo=true&enhance=false&cb=${retryCb}`;
           try {
-            finalUrl = await preloadImage(url);
-            break;
+            return await preloadImage(retryUrl);
           } catch {
-            // retry
+            return null;
           }
         }
-
-        if (finalUrl) {
-          setImages((prev) => [...prev, finalUrl]);
-        } else {
-          toast({
-            title: `Image ${i} failed`,
-            description: 'Could not load generated image. Please try again.',
-            variant: 'destructive'
-          });
-        }
-
-        currentBase = enhancedPrompt; // progressively enhance for next round
-      }
-      
-      toast({
-        title: 'Success!',
-        description: 'Generated up to 3 progressively enhanced images',
       });
+
+      const results = await Promise.all(imagePromises);
+      const successfulImages = results.filter((url): url is string => url !== null);
+      
+      setImages(successfulImages);
+      
+      if (successfulImages.length > 0) {
+        toast({
+          title: 'Success!',
+          description: `Generated ${successfulImages.length} image${successfulImages.length > 1 ? 's' : ''}`,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to generate images. Please try again.',
+          variant: 'destructive'
+        });
+      }
     } catch (error) {
       toast({
         title: 'Error',
