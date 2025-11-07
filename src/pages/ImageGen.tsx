@@ -5,6 +5,9 @@ import { Card } from '@/components/ui/card';
 import { Loader2, Sparkles } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const ImageGen = () => {
   const [prompt, setPrompt] = useState('');
@@ -12,15 +15,43 @@ const ImageGen = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [status, setStatus] = useState('');
+  const [sizePreset, setSizePreset] = useState<'banner' | 'logo' | 'custom'>('banner');
+  const [customWidth, setCustomWidth] = useState('1024');
+  const [customHeight, setCustomHeight] = useState('1024');
 
   const generateImages = async () => {
-    if (!prompt.trim()) {
+    const trimmedPrompt = prompt.trim();
+    
+    if (trimmedPrompt.length < 3) {
       toast({
         title: 'Error',
-        description: 'Please enter a prompt',
+        description: 'Prompt must be at least 3 characters',
         variant: 'destructive'
       });
       return;
+    }
+
+    if (trimmedPrompt.length > 500) {
+      toast({
+        title: 'Error',
+        description: 'Prompt must be less than 500 characters',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    let width = 1280;
+    let height = 720;
+
+    if (sizePreset === 'banner') {
+      width = 1280;
+      height = 720;
+    } else if (sizePreset === 'logo') {
+      width = 500;
+      height = 500;
+    } else {
+      width = parseInt(customWidth) || 1024;
+      height = parseInt(customHeight) || 1024;
     }
 
     setLoading(true);
@@ -36,33 +67,16 @@ const ImageGen = () => {
       });
     
     try {
-
-      // Generate all 3 images in parallel with different styles
-      const styleVariations = [
-        { style: 'digital art, cinematic lighting, highly detailed, 8k ultra HD, masterpiece', label: 'Digital Art Style' },
-        { style: 'photorealistic, studio lighting, professional photography, sharp focus, vivid colors', label: 'Photorealistic Style' },
-        { style: 'artistic illustration, vibrant colors, fantasy art, detailed, beautiful composition', label: 'Artistic Illustration' }
-      ];
-
-      const imagePromises = styleVariations.map(async ({ style }, index) => {
-        const fullPrompt = `${prompt.trim()}, ${style}`;
+      const encoded = encodeURIComponent(trimmedPrompt);
+      
+      const imagePromises = [1, 2, 3].map(async (index) => {
         const seed = Date.now() + index * 100000 + Math.floor(Math.random() * 100000);
-        const cb = Math.random().toString(36).slice(2);
-        const encoded = encodeURIComponent(fullPrompt);
-        const url = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&seed=${seed}&nologo=true&enhance=false&cb=${cb}`;
+        const url = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${seed}&enhance=false&nologo=true&key=plln_pk_DSf8DvxaLKn2LbP9QQAlA5hFpQGXePYiSY1AHZQn2CiKgtO7VBKQ1FNw1xCEpRYK`;
         
         try {
           return await preloadImage(url);
         } catch {
-          // Retry once
-          const retrySeed = Date.now() + index * 100000 + Math.floor(Math.random() * 100000);
-          const retryCb = Math.random().toString(36).slice(2);
-          const retryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&seed=${retrySeed}&nologo=true&enhance=false&cb=${retryCb}`;
-          try {
-            return await preloadImage(retryUrl);
-          } catch {
-            return null;
-          }
+          return null;
         }
       });
 
@@ -111,13 +125,66 @@ const ImageGen = () => {
           </div>
 
           <Card className="p-6 space-y-4 bg-card border-border">
-            <Textarea
-              placeholder="Describe the image you want to generate..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="min-h-[120px] resize-none"
-              disabled={loading}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="prompt">Prompt (3-500 characters)</Label>
+              <Textarea
+                id="prompt"
+                placeholder="Describe the image you want to generate..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="min-h-[120px] resize-none"
+                disabled={loading}
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {prompt.length}/500 characters
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="size">Image Size</Label>
+              <Select value={sizePreset} onValueChange={(value: 'banner' | 'logo' | 'custom') => setSizePreset(value)}>
+                <SelectTrigger id="size" className="bg-background">
+                  <SelectValue placeholder="Select size" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="banner">Banner (1280x720)</SelectItem>
+                  <SelectItem value="logo">Logo (500x500)</SelectItem>
+                  <SelectItem value="custom">Custom Size</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {sizePreset === 'custom' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="width">Width (px)</Label>
+                  <Input
+                    id="width"
+                    type="number"
+                    value={customWidth}
+                    onChange={(e) => setCustomWidth(e.target.value)}
+                    placeholder="1024"
+                    min="256"
+                    max="2048"
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="height">Height (px)</Label>
+                  <Input
+                    id="height"
+                    type="number"
+                    value={customHeight}
+                    onChange={(e) => setCustomHeight(e.target.value)}
+                    placeholder="1024"
+                    min="256"
+                    max="2048"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            )}
             
             <Button
               onClick={generateImages}
@@ -132,7 +199,7 @@ const ImageGen = () => {
               ) : (
                 <>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Generate Images
+                  Generate 3 Images
                 </>
               )}
             </Button>
@@ -154,7 +221,7 @@ const ImageGen = () => {
                   </div>
                   <div className="p-4">
                     <p className="text-sm text-muted-foreground">
-                      {index === 0 ? 'Digital Art Style' : index === 1 ? 'Photorealistic Style' : 'Artistic Illustration'}
+                      Image {index + 1}
                     </p>
                   </div>
                 </Card>
