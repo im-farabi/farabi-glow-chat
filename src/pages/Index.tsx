@@ -226,12 +226,12 @@ const Index = () => {
           response = await sendNormal(message, messages);
       }
 
-      // Check for {image:prompt} syntax at the end
-      const imageRegex = /\{image:(.+?)\}$/;
+      // Check for {image:prompt} syntax anywhere in response
+      const imageRegex = /\{image:([^}]+)\}/;
       const imageMatch = response.match(imageRegex);
 
       if (imageMatch) {
-        // Extract prompt and clean response
+        // Extract prompt and clean response (remove the {image:...} tag)
         const imagePrompt = imageMatch[1].trim();
         const cleanedResponse = response.replace(imageRegex, '').trim();
         
