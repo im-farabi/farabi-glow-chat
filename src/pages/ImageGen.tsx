@@ -12,15 +12,6 @@ const ImageGen = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const generatePromptVariations = (basePrompt: string): string[] => {
-    const timestamp = Date.now();
-    return [
-      `${basePrompt}, highly detailed, digital art, cinematic lighting, 8k ultra HD, masterpiece --seed ${timestamp}`,
-      `${basePrompt}, photorealistic style, studio lighting, professional photography, sharp focus --seed ${timestamp + 1000}`,
-      `${basePrompt}, artistic illustration, vibrant colors, fantasy art style, dramatic composition --seed ${timestamp + 2000}`
-    ];
-  };
-
   const generateImages = async () => {
     if (!prompt.trim()) {
       toast({
@@ -35,14 +26,22 @@ const ImageGen = () => {
     setImages([]);
     
     try {
-      const variations = generatePromptVariations(prompt);
-      const imagePromises = variations.map(async (variation, index) => {
-        const encodedPrompt = encodeURIComponent(variation);
-        const uniqueSeed = Date.now() + index * 5000;
-        return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&seed=${uniqueSeed}&nologo=true&enhance=false`;
-      });
+      const baseTimestamp = Date.now();
+      const styles = [
+        { suffix: 'highly detailed, digital art, cinematic lighting, 8k ultra HD, masterpiece', seed: baseTimestamp + Math.floor(Math.random() * 100000) },
+        { suffix: 'photorealistic style, studio lighting, professional photography, sharp focus', seed: baseTimestamp + 100000 + Math.floor(Math.random() * 100000) },
+        { suffix: 'artistic illustration, vibrant colors, fantasy art style, dramatic composition', seed: baseTimestamp + 200000 + Math.floor(Math.random() * 100000) }
+      ];
 
-      const generatedImages = await Promise.all(imagePromises);
+      const generatedImages = await Promise.all(
+        styles.map(async (style) => {
+          const fullPrompt = `${prompt}, ${style.suffix}`;
+          const encodedPrompt = encodeURIComponent(fullPrompt);
+          const cacheBuster = Math.random().toString(36).substring(7);
+          return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&seed=${style.seed}&nologo=true&enhance=false&cb=${cacheBuster}`;
+        })
+      );
+
       setImages(generatedImages);
       
       toast({
