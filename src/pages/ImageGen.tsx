@@ -2,24 +2,60 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Download, RefreshCw } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { sendNormal } from '@/lib/api';
 
 const ImageGen = () => {
   const [prompt, setPrompt] = useState('');
-  const [images, setImages] = useState<string[]>([]);
+  const [image, setImage] = useState<string>('');
+  const [currentSeed, setCurrentSeed] = useState<number>(0);
   const [loading, setLoading] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
   const { toast } = useToast();
   const [status, setStatus] = useState('');
   const [sizePreset, setSizePreset] = useState<'banner' | 'logo' | 'custom'>('banner');
   const [customWidth, setCustomWidth] = useState('1024');
   const [customHeight, setCustomHeight] = useState('1024');
 
-  const generateImages = async () => {
+  const enhancePrompt = async () => {
+    const trimmedPrompt = prompt.trim();
+    
+    if (trimmedPrompt.length < 3) {
+      toast({
+        title: 'Error',
+        description: 'Prompt must be at least 3 characters',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setEnhancing(true);
+    try {
+      const enhanced = await sendNormal(
+        `Enhance this image generation prompt to be more detailed and vivid. Keep it under 500 characters. Only return the enhanced prompt, nothing else: "${trimmedPrompt}"`
+      );
+      setPrompt(enhanced.trim());
+      toast({
+        title: 'Prompt Enhanced!',
+        description: 'Your prompt has been improved',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to enhance prompt',
+        variant: 'destructive'
+      });
+    } finally {
+      setEnhancing(false);
+    }
+  };
+
+  const generateImage = async (useNewSeed = false) => {
     const trimmedPrompt = prompt.trim();
     
     if (trimmedPrompt.length < 3) {
@@ -55,8 +91,7 @@ const ImageGen = () => {
     }
 
     setLoading(true);
-    setImages([]);
-    setStatus('Generating 3 images...');
+    setStatus('Generating image...');
 
     const preloadImage = (url: string) =>
       new Promise<string>((resolve, reject) => {
@@ -68,45 +103,53 @@ const ImageGen = () => {
     
     try {
       const encoded = encodeURIComponent(trimmedPrompt);
+      const seed = useNewSeed ? Date.now() + Math.floor(Math.random() * 1000000) : currentSeed || Date.now();
       
-      const imagePromises = [1, 2, 3].map(async (index) => {
-        const seed = Date.now() + index * 100000 + Math.floor(Math.random() * 100000);
-        const url = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${seed}&enhance=false&nologo=true&key=plln_pk_DSf8DvxaLKn2LbP9QQAlA5hFpQGXePYiSY1AHZQn2CiKgtO7VBKQ1FNw1xCEpRYK`;
-        
-        try {
-          return await preloadImage(url);
-        } catch {
-          return null;
-        }
-      });
-
-      const results = await Promise.all(imagePromises);
-      const successfulImages = results.filter((url): url is string => url !== null);
-      
-      setImages(successfulImages);
-      
-      if (successfulImages.length > 0) {
-        toast({
-          title: 'Success!',
-          description: `Generated ${successfulImages.length} image${successfulImages.length > 1 ? 's' : ''}`,
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Failed to generate images. Please try again.',
-          variant: 'destructive'
-        });
+      if (!useNewSeed && !currentSeed) {
+        setCurrentSeed(seed);
+      } else if (useNewSeed) {
+        setCurrentSeed(seed);
       }
+
+      const url = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${seed}&enhance=false&nologo=true&key=plln_pk_DSf8DvxaLKn2LbP9QQAlA5hFpQGXePYiSY1AHZQn2CiKgtO7VBKQ1FNw1xCEpRYK`;
+      
+      const imageUrl = await preloadImage(url);
+      setImage(imageUrl);
+      
+      toast({
+        title: 'Success!',
+        description: 'Image generated successfully',
+      });
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to generate images',
+        description: 'Failed to generate image',
         variant: 'destructive'
       });
     } finally {
       setLoading(false);
       setStatus('');
     }
+  };
+
+  const downloadImage = () => {
+    if (!image) return;
+    
+    const link = document.createElement('a');
+    link.href = image;
+    link.download = `generated-image-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: 'Downloaded!',
+      description: 'Image saved to your downloads',
+    });
+  };
+
+  const regenerateImage = () => {
+    generateImage(true);
   };
 
   return (
@@ -120,7 +163,7 @@ const ImageGen = () => {
               Image Generator
             </h1>
             <p className="text-muted-foreground">
-              Generate 3 unique images with different artistic styles from your prompt
+              Generate AI images from your prompts
             </p>
           </div>
 
@@ -186,46 +229,92 @@ const ImageGen = () => {
               </div>
             )}
             
-            <Button
-              onClick={generateImages}
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate 3 Images
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={enhancePrompt}
+                disabled={loading || enhancing}
+                variant="outline"
+                className="flex-1"
+              >
+                {enhancing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enhancing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Enhance Prompt
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => generateImage(false)}
+                disabled={loading || enhancing}
+                className="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate Image
+                  </>
+                )}
+              </Button>
+            </div>
             {status && (
               <p className="mt-2 text-sm text-muted-foreground text-center">{status}</p>
             )}
           </Card>
 
-          {images.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {images.map((image, index) => (
-                <Card key={index} className="overflow-hidden bg-card border-border">
-                  <div className="aspect-square relative">
-                    <img
-                      src={image}
-                      alt={`Generated image ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <p className="text-sm text-muted-foreground">
-                      Image {index + 1}
-                    </p>
-                  </div>
-                </Card>
-              ))}
+          {image && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-2 overflow-hidden bg-card border-border">
+                <div className="aspect-video relative">
+                  <img
+                    src={image}
+                    alt="Generated image"
+                    className="w-full h-full object-contain bg-muted"
+                  />
+                </div>
+              </Card>
+              
+              <Card className="p-6 bg-card border-border flex flex-col gap-4">
+                <h3 className="text-lg font-semibold">Actions</h3>
+                <Button
+                  onClick={downloadImage}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+                <Button
+                  onClick={regenerateImage}
+                  disabled={loading}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Regenerating...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Regen
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Use Regen to generate a new variation with a different seed
+                </p>
+              </Card>
             </div>
           )}
         </div>
