@@ -4,6 +4,7 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import AdBanner from './AdBanner';
 import { useMediaQuery } from '@/hooks/use-mobile';
+import { recommendedQuestions } from '@/data/recommendedQuestions';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -43,7 +44,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
         <div ref={scrollAreaRef} className="flex-1 mobile-scroll">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8">
-              <div className="text-center space-y-4">
+              <div className="text-center space-y-6 max-w-2xl mx-auto">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary p-2">
                   <img 
                     src="/bot-logo.ico" 
@@ -57,9 +58,29 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                     <span className="text-white">FARABI</span>
                     <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">.me</span>
                   </h2>
-                  <p className="text-lg text-muted-foreground">
+                  <p className="text-lg text-muted-foreground mb-6">
                     Start a conversation with FARABI
                   </p>
+                  
+                  {/* Recommended Questions */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+                    {recommendedQuestions.slice(0, 4).map((question, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          const textarea = document.querySelector('textarea');
+                          if (textarea) {
+                            textarea.value = question;
+                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                            textarea.focus();
+                          }
+                        }}
+                        className="p-4 text-left rounded-lg bg-card border border-border hover:border-primary/50 hover:bg-accent transition-all text-sm"
+                      >
+                        {question}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -90,7 +111,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
           <div ref={scrollAreaRef} className="min-h-full">
             {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8">
-              <div className="text-center space-y-4">
+              <div className="text-center space-y-6 max-w-2xl mx-auto">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary p-2">
                   <img 
                     src="/bot-logo.ico" 
@@ -104,9 +125,29 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                     <span className="text-white">FARABI</span>
                     <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">.me</span>
                   </h2>
-                  <p className="text-lg text-muted-foreground">
+                  <p className="text-lg text-muted-foreground mb-6">
                     Start a conversation with FARABI
                   </p>
+                  
+                  {/* Recommended Questions */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+                    {recommendedQuestions.slice(0, 4).map((question, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          const textarea = document.querySelector('textarea');
+                          if (textarea) {
+                            textarea.value = question;
+                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                            textarea.focus();
+                          }
+                        }}
+                        className="p-4 text-left rounded-lg bg-card border border-border hover:border-primary/50 hover:bg-accent transition-all text-sm"
+                      >
+                        {question}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

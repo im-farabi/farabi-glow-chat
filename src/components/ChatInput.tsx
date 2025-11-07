@@ -1,8 +1,7 @@
 import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Bolt, Circle, Zap, Wrench, Sparkles } from 'lucide-react';
-import { toast } from 'sonner';
+import { Send, Bolt, Circle, Zap, Wrench } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { recommendedQuestions } from '@/data/recommendedQuestions';
-import { sendNormal } from '@/lib/api';
 
 interface ChatInputProps {
   onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen') => void;
@@ -22,7 +20,6 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen'>('normal');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showRecommended, setShowRecommended] = useState(false);
-  const [enhancing, setEnhancing] = useState(false);
 
   const handleSend = () => {
     if (!message.trim()) return;
@@ -41,46 +38,6 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
-    }
-  };
-
-  const enhancePrompt = async () => {
-    const trimmed = message.trim();
-    if (trimmed.length < 3) {
-      toast.error('Message must be at least 3 characters');
-      return;
-    }
-
-    setEnhancing(true);
-    try {
-      const enhanced = await sendNormal(
-        `CRITICAL INSTRUCTION: Respond with ONLY the enhanced prompt. NO greetings, NO explanations, NO markdown formatting (**, etc), NO emojis, NO extra text.
-
-Task: Enhance this message to be more clear, detailed, and effective while maintaining the user's intent. Keep it natural and conversational.
-
-Input: "${trimmed}"
-
-Output ONLY the enhanced text:`
-      );
-      
-      let cleaned = enhanced
-        .replace(/\*\*/g, '')
-        .replace(/^["']|["']$/g, '')
-        .replace(/^.*?(?:prompt|version|here|output):\s*/im, '')
-        .replace(/[🤙💀😉👇📸✨]/g, '')
-        .trim();
-      
-      const quotedMatch = cleaned.match(/"([^"]+)"/);
-      if (quotedMatch) {
-        cleaned = quotedMatch[1];
-      }
-      
-      setMessage(cleaned);
-      toast.success('Prompt enhanced!');
-    } catch (error) {
-      toast.error('Failed to enhance prompt');
-    } finally {
-      setEnhancing(false);
     }
   };
 
@@ -141,10 +98,6 @@ Output ONLY the enhanced text:`
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="bg-popover z-50">
-              <DropdownMenuItem onClick={enhancePrompt} disabled={enhancing || !message.trim()}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                {enhancing ? 'Enhancing...' : 'Enhance Prompt'}
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setActiveMode('imageGen')}>
                 Generate Image
               </DropdownMenuItem>

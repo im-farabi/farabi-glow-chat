@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
+import LiquidChrome from '@/components/LiquidChrome';
 import { sendFast, sendNormal, sendSuper, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
@@ -283,8 +284,20 @@ const Index = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      {ttsText && (
+    <div className="flex h-screen flex-col bg-background relative">
+      {/* Liquid Chrome Background */}
+      <div className="absolute inset-0 z-0">
+        <LiquidChrome
+          baseColor={[0.15, 0.05, 0.2]}
+          speed={0.3}
+          amplitude={0.6}
+          interactive={true}
+        />
+      </div>
+      
+      {/* Content Overlay */}
+      <div className="relative z-10 flex h-screen flex-col">
+        {ttsText && (
         isAdvancedTTS ? (
           <AdvancedTTSPlayer 
             text={ttsText} 
@@ -326,6 +339,7 @@ const Index = () => {
             onCloseAdBanner={() => setShowAdBanner(false)}
           />
         </div>
+      </div>
       </div>
     </div>
   );
