@@ -5,57 +5,98 @@ import { Card } from '@/components/ui/card';
 import { Loader2, Sparkles } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
+import { sendNormal } from '@/lib/api';
 
 const ImageGen = () => {
   const [prompt, setPrompt] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const [status, setStatus] = useState('');
 
   const generateImages = async () => {
     if (!prompt.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a prompt",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Please enter a prompt',
+        variant: 'destructive'
       });
       return;
     }
 
     setLoading(true);
     setImages([]);
+    setStatus('Enhancing prompt (1/3)...');
+
+    const preloadImage = (url: string) =>
+      new Promise<string>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(url);
+        img.onerror = () => reject(new Error('Image failed to load'));
+        img.src = url;
+      });
     
     try {
-      const baseTimestamp = Date.now();
-      const styles = [
-        { suffix: 'highly detailed, digital art, cinematic lighting, 8k ultra HD, masterpiece', seed: baseTimestamp + Math.floor(Math.random() * 100000) },
-        { suffix: 'photorealistic style, studio lighting, professional photography, sharp focus', seed: baseTimestamp + 100000 + Math.floor(Math.random() * 100000) },
-        { suffix: 'artistic illustration, vibrant colors, fantasy art style, dramatic composition', seed: baseTimestamp + 200000 + Math.floor(Math.random() * 100000) }
-      ];
+      let currentBase = prompt.trim();
 
-      const generatedImages = await Promise.all(
-        styles.map(async (style) => {
-          const fullPrompt = `${prompt}, ${style.suffix}`;
-          const encodedPrompt = encodeURIComponent(fullPrompt);
-          const cacheBuster = Math.random().toString(36).substring(7);
-          return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&seed=${style.seed}&nologo=true&enhance=false&cb=${cacheBuster}`;
-        })
-      );
+      for (let i = 1; i <= 3; i++) {
+        setStatus(`Enhancing prompt (${i}/3)...`);
+        const enhancementInstruction = `You are a prompt enhancement expert. Transform the following simple image description into a detailed, cinematic prompt with rich visual details. Include:
+- Specific physical descriptions (eyes, hair, clothing, etc.)
+- Setting and atmosphere details
+- Lighting and time of day
+- Camera angle/perspective
+- Artistic style (hyper-realistic, cinematic, etc.)
+- Emotional tone and mood
 
-      setImages(generatedImages);
+User's simple prompt: "${currentBase}"
+
+Return ONLY the enhanced prompt, nothing else. Make it 2-3 sentences maximum.`;
+
+        const enhancedPrompt = (await sendNormal(enhancementInstruction)).trim();
+
+        setStatus(`Generating image ${i}/3...`);
+
+        let finalUrl = '';
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const seed = Date.now() + i * 100000 + Math.floor(Math.random() * 100000);
+          const cb = Math.random().toString(36).slice(2);
+          const encoded = encodeURIComponent(enhancedPrompt);
+          const url = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&model=flux&seed=${seed}&nologo=true&enhance=false&cb=${cb}`;
+          try {
+            finalUrl = await preloadImage(url);
+            break;
+          } catch {
+            // retry
+          }
+        }
+
+        if (finalUrl) {
+          setImages((prev) => [...prev, finalUrl]);
+        } else {
+          toast({
+            title: `Image ${i} failed`,
+            description: 'Could not load generated image. Please try again.',
+            variant: 'destructive'
+          });
+        }
+
+        currentBase = enhancedPrompt; // progressively enhance for next round
+      }
       
       toast({
-        title: "Success!",
-        description: "Generated 3 images with different styles",
+        title: 'Success!',
+        description: 'Generated up to 3 progressively enhanced images',
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to generate images",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to generate images',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
+      setStatus('');
     }
   };
 
@@ -100,6 +141,9 @@ const ImageGen = () => {
                 </>
               )}
             </Button>
+            {status && (
+              <p className="mt-2 text-sm text-muted-foreground text-center">{status}</p>
+            )}
           </Card>
 
           {images.length > 0 && (
