@@ -82,7 +82,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
               <img 
                 src="/bot-logo.ico" 
                 alt="FARABI" 
-                className="h-5 w-5 object-contain"
+                className="h-5 w-5 object-contain invert"
               />
         )}
       </div>

@@ -288,10 +288,11 @@ const Index = () => {
       {/* Liquid Chrome Background */}
       <div className="absolute inset-0 z-0">
         <LiquidChrome
-          baseColor={[0.15, 0.05, 0.2]}
-          speed={0.3}
-          amplitude={0.6}
+          baseColor={[0.9, 0.9, 0.95]}
+          speed={0.25}
+          amplitude={0.45}
           interactive={true}
+          canvasOpacity={0.12}
         />
       </div>
       

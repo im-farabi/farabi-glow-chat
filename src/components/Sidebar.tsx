@@ -133,15 +133,6 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
           </Button>
         </Link>
 
-        <Link to="/qr-gen" className="block">
-          <Button
-            variant="outline"
-            className="w-full justify-start"
-          >
-            <QrCode className="mr-2 h-4 w-4" />
-            QR-Code Generator
-          </Button>
-        </Link>
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

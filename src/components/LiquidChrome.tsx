@@ -8,15 +8,17 @@ interface LiquidChromeProps {
   frequencyX?: number;
   frequencyY?: number;
   interactive?: boolean;
+  canvasOpacity?: number;
 }
 
 export const LiquidChrome = ({
-  baseColor = [0.1, 0.1, 0.1],
-  speed = 0.2,
-  amplitude = 0.5,
+  baseColor = [0.9, 0.9, 0.95],
+  speed = 0.25,
+  amplitude = 0.45,
   frequencyX = 3,
   frequencyY = 2,
   interactive = true,
+  canvasOpacity = 0.12,
 }: LiquidChromeProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -24,9 +26,12 @@ export const LiquidChrome = ({
     if (!containerRef.current) return;
 
     const container = containerRef.current;
-    const renderer = new Renderer({ antialias: true });
+    const renderer = new Renderer({ antialias: true, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: true, depth: false, stencil: false });
+    // Improve sharpness without overloading GPU
+    // @ts-ignore - dpr exists on OGL renderer
+    renderer.dpr = Math.min(window.devicePixelRatio || 1, 2);
     const gl = renderer.gl;
-    gl.clearColor(1, 1, 1, 1);
+    gl.clearColor(0, 0, 0, 0);
 
     const vertexShader = `
       attribute vec2 position;
@@ -146,7 +151,14 @@ export const LiquidChrome = ({
     animationId = requestAnimationFrame(update);
 
     container.appendChild(gl.canvas);
-
+    Object.assign(gl.canvas.style, {
+      opacity: String(canvasOpacity),
+      position: 'absolute',
+      inset: '0',
+      width: '100%',
+      height: '100%',
+      pointerEvents: 'none'
+    });
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener('resize', resize);
