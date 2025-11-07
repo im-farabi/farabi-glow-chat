@@ -70,7 +70,7 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
   };
 
   return (
-    <div className={`flex gap-4 px-6 lg:px-12 xl:px-24 py-6 ${isUser ? 'bg-card' : 'bg-muted/30'} ${!isUser ? 'animate-fade-in animate-scale-in' : 'animate-fade-in'}`}>
+    <div className={`flex gap-4 px-6 lg:px-12 xl:px-24 py-6 ${isUser ? 'bg-card' : 'bg-muted/30'} ${!isUser && !isLoading ? 'animate-text-reveal' : 'animate-fade-in'}`}>
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
         isUser 
           ? 'bg-gradient-to-br from-primary to-secondary' 

@@ -46,7 +46,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
               <div className="text-center space-y-4">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary p-2">
                   <img 
-                    src="/favicon.ico" 
+                    src="/bot-logo.ico" 
                     alt="FARABI.me" 
                     className="h-full w-full object-contain"
                   />
@@ -93,7 +93,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
               <div className="text-center space-y-4">
                 <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary p-2">
                   <img 
-                    src="/favicon.ico" 
+                    src="/bot-logo.ico" 
                     alt="FARABI.me" 
                     className="h-full w-full object-contain"
                   />

@@ -23,6 +23,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/c/:chatId" element={<Index />} />
           <Route path="/about" element={<About />} />
           <Route path="/image-gen" element={<ImageGen />} />
           <Route path="/qr-gen" element={<QRGen />} />

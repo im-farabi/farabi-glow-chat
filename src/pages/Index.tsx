@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
@@ -13,6 +14,7 @@ import {
   generateTitle,
   type ChatSession 
 } from '@/lib/storage';
+import { useLoadingStages } from '@/hooks/useLoadingStages';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -25,14 +27,36 @@ interface Message {
 }
 
 const Index = () => {
+  const { chatId } = useParams();
+  const navigate = useNavigate();
   const [currentChat, setCurrentChat] = useState<ChatSession>(createNewChat());
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentMode, setCurrentMode] = useState<'fast' | 'normal' | 'super'>('normal');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [ttsText, setTtsText] = useState<string | null>(null);
   const [isAdvancedTTS, setIsAdvancedTTS] = useState(false);
   const [aiMessageCount, setAiMessageCount] = useState(0);
   const [showAdBanner, setShowAdBanner] = useState(false);
+  
+  const loadingText = useLoadingStages(currentMode, isLoading);
+
+  // Load chat from URL on mount
+  useEffect(() => {
+    if (chatId) {
+      const chat = getChat(chatId);
+      if (chat) {
+        setCurrentChat(chat);
+        setMessages(chat.messages);
+        const aiMsgs = chat.messages.filter(m => m.role === 'assistant').length;
+        setAiMessageCount(aiMsgs);
+        setShowAdBanner(aiMsgs > 0 && aiMsgs % 2 === 0);
+      } else {
+        // Invalid chat ID, redirect to home
+        navigate('/', { replace: true });
+      }
+    }
+  }, [chatId, navigate]);
 
   // Swipe gesture to open sidebar
   useEffect(() => {
@@ -76,33 +100,21 @@ const Index = () => {
     setMessages([]);
     setAiMessageCount(0);
     setShowAdBanner(false);
+    navigate(`/c/${newChat.id}`);
   };
 
-  const handleSelectChat = (chatId: string) => {
-    const chat = getChat(chatId);
+  const handleSelectChat = (selectedChatId: string) => {
+    const chat = getChat(selectedChatId);
     if (chat) {
       setCurrentChat(chat);
       setMessages(chat.messages);
       const aiMsgs = chat.messages.filter(m => m.role === 'assistant').length;
       setAiMessageCount(aiMsgs);
       setShowAdBanner(aiMsgs > 0 && aiMsgs % 2 === 0);
+      navigate(`/c/${selectedChatId}`);
     }
   };
 
-  const getLoadingText = (mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen'): string => {
-    switch (mode) {
-      case 'fast':
-        return 'Fast Mode';
-      case 'normal':
-        return 'Normal Mode';
-      case 'super':
-        return 'Super Mode';
-      case 'imageGen':
-        return 'Generating Image';
-      default:
-        return 'Thinking...';
-    }
-  };
 
   const handleRead = (text: string, advanced: boolean = false) => {
     setTtsText(text);
@@ -123,18 +135,39 @@ const Index = () => {
 
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
+    
+    // Set mode for loading stages
+    if (mode === 'fast' || mode === 'normal' || mode === 'super') {
+      setCurrentMode(mode);
+    }
+    
     setIsLoading(true);
 
     const startTime = performance.now();
 
-    // Add loading message
+    // Add loading message placeholder
     const loadingMessage: Message = {
       role: 'assistant',
       content: '',
       isLoading: true,
-      loadingText: getLoadingText(mode)
+      loadingText: mode === 'imageGen' ? 'Generating Image' : 'Sending...'
     };
     setMessages([...newMessages, loadingMessage]);
+    
+    // Update loading text dynamically for non-imageGen modes
+    let updateInterval: NodeJS.Timeout | null = null;
+    if (mode !== 'imageGen') {
+      updateInterval = setInterval(() => {
+        setMessages(prev => {
+          const updated = [...prev];
+          const lastMsg = updated[updated.length - 1];
+          if (lastMsg?.isLoading) {
+            lastMsg.loadingText = loadingText;
+          }
+          return updated;
+        });
+      }, 100);
+    }
 
     try {
       let response: string;
@@ -199,10 +232,15 @@ const Index = () => {
         currentChat.title = await generateTitle(message);
       }
 
-      // Save to storage
+      // Save to storage and ensure URL is correct
       currentChat.messages = finalMessages;
       currentChat.timestamp = Date.now();
       saveChat(currentChat);
+      
+      // Update URL if not already set
+      if (!chatId || chatId !== currentChat.id) {
+        navigate(`/c/${currentChat.id}`, { replace: true });
+      }
 
     } catch (error) {
       console.error('Error sending message:', error);
@@ -221,6 +259,9 @@ const Index = () => {
       // Remove loading message on error
       setMessages(newMessages);
     } finally {
+      if (updateInterval) {
+        clearInterval(updateInterval);
+      }
       setIsLoading(false);
     }
   };
