@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import About from "./pages/About";
 import HorizonRedirect from "./pages/HorizonRedirect";
 import LovableRedirect from "./pages/LovableRedirect";
+import ImageGen from "./pages/ImageGen";
+import QRGen from "./pages/QRGen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +24,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/about" element={<About />} />
+          <Route path="/image-gen" element={<ImageGen />} />
+          <Route path="/qr-gen" element={<QRGen />} />
           <Route path="/horizon" element={<HorizonRedirect />} />
           <Route path="/lovable" element={<LovableRedirect />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
