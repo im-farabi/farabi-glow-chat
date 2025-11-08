@@ -3,6 +3,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import AdBanner from './AdBanner';
+import GradualBlur from './GradualBlur';
 import { useMediaQuery } from '@/hooks/use-mobile';
 import { recommendedQuestions } from '@/data/recommendedQuestions';
 
@@ -42,7 +43,16 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {isMobile ? (
-        <div ref={scrollAreaRef} className="flex-1 mobile-scroll">
+        <div ref={scrollAreaRef} className="flex-1 mobile-scroll relative">
+          <GradualBlur
+            target="parent"
+            position="bottom"
+            height="8rem"
+            strength={2.5}
+            divCount={6}
+            curve="bezier"
+            opacity={0.95}
+          />
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8">
               <div className="text-center space-y-6 max-w-2xl mx-auto">
@@ -114,7 +124,16 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
           )}
         </div>
       ) : (
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 relative">
+          <GradualBlur
+            target="parent"
+            position="bottom"
+            height="8rem"
+            strength={2.5}
+            divCount={6}
+            curve="bezier"
+            opacity={0.95}
+          />
           <div ref={scrollAreaRef} className="min-h-full">
             {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8">
