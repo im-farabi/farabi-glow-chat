@@ -1,27 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import AdBanner from './AdBanner';
-import { recommendedQuestions } from '@/data/recommendedQuestions';
-
-const RecommendedQuestions = ({ onQuestionClick }: { onQuestionClick: (question: string, mode: any) => void }) => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    {recommendedQuestions.slice(0, 4).map((question, idx) => (
-      <button
-        key={idx}
-        onClick={() => {
-          const event = new CustomEvent('fillChatInput', { detail: question });
-          window.dispatchEvent(event);
-        }}
-        className="p-4 text-left rounded-lg bg-card border border-border hover:border-primary/50 hover:bg-accent transition-all text-sm"
-      >
-        {question}
-      </button>
-    ))}
-  </div>
-);
-
 import { useMediaQuery } from '@/hooks/use-mobile';
 
 interface Message {
@@ -48,7 +29,6 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery('(max-width: 1024px)');
-  const showRecommendedQuestions = messages.length === 0;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,12 +40,6 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {showRecommendedQuestions && (
-        <div className="px-4 pt-4 pb-2">
-          <RecommendedQuestions onQuestionClick={onSendMessage} />
-        </div>
-      )}
-      
       {isMobile ? (
         <div ref={scrollAreaRef} className="flex-1 mobile-scroll relative">
           {messages.length === 0 ? (

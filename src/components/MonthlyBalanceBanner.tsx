@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMonthlyBalance } from '@/lib/storage';
+import { getMonthlyBalance, addAdReward } from '@/lib/storage';
 import { DollarSign } from 'lucide-react';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
@@ -7,7 +7,11 @@ import { useNavigate } from 'react-router-dom';
 
 const MonthlyBalanceBanner = () => {
   const [balance, setBalance] = useState<number>(3.00);
+  const [totalUsed, setTotalUsed] = useState<number>(0);
   const [showAdDialog, setShowAdDialog] = useState(false);
+  const [adStarted, setAdStarted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(10);
+  const [cameBackEarly, setCameBackEarly] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,9 +30,39 @@ const MonthlyBalanceBanner = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!adStarted) return;
+    
+    const startTime = localStorage.getItem('adStartTime');
+    if (!startTime) return;
+    
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - parseInt(startTime)) / 1000);
+      const remaining = 10 - elapsed;
+      
+      setTimeLeft(remaining);
+      
+      if (remaining <= 0) {
+        // Reward earned
+        addAdReward();
+        localStorage.removeItem('adStartTime');
+        setAdStarted(false);
+        setShowAdDialog(false);
+        setCameBackEarly(false);
+        clearInterval(interval);
+      } else if (document.hasFocus() && remaining > 0) {
+        // User came back early
+        setCameBackEarly(true);
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [adStarted]);
+
   const updateBalance = () => {
     const balanceData = getMonthlyBalance();
     setBalance(balanceData.balance);
+    setTotalUsed(balanceData.totalUsed);
   };
 
   const handleGetMore = () => {
@@ -36,11 +70,16 @@ const MonthlyBalanceBanner = () => {
   };
 
   const handleWatchAd = () => {
-    setShowAdDialog(false);
-    // Set timestamp when ad was initiated
+    setAdStarted(true);
+    setTimeLeft(10);
+    setCameBackEarly(false);
     localStorage.setItem('adStartTime', Date.now().toString());
-    // Open in new tab
     window.open('/ad', '_blank');
+  };
+
+  const handleContinueWatching = () => {
+    window.open('/ad', '_blank');
+    setCameBackEarly(false);
   };
 
   return (
@@ -51,7 +90,7 @@ const MonthlyBalanceBanner = () => {
             <DollarSign className="h-4 w-4 text-primary" />
             <div>
               <p className="text-sm font-semibold text-foreground">
-                ${balance.toFixed(2)}/3.00$ Monthly Remaining
+                ${totalUsed.toFixed(2)}/3.00$ Monthly Remaining
               </p>
               <p className="text-xs text-muted-foreground">
                 It will reset every month
@@ -75,20 +114,50 @@ const MonthlyBalanceBanner = () => {
             <DialogTitle className="text-center text-xl">Get More Balance</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-6">
-            <div className="text-center">
-              <p className="text-lg font-semibold mb-2">WATCH AD</p>
-              <p className="text-2xl font-bold text-primary">Get $0.10 Per AD</p>
-            </div>
-            <p className="text-sm text-muted-foreground text-center">
-              Must stay on the website for at least 10 seconds.
-            </p>
-            <Button 
-              onClick={handleWatchAd}
-              className="w-full"
-              size="lg"
-            >
-              Watch Ad Now
-            </Button>
+            {!adStarted && !cameBackEarly ? (
+              <>
+                <div className="text-center">
+                  <p className="text-lg font-semibold mb-2">WATCH AD</p>
+                  <p className="text-2xl font-bold text-primary">Get $0.10 Per AD</p>
+                </div>
+                <p className="text-sm text-muted-foreground text-center">
+                  Must stay on the website for at least 10 seconds.
+                </p>
+                <Button 
+                  onClick={handleWatchAd}
+                  className="w-full"
+                  size="lg"
+                >
+                  Watch Ad Now
+                </Button>
+              </>
+            ) : cameBackEarly ? (
+              <>
+                <div className="text-6xl">⏱️</div>
+                <h2 className="text-xl font-bold">You Came Back Too Early!</h2>
+                <p className="text-muted-foreground text-center">
+                  You came back <span className="font-bold text-destructive">{10 - timeLeft} seconds</span> early.
+                </p>
+                <p className="text-muted-foreground text-center">
+                  Watch <span className="font-bold text-primary">{timeLeft} more seconds</span> to get your $0.10 reward.
+                </p>
+                <Button 
+                  onClick={handleContinueWatching}
+                  className="w-full"
+                  size="lg"
+                >
+                  Continue Watching Ad
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="text-6xl">⏱️</div>
+                <h2 className="text-xl font-bold">{timeLeft} seconds remaining...</h2>
+                <p className="text-muted-foreground text-center">
+                  Stay on the ad page to earn your reward!
+                </p>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
