@@ -37,12 +37,15 @@ const MonthlyBalanceBanner = () => {
 
   const handleWatchAd = () => {
     setShowAdDialog(false);
-    navigate('/ad');
+    // Set timestamp when ad was initiated
+    localStorage.setItem('adStartTime', Date.now().toString());
+    // Open in new tab
+    window.open('/ad', '_blank');
   };
 
   return (
     <>
-      <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-4">
+      <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-primary" />

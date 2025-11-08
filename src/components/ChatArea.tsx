@@ -3,8 +3,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import AdBanner from './AdBanner';
-import UsageBanner from './UsageBanner';
-import MonthlyBalanceBanner from './MonthlyBalanceBanner';
 import { recommendedQuestions } from '@/data/recommendedQuestions';
 
 const RecommendedQuestions = ({ onQuestionClick }: { onQuestionClick: (question: string, mode: any) => void }) => (
@@ -62,13 +60,11 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="px-4 pt-4 pb-2 space-y-2">
-        <MonthlyBalanceBanner />
-        <UsageBanner />
-        {showRecommendedQuestions && (
+      {showRecommendedQuestions && (
+        <div className="px-4 pt-4 pb-2">
           <RecommendedQuestions onQuestionClick={onSendMessage} />
-        )}
-      </div>
+        </div>
+      )}
       
       {isMobile ? (
         <div ref={scrollAreaRef} className="flex-1 mobile-scroll relative">

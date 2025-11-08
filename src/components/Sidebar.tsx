@@ -6,6 +6,7 @@ import { Plus, Search, MessageSquare, X, MoreVertical, Edit2, Trash2, FileEdit, 
 import { Link } from 'react-router-dom';
 import { getAllChats, truncateTitle, deleteChat, renameChat, type ChatSession } from '@/lib/storage';
 import UsageBanner from '@/components/UsageBanner';
+import MonthlyBalanceBanner from '@/components/MonthlyBalanceBanner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -113,6 +114,7 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
         </div>
 
         <div className="p-4 space-y-4">
+        <MonthlyBalanceBanner />
         <UsageBanner />
         
         <Button
