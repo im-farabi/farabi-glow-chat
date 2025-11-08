@@ -15,6 +15,7 @@ import {
   generateTitle,
   type ChatSession 
 } from '@/lib/storage';
+import { useTimeTracking } from '@/hooks/useTimeTracking';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -39,6 +40,9 @@ const Index = () => {
   const [aiMessageCount, setAiMessageCount] = useState(0);
   const [showAdBanner, setShowAdBanner] = useState(false);
   const [isTemporaryChat, setIsTemporaryChat] = useState(false);
+  
+  // Track time for cost deduction
+  useTimeTracking();
 
   // Load chat from URL on mount
   useEffect(() => {

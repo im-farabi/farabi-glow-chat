@@ -205,6 +205,78 @@ export function calculateTotalCost(): { rounded: number; full: number } {
 }
 
 /**
+ * Monthly balance management
+ */
+
+interface MonthlyBalance {
+  balance: number;
+  lastReset: string;
+  totalUsed: number;
+}
+
+const MONTHLY_ALLOWANCE = 3.00;
+const COST_IMAGE_GEN = 0.05;
+const COST_REGEN = 0.03;
+const COST_ENHANCE_PROMPT = 0.02;
+const COST_ADVANCED_READER = 0.05;
+const COST_PER_MINUTE = 0.00046;
+const AD_REWARD = 0.10;
+
+export const getMonthlyBalance = (): MonthlyBalance => {
+  const stored = localStorage.getItem('monthlyBalance');
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
+  
+  if (!stored) {
+    const initial = {
+      balance: MONTHLY_ALLOWANCE,
+      lastReset: currentMonth,
+      totalUsed: 0
+    };
+    localStorage.setItem('monthlyBalance', JSON.stringify(initial));
+    return initial;
+  }
+  
+  const balance: MonthlyBalance = JSON.parse(stored);
+  
+  // Check if we need to reset for new month
+  if (balance.lastReset !== currentMonth) {
+    const newBalance = {
+      balance: MONTHLY_ALLOWANCE + Math.max(0, balance.balance), // Rollover unused
+      lastReset: currentMonth,
+      totalUsed: 0
+    };
+    localStorage.setItem('monthlyBalance', JSON.stringify(newBalance));
+    return newBalance;
+  }
+  
+  return balance;
+};
+
+export const deductBalance = (amount: number): boolean => {
+  const balance = getMonthlyBalance();
+  if (balance.balance < amount) return false;
+  
+  balance.balance -= amount;
+  balance.totalUsed += amount;
+  localStorage.setItem('monthlyBalance', JSON.stringify(balance));
+  return true;
+};
+
+export const addBalance = (amount: number): void => {
+  const balance = getMonthlyBalance();
+  balance.balance += amount;
+  localStorage.setItem('monthlyBalance', JSON.stringify(balance));
+};
+
+export const deductImageGenCost = () => deductBalance(COST_IMAGE_GEN);
+export const deductRegenCost = () => deductBalance(COST_REGEN);
+export const deductEnhancePromptCost = () => deductBalance(COST_ENHANCE_PROMPT);
+export const deductAdvancedReaderCost = () => deductBalance(COST_ADVANCED_READER);
+export const deductTimeBasedCost = () => deductBalance(COST_PER_MINUTE);
+export const addAdReward = () => addBalance(AD_REWARD);
+
+/**
  * Reset usage stats
  */
 export function resetUsageStats(): void {

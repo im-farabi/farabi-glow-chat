@@ -3,9 +3,28 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import AdBanner from './AdBanner';
-import GradualBlur from './GradualBlur';
-import { useMediaQuery } from '@/hooks/use-mobile';
+import UsageBanner from './UsageBanner';
+import MonthlyBalanceBanner from './MonthlyBalanceBanner';
 import { recommendedQuestions } from '@/data/recommendedQuestions';
+
+const RecommendedQuestions = ({ onQuestionClick }: { onQuestionClick: (question: string, mode: any) => void }) => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    {recommendedQuestions.slice(0, 4).map((question, idx) => (
+      <button
+        key={idx}
+        onClick={() => {
+          const event = new CustomEvent('fillChatInput', { detail: question });
+          window.dispatchEvent(event);
+        }}
+        className="p-4 text-left rounded-lg bg-card border border-border hover:border-primary/50 hover:bg-accent transition-all text-sm"
+      >
+        {question}
+      </button>
+    ))}
+  </div>
+);
+
+import { useMediaQuery } from '@/hooks/use-mobile';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -31,6 +50,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery('(max-width: 1024px)');
+  const showRecommendedQuestions = messages.length === 0;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,17 +62,16 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="px-4 pt-4 pb-2 space-y-2">
+        <MonthlyBalanceBanner />
+        <UsageBanner />
+        {showRecommendedQuestions && (
+          <RecommendedQuestions onQuestionClick={onSendMessage} />
+        )}
+      </div>
+      
       {isMobile ? (
         <div ref={scrollAreaRef} className="flex-1 mobile-scroll relative">
-          <GradualBlur
-            target="parent"
-            position="bottom"
-            height="8rem"
-            strength={2.5}
-            divCount={6}
-            curve="bezier"
-            opacity={0.95}
-          />
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8">
               <div className="text-center space-y-6 max-w-2xl mx-auto">
@@ -72,22 +91,6 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   <p className="text-lg text-muted-foreground mb-6">
                     Start a conversation with FARABI
                   </p>
-                  
-                  {/* Recommended Questions */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
-                    {recommendedQuestions.slice(0, 4).map((question, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          const event = new CustomEvent('fillChatInput', { detail: question });
-                          window.dispatchEvent(event);
-                        }}
-                        className="p-4 text-left rounded-lg bg-card border border-border hover:border-primary/50 hover:bg-accent transition-all text-sm"
-                      >
-                        {question}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
             </div>
@@ -125,15 +128,6 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
         </div>
       ) : (
         <ScrollArea className="flex-1 relative">
-          <GradualBlur
-            target="parent"
-            position="bottom"
-            height="8rem"
-            strength={2.5}
-            divCount={6}
-            curve="bezier"
-            opacity={0.95}
-          />
           <div ref={scrollAreaRef} className="min-h-full">
             {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8">
@@ -154,22 +148,6 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   <p className="text-lg text-muted-foreground mb-6">
                     Start a conversation with FARABI
                   </p>
-                  
-                  {/* Recommended Questions */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
-                    {recommendedQuestions.slice(0, 4).map((question, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          const event = new CustomEvent('fillChatInput', { detail: question });
-                          window.dispatchEvent(event);
-                        }}
-                        className="p-4 text-left rounded-lg bg-card border border-border hover:border-primary/50 hover:bg-accent transition-all text-sm"
-                      >
-                        {question}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
             </div>

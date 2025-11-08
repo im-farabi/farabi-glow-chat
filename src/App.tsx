@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import About from "./pages/About";
 import HorizonRedirect from "./pages/HorizonRedirect";
 import LovableRedirect from "./pages/LovableRedirect";
+import AdRedirect from "./pages/AdRedirect";
 import ImageGen from "./pages/ImageGen";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/image-gen" element={<ImageGen />} />
           <Route path="/horizon" element={<HorizonRedirect />} />
           <Route path="/lovable" element={<LovableRedirect />} />
+          <Route path="/ad" element={<AdRedirect />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
