@@ -41,7 +41,7 @@ function addGlowToExclamations(text: string): React.ReactNode[] {
   });
 }
 
-const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, responseTime, onRead, onExplain }: ChatMessageProps) => {
+const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, loadingText, responseTime, onRead, onExplain }: ChatMessageProps) => {
   const isUser = role === 'user';
   const { toast } = useToast();
   const [explainClicked, setExplainClicked] = useState(false);
@@ -328,6 +328,16 @@ const ChatMessage = ({ role, content, image, imageBlob, isLoading, loadingText, 
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Only re-render if these props change
+  return (
+    prevProps.content === nextProps.content &&
+    prevProps.isLoading === nextProps.isLoading &&
+    prevProps.image === nextProps.image &&
+    prevProps.responseTime === nextProps.responseTime
+  );
+});
+
+ChatMessage.displayName = 'ChatMessage';
 
 export default ChatMessage;

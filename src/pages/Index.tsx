@@ -6,7 +6,6 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
-import LiquidChrome from '@/components/LiquidChrome';
 import { sendFast, sendNormal, sendSuper, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
@@ -341,16 +340,8 @@ const Index = () => {
 
   return (
     <div className="flex h-screen flex-col bg-background relative">
-      {/* Liquid Chrome Background */}
-      <div className="absolute inset-0 z-0">
-        <LiquidChrome
-          baseColor={[0.9, 0.9, 0.95]}
-          speed={0.25}
-          amplitude={0.45}
-          interactive={true}
-          canvasOpacity={0.12}
-        />
-      </div>
+      {/* Animated Gradient Background */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-br from-background via-muted/10 to-accent/5 animate-gradient" />
       
       {/* Content Overlay */}
       <div className="relative z-10 flex h-screen flex-col">

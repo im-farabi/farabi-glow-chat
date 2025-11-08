@@ -44,6 +44,10 @@ export function saveChat(chat: ChatSession): void {
     }
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+    
+    // Invalidate cache when chat is saved
+    cachedUsageStats = null;
+    lastChatHash = '';
   } catch (error) {
     console.error('Error saving chat:', error);
   }
@@ -64,6 +68,10 @@ export function deleteChat(id: string): void {
   try {
     const chats = getAllChats().filter(c => c.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+    
+    // Invalidate cache when chat is deleted
+    cachedUsageStats = null;
+    lastChatHash = '';
   } catch (error) {
     console.error('Error deleting chat:', error);
   }
@@ -146,6 +154,18 @@ export interface UsageStats {
 const INPUT_COST_PER_CHAR = 0.0000075;  // $0.0000075 per character
 const OUTPUT_COST_PER_CHAR = 0.000015;  // $0.000015 per character
 
+// Cache for usage stats to avoid recalculating every time
+let cachedUsageStats: UsageStats | null = null;
+let lastChatHash: string = '';
+
+/**
+ * Generate a simple hash of chat data to detect changes
+ */
+function getChatHash(): string {
+  const chats = getAllChats();
+  return `${chats.length}-${chats.reduce((sum, c) => sum + c.messages.length, 0)}`;
+}
+
 /**
  * Calculate usage from all existing chats
  */
@@ -173,12 +193,19 @@ export function calculateUsageFromAllChats(): UsageStats {
 }
 
 /**
- * Get current usage stats - always recalculates from all chats
+ * Get current usage stats - with caching for performance
  */
 export function getUsageStats(): UsageStats {
   try {
-    // ALWAYS recalculate from all existing chats to ensure accuracy
-    return calculateUsageFromAllChats();
+    const currentHash = getChatHash();
+    
+    // Only recalculate if chat data has changed
+    if (!cachedUsageStats || currentHash !== lastChatHash) {
+      cachedUsageStats = calculateUsageFromAllChats();
+      lastChatHash = currentHash;
+    }
+    
+    return cachedUsageStats;
   } catch (error) {
     console.error('Error loading usage stats:', error);
     return {

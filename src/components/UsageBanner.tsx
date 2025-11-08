@@ -16,8 +16,8 @@ const UsageBanner = () => {
     
     window.addEventListener('storage', handleStorageChange);
     
-    // Also check periodically in case same-tab updates
-    const interval = setInterval(updateCost, 1000);
+    // Check less frequently - only every 5 seconds instead of every second
+    const interval = setInterval(updateCost, 5000);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);

@@ -22,7 +22,8 @@ const MonthlyBalanceBanner = () => {
     };
     
     window.addEventListener('storage', handleStorageChange);
-    const interval = setInterval(updateBalance, 1000);
+    // Check less frequently - only every 5 seconds instead of every second
+    const interval = setInterval(updateBalance, 5000);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
