@@ -98,3 +98,57 @@ All colors MUST be HSL.
     touch-action: pan-y;
   }
 }
+
+/* Custom Cursor Styles */
+body.cursor-default,
+body.cursor-default * {
+  cursor: auto !important;
+}
+
+body.cursor-professional,
+body.cursor-professional * {
+  cursor: url('/cursors/professional-cursor.png') 0 0, auto !important;
+}
+
+body.cursor-cartoony,
+body.cursor-cartoony * {
+  cursor: url('/cursors/cartoony-cursor.png') 0 0, auto !important;
+}
+
+/* Retina display support */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  body.cursor-professional,
+  body.cursor-professional * {
+    cursor: url('/cursors/professional-cursor-2x.png') 0 0, auto !important;
+    cursor: -webkit-image-set(
+      url('/cursors/professional-cursor.png') 1x,
+      url('/cursors/professional-cursor-2x.png') 2x
+    ) 0 0, auto !important;
+  }
+  
+  body.cursor-cartoony,
+  body.cursor-cartoony * {
+    cursor: url('/cursors/cartoony-cursor-2x.png') 0 0, auto !important;
+    cursor: -webkit-image-set(
+      url('/cursors/cartoony-cursor.png') 1x,
+      url('/cursors/cartoony-cursor-2x.png') 2x
+    ) 0 0, auto !important;
+  }
+}
+
+/* Keep pointer cursor for interactive elements with custom cursors */
+body.cursor-professional button:hover,
+body.cursor-professional a:hover,
+body.cursor-cartoony button:hover,
+body.cursor-cartoony a:hover {
+  cursor: url('/cursors/professional-cursor.png') 0 0, pointer !important;
+}
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  body.cursor-professional button:hover,
+  body.cursor-professional a:hover,
+  body.cursor-cartoony button:hover,
+  body.cursor-cartoony a:hover {
+    cursor: url('/cursors/professional-cursor-2x.png') 0 0, pointer !important;
+  }
+}

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,10 +13,17 @@ import LovableRedirect from "./pages/LovableRedirect";
 import AdRedirect from "./pages/AdRedirect";
 import ImageGen from "./pages/ImageGen";
 import NotFound from "./pages/NotFound";
+import { getCursorPreference } from "./lib/storage";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    const cursorType = getCursorPreference();
+    document.body.classList.add(`cursor-${cursorType}`);
+  }, []);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -37,6 +45,7 @@ const App = () => (
       <SpeedInsights />
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

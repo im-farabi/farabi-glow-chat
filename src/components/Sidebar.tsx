@@ -4,13 +4,13 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Search, MessageSquare, X, MoreVertical, Edit2, Trash2, FileEdit, User, Settings, Image, QrCode } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getAllChats, truncateTitle, deleteChat, renameChat, type ChatSession } from '@/lib/storage';
+import { getAllChats, truncateTitle, deleteChat, renameChat, getUserPreferences, type ChatSession } from '@/lib/storage';
 import UsageBanner from '@/components/UsageBanner';
 import MonthlyBalanceBanner from '@/components/MonthlyBalanceBanner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import PersonalizationDialog from '@/components/PersonalizationDialog';
+import SettingsDialog from '@/components/SettingsDialog';
 
 interface SidebarProps {
   currentChatId: string | null;
@@ -24,10 +24,12 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const [personalizationOpen, setPersonalizationOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const { toast } = useToast();
+  const preferences = getUserPreferences();
+  const username = preferences.name.trim() || 'Anonymous';
 
   useEffect(() => {
     loadChats();
@@ -218,14 +220,14 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
         <Button
           variant="ghost"
           className="w-full justify-start gap-3"
-          onClick={() => setPersonalizationOpen(true)}
+          onClick={() => setSettingsOpen(true)}
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
             <User className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1 text-left">
-            <p className="text-sm font-medium">Personalization</p>
-            <p className="text-xs text-muted-foreground">Customize AI behavior</p>
+            <p className="text-sm font-medium">Welcome {username}!</p>
+            <p className="text-xs text-muted-foreground">Customize the AI</p>
           </div>
           <Settings className="h-4 w-4 text-muted-foreground" />
         </Button>
@@ -257,9 +259,9 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
         </DialogContent>
       </Dialog>
 
-      <PersonalizationDialog 
-        open={personalizationOpen} 
-        onOpenChange={setPersonalizationOpen} 
+      <SettingsDialog 
+        open={settingsOpen} 
+        onOpenChange={setSettingsOpen} 
       />
     </aside>
     </>

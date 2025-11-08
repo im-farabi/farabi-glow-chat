@@ -329,6 +329,7 @@ export interface UserPreferences {
   name: string;
   occupation: string;
   interests: string[];
+  cursorType?: 'default' | 'professional' | 'cartoony';
 }
 
 /**
@@ -353,6 +354,22 @@ export function saveUserPreferences(preferences: UserPreferences): void {
   } catch (error) {
     console.error('Error saving preferences:', error);
   }
+}
+
+/**
+ * Get cursor preference
+ */
+export function getCursorPreference(): 'default' | 'professional' | 'cartoony' {
+  const prefs = getUserPreferences();
+  return prefs.cursorType || 'default';
+}
+
+/**
+ * Save cursor preference
+ */
+export function saveCursorPreference(cursorType: 'default' | 'professional' | 'cartoony'): void {
+  const prefs = getUserPreferences();
+  saveUserPreferences({ ...prefs, cursorType });
 }
 
 /**
