@@ -14,14 +14,19 @@ import AdRedirect from "./pages/AdRedirect";
 import ImageGen from "./pages/ImageGen";
 import NotFound from "./pages/NotFound";
 import { getCursorPreference } from "./lib/storage";
+import { useCursorEffects } from "./hooks/useCursorEffects";
 
 const queryClient = new QueryClient();
 
 const App = () => {
+  // Apply saved cursor preference
   useEffect(() => {
     const cursorType = getCursorPreference();
     document.body.classList.add(`cursor-${cursorType}`);
   }, []);
+
+  // Add cursor click effects and sounds
+  useCursorEffects();
 
   return (
   <QueryClientProvider client={queryClient}>

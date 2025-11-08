@@ -108,47 +108,56 @@ body.cursor-default * {
 body.cursor-professional,
 body.cursor-professional * {
   cursor: url('/cursors/professional-cursor.png') 0 0, auto !important;
+  cursor: -webkit-image-set(
+    url('/cursors/professional-cursor.png') 1x,
+    url('/cursors/professional-cursor-2x.png') 2x
+  ) 0 0, auto !important;
 }
 
 body.cursor-cartoony,
 body.cursor-cartoony * {
   cursor: url('/cursors/cartoony-cursor.png') 0 0, auto !important;
+  cursor: -webkit-image-set(
+    url('/cursors/cartoony-cursor.png') 1x,
+    url('/cursors/cartoony-cursor-2x.png') 2x
+  ) 0 0, auto !important;
 }
 
-/* Retina display support */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  body.cursor-professional,
-  body.cursor-professional * {
-    cursor: url('/cursors/professional-cursor-2x.png') 0 0, auto !important;
-    cursor: -webkit-image-set(
-      url('/cursors/professional-cursor.png') 1x,
-      url('/cursors/professional-cursor-2x.png') 2x
-    ) 0 0, auto !important;
+/* Cursor Click Animation */
+@keyframes cursor-click {
+  0% {
+    transform: scale(1);
   }
-  
-  body.cursor-cartoony,
-  body.cursor-cartoony * {
-    cursor: url('/cursors/cartoony-cursor-2x.png') 0 0, auto !important;
-    cursor: -webkit-image-set(
-      url('/cursors/cartoony-cursor.png') 1x,
-      url('/cursors/cartoony-cursor-2x.png') 2x
-    ) 0 0, auto !important;
+  50% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
-/* Keep pointer cursor for interactive elements with custom cursors */
-body.cursor-professional button:hover,
-body.cursor-professional a:hover,
-body.cursor-cartoony button:hover,
-body.cursor-cartoony a:hover {
-  cursor: url('/cursors/professional-cursor.png') 0 0, pointer !important;
+@keyframes cursor-ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
 }
 
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  body.cursor-professional button:hover,
-  body.cursor-professional a:hover,
-  body.cursor-cartoony button:hover,
-  body.cursor-cartoony a:hover {
-    cursor: url('/cursors/professional-cursor-2x.png') 0 0, pointer !important;
-  }
+.cursor-click-effect {
+  position: fixed;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--primary));
+  pointer-events: none;
+  z-index: 9999;
+  animation: cursor-ripple 0.6s ease-out;
+}
+
+body.cursor-clicking {
+  animation: cursor-click 0.2s ease-out;
 }

@@ -182,12 +182,12 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
                         <Label htmlFor="professional" className="text-base font-medium cursor-pointer">
                           Professional Cursor
                         </Label>
-                        <p className="text-sm text-muted-foreground mb-3">Sleek purple arrow cursor</p>
+                        <p className="text-sm text-muted-foreground mb-3">Sleek purple arrow with click effects & sound</p>
                         <div 
                           className="w-full h-24 border rounded-md flex items-center justify-center bg-muted/30"
                           style={{ cursor: 'url(/cursors/professional-cursor.png) 0 0, auto' }}
                         >
-                          <p className="text-sm text-muted-foreground">Hover to preview</p>
+                          <p className="text-sm text-muted-foreground">Hover & click to preview</p>
                         </div>
                       </div>
                     </div>
@@ -199,12 +199,12 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
                         <Label htmlFor="cartoony" className="text-base font-medium cursor-pointer">
                           Cartoony Cursor
                         </Label>
-                        <p className="text-sm text-muted-foreground mb-3">Fun character cursor</p>
+                        <p className="text-sm text-muted-foreground mb-3">Fun character with click effects & sound</p>
                         <div 
                           className="w-full h-24 border rounded-md flex items-center justify-center bg-muted/30"
                           style={{ cursor: 'url(/cursors/cartoony-cursor.png) 0 0, auto' }}
                         >
-                          <p className="text-sm text-muted-foreground">Hover to preview</p>
+                          <p className="text-sm text-muted-foreground">Hover & click to preview</p>
                         </div>
                       </div>
                     </div>
