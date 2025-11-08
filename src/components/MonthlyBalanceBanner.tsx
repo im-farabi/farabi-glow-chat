@@ -30,6 +30,25 @@ const MonthlyBalanceBanner = () => {
     };
   }, []);
 
+  // Check for existing ad timer on mount
+  useEffect(() => {
+    const startTime = localStorage.getItem('adStartTime');
+    if (startTime) {
+      const elapsed = Math.floor((Date.now() - parseInt(startTime)) / 1000);
+      if (elapsed < 10) {
+        setAdStarted(true);
+        setCameBackEarly(true);
+        setTimeLeft(10 - elapsed);
+      } else {
+        // Timer completed while away, give reward
+        addAdReward();
+        localStorage.removeItem('adStartTime');
+        updateBalance();
+      }
+    }
+  }, []);
+
+  // Timer effect
   useEffect(() => {
     if (!adStarted) return;
     
@@ -64,6 +83,31 @@ const MonthlyBalanceBanner = () => {
     
     return () => clearInterval(interval);
   }, [adStarted]);
+
+  // Detect when user comes back to this page while ad is running
+  useEffect(() => {
+    const handleFocus = () => {
+      const startTime = localStorage.getItem('adStartTime');
+      if (startTime && !cameBackEarly) {
+        const elapsed = Math.floor((Date.now() - parseInt(startTime)) / 1000);
+        if (elapsed < 10) {
+          setAdStarted(true);
+          setCameBackEarly(true);
+          setTimeLeft(10 - elapsed);
+          setShowAdDialog(true); // Auto-open dialog when they come back early
+        }
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) handleFocus();
+    });
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [cameBackEarly]);
 
   const updateBalance = () => {
     const balanceData = getMonthlyBalance();
@@ -115,7 +159,7 @@ const MonthlyBalanceBanner = () => {
             <DollarSign className="h-4 w-4 text-primary" />
             <div>
               <p className="text-sm font-semibold text-foreground">
-                ${usedAmount.toFixed(2)}/3.00$ Monthly Remaining
+                ${usedAmount.toFixed(2)}/${balance.toFixed(2)}$ Monthly Remaining
               </p>
               <p className="text-xs text-muted-foreground">
                 It will reset every month
