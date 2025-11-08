@@ -3,7 +3,25 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import AdBanner from './AdBanner';
+import { recommendedQuestions } from '@/data/recommendedQuestions';
 import { useMediaQuery } from '@/hooks/use-mobile';
+
+const RecommendedQuestions = ({ onQuestionClick }: { onQuestionClick: (question: string, mode: any) => void }) => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+    {recommendedQuestions.slice(0, 4).map((question, idx) => (
+      <button
+        key={idx}
+        onClick={() => {
+          const event = new CustomEvent('fillChatInput', { detail: question });
+          window.dispatchEvent(event);
+        }}
+        className="p-4 text-left rounded-lg bg-card border border-border hover:border-primary/50 hover:bg-accent transition-all text-sm"
+      >
+        {question}
+      </button>
+    ))}
+  </div>
+);
 
 interface Message {
   role: 'user' | 'assistant';
@@ -62,6 +80,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                     Start a conversation with FARABI
                   </p>
                 </div>
+                <RecommendedQuestions onQuestionClick={onSendMessage} />
               </div>
             </div>
           ) : (
@@ -119,6 +138,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                     Start a conversation with FARABI
                   </p>
                 </div>
+                <RecommendedQuestions onQuestionClick={onSendMessage} />
               </div>
             </div>
           ) : (

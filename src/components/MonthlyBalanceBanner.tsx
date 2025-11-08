@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMonthlyBalance, addAdReward } from '@/lib/storage';
+import { getMonthlyBalance, addAdReward, calculateTotalCost } from '@/lib/storage';
 import { DollarSign } from 'lucide-react';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 
 const MonthlyBalanceBanner = () => {
   const [balance, setBalance] = useState<number>(3.00);
-  const [totalUsed, setTotalUsed] = useState<number>(0);
+  const [usedAmount, setUsedAmount] = useState<number>(0);
   const [showAdDialog, setShowAdDialog] = useState(false);
   const [adStarted, setAdStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(10);
@@ -34,9 +34,12 @@ const MonthlyBalanceBanner = () => {
     if (!adStarted) return;
     
     const startTime = localStorage.getItem('adStartTime');
-    if (!startTime) return;
+    if (!startTime) {
+      setAdStarted(false);
+      return;
+    }
     
-    const interval = setInterval(() => {
+    const checkTimer = () => {
       const elapsed = Math.floor((Date.now() - parseInt(startTime)) / 1000);
       const remaining = 10 - elapsed;
       
@@ -49,12 +52,15 @@ const MonthlyBalanceBanner = () => {
         setAdStarted(false);
         setShowAdDialog(false);
         setCameBackEarly(false);
-        clearInterval(interval);
-      } else if (document.hasFocus() && remaining > 0) {
-        // User came back early
-        setCameBackEarly(true);
+        updateBalance();
       }
-    }, 1000);
+    };
+    
+    // Check immediately
+    checkTimer();
+    
+    // Then check every second
+    const interval = setInterval(checkTimer, 1000);
     
     return () => clearInterval(interval);
   }, [adStarted]);
@@ -62,7 +68,10 @@ const MonthlyBalanceBanner = () => {
   const updateBalance = () => {
     const balanceData = getMonthlyBalance();
     setBalance(balanceData.balance);
-    setTotalUsed(balanceData.totalUsed);
+    
+    // Get character-based usage cost
+    const cost = calculateTotalCost();
+    setUsedAmount(cost.rounded);
   };
 
   const handleGetMore = () => {
@@ -70,16 +79,32 @@ const MonthlyBalanceBanner = () => {
   };
 
   const handleWatchAd = () => {
+    const startTime = Date.now().toString();
+    localStorage.setItem('adStartTime', startTime);
     setAdStarted(true);
     setTimeLeft(10);
     setCameBackEarly(false);
-    localStorage.setItem('adStartTime', Date.now().toString());
+    
+    // Open ad in new tab
     window.open('/ad', '_blank');
+    
+    // Start checking if user comes back early
+    setTimeout(() => {
+      const stored = localStorage.getItem('adStartTime');
+      if (stored === startTime && document.hasFocus()) {
+        // User came back while timer is still running
+        const elapsed = Math.floor((Date.now() - parseInt(stored)) / 1000);
+        if (elapsed < 10) {
+          setCameBackEarly(true);
+          setTimeLeft(10 - elapsed);
+        }
+      }
+    }, 1000);
   };
 
   const handleContinueWatching = () => {
-    window.open('/ad', '_blank');
     setCameBackEarly(false);
+    window.open('/ad', '_blank');
   };
 
   return (
@@ -90,7 +115,7 @@ const MonthlyBalanceBanner = () => {
             <DollarSign className="h-4 w-4 text-primary" />
             <div>
               <p className="text-sm font-semibold text-foreground">
-                ${totalUsed.toFixed(2)}/3.00$ Monthly Remaining
+                ${usedAmount.toFixed(2)}/3.00$ Monthly Remaining
               </p>
               <p className="text-xs text-muted-foreground">
                 It will reset every month
