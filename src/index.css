@@ -112,7 +112,6 @@ body.cursor-professional * {
     url('/cursors/professional-cursor.png') 1x,
     url('/cursors/professional-cursor-2x.png') 2x
   ) 0 0, auto !important;
-  animation: cursor-glow 2s ease-in-out infinite;
 }
 
 /* Cursor Click Animation */
