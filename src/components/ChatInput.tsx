@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { recommendedQuestions } from '@/data/recommendedQuestions';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChatInputProps {
   onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen') => void;
@@ -21,6 +22,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showRecommended, setShowRecommended] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const handleFillInput = (event: CustomEvent<string>) => {
@@ -151,7 +153,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
               className="min-h-[40px] md:min-h-[50px] max-h-[120px] md:max-h-[150px] resize-none text-sm md:text-base"
             />
             
-            {showRecommended && recommendedQuestions.length > 0 && (
+            {!isMobile && showRecommended && recommendedQuestions.length > 0 && (
               <div 
                 ref={dropdownRef}
                 className="absolute bottom-full left-0 right-0 mb-2 bg-popover border border-border rounded-lg shadow-lg max-h-[200px] overflow-y-auto z-50"

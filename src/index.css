@@ -112,38 +112,27 @@ body.cursor-professional * {
     url('/cursors/professional-cursor.png') 1x,
     url('/cursors/professional-cursor-2x.png') 2x
   ) 0 0, auto !important;
-}
-
-body.cursor-cartoony,
-body.cursor-cartoony * {
-  cursor: url('/cursors/cartoony-cursor.png') 0 0, auto !important;
-  cursor: -webkit-image-set(
-    url('/cursors/cartoony-cursor.png') 1x,
-    url('/cursors/cartoony-cursor-2x.png') 2x
-  ) 0 0, auto !important;
+  animation: cursor-glow 2s ease-in-out infinite;
 }
 
 /* Cursor Click Animation */
-@keyframes cursor-click {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(0.9);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
 @keyframes cursor-ripple {
   0% {
     transform: scale(0.8);
-    opacity: 1;
+    opacity: 0.8;
   }
   100% {
     transform: scale(2.5);
     opacity: 0;
+  }
+}
+
+@keyframes cursor-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px hsl(var(--primary)));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px hsl(var(--primary)));
   }
 }
 
@@ -153,11 +142,9 @@ body.cursor-cartoony * {
   height: 40px;
   border-radius: 50%;
   border: 2px solid hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
   pointer-events: none;
   z-index: 9999;
   animation: cursor-ripple 0.6s ease-out;
-}
-
-body.cursor-clicking {
-  animation: cursor-click 0.2s ease-out;
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
 }

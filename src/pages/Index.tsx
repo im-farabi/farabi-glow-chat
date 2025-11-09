@@ -73,11 +73,11 @@ const Index = () => {
     const handleTouchEnd = (e: TouchEvent) => {
       const touchEndX = e.changedTouches[0].clientX;
       const touchEndY = e.changedTouches[0].clientY;
-      const deltaX = touchStartX - touchEndX;
+      const deltaX = touchEndX - touchStartX;
       const deltaY = Math.abs(touchStartY - touchEndY);
       
       // Swipe left detected (and mostly horizontal)
-      if (deltaX > 50 && deltaY < 50) {
+      if (deltaX < -50 && deltaY < 50) {
         setIsSidebarOpen(true);
       }
     };

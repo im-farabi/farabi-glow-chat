@@ -329,7 +329,7 @@ export interface UserPreferences {
   name: string;
   occupation: string;
   interests: string[];
-  cursorType?: 'default' | 'professional' | 'cartoony';
+  cursorType?: 'default' | 'professional';
 }
 
 /**
@@ -367,7 +367,7 @@ export function getCursorPreference(): 'default' | 'professional' | 'cartoony' {
 /**
  * Save cursor preference
  */
-export function saveCursorPreference(cursorType: 'default' | 'professional' | 'cartoony'): void {
+export function saveCursorPreference(cursorType: 'default' | 'professional'): void {
   const prefs = getUserPreferences();
   saveUserPreferences({ ...prefs, cursorType });
 }

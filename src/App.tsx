@@ -21,7 +21,9 @@ const queryClient = new QueryClient();
 const App = () => {
   // Apply saved cursor preference
   useEffect(() => {
-    const cursorType = getCursorPreference();
+    const savedCursor = getCursorPreference();
+    // Filter out cartoony cursor if it was saved previously
+    const cursorType = savedCursor === 'cartoony' ? 'default' : savedCursor;
     document.body.classList.add(`cursor-${cursorType}`);
   }, []);
 

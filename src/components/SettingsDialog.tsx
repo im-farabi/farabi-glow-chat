@@ -30,13 +30,15 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
     interests: [],
     cursorType: 'default'
   });
-  const [cursorType, setCursorType] = useState<'default' | 'professional' | 'cartoony'>('default');
+  const [cursorType, setCursorType] = useState<'default' | 'professional'>('default');
 
   useEffect(() => {
     if (open) {
       const savedPrefs = getUserPreferences();
       setPreferences(savedPrefs);
-      setCursorType(getCursorPreference());
+      const savedCursor = getCursorPreference();
+      // Filter out cartoony cursor if it was saved previously
+      setCursorType(savedCursor === 'cartoony' ? 'default' : savedCursor as 'default' | 'professional');
     }
   }, [open]);
 
@@ -186,23 +188,6 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
                         <div 
                           className="w-full h-24 border rounded-md flex items-center justify-center bg-muted/30"
                           style={{ cursor: 'url(/cursors/professional-cursor.png) 0 0, auto' }}
-                        >
-                          <p className="text-sm text-muted-foreground">Hover & click to preview</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Cartoony Cursor */}
-                    <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                      <RadioGroupItem value="cartoony" id="cartoony" className="mt-1" />
-                      <div className="flex-1">
-                        <Label htmlFor="cartoony" className="text-base font-medium cursor-pointer">
-                          Cartoony Cursor
-                        </Label>
-                        <p className="text-sm text-muted-foreground mb-3">Fun character with click effects & sound</p>
-                        <div 
-                          className="w-full h-24 border rounded-md flex items-center justify-center bg-muted/30"
-                          style={{ cursor: 'url(/cursors/cartoony-cursor.png) 0 0, auto' }}
                         >
                           <p className="text-sm text-muted-foreground">Hover & click to preview</p>
                         </div>

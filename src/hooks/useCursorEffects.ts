@@ -26,8 +26,8 @@ export function useCursorEffects() {
       document.body.appendChild(ripple);
       
       // Play sound effect
-      if (cursorType === 'professional' || cursorType === 'cartoony') {
-        playClickSound(cursorType);
+      if (cursorType === 'professional') {
+        playClickSound('professional');
       }
       
       // Remove ripple after animation
@@ -36,16 +36,9 @@ export function useCursorEffects() {
       }, 600);
     };
 
-    // Add click animation class
-    const handleMouseDown = () => {
-      document.body.classList.add('cursor-clicking');
-    };
+    // Click animations are handled via ripple effect only
 
-    const handleMouseUp = () => {
-      document.body.classList.remove('cursor-clicking');
-    };
-
-    const playClickSound = (type: 'professional' | 'cartoony') => {
+    const playClickSound = (type: 'professional') => {
       try {
         // Create oscillator for synthetic click sound if files don't exist
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -55,9 +48,9 @@ export function useCursorEffects() {
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
         
-        // Different frequencies for different cursors
-        oscillator.frequency.value = type === 'professional' ? 800 : 1200;
-        oscillator.type = type === 'professional' ? 'sine' : 'square';
+        // Professional cursor sound
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
         
         // Quick click sound
         gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
@@ -72,13 +65,9 @@ export function useCursorEffects() {
     };
 
     document.addEventListener('click', createRipple);
-    document.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mouseup', handleMouseUp);
 
     return () => {
       document.removeEventListener('click', createRipple);
-      document.removeEventListener('mousedown', handleMouseDown);
-      document.removeEventListener('mouseup', handleMouseUp);
     };
   }, []);
 }
