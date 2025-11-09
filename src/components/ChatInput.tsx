@@ -1,7 +1,7 @@
 import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Bolt, Circle, Zap, Wrench } from 'lucide-react';
+import { Send, Bolt, Circle, Zap, Wrench, ImagePlus, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { recommendedQuestions } from '@/data/recommendedQuestions';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen') => void;
+  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen', image?: File) => void;
   disabled?: boolean;
 }
 
@@ -23,6 +24,10 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   const [showRecommended, setShowRecommended] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleFillInput = (event: CustomEvent<string>) => {
@@ -35,16 +40,58 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   }, []);
 
   const handleSend = () => {
-    if (!message.trim()) return;
+    if (!message.trim() && !selectedImage) return;
     
-    onSendMessage(message, activeMode);
+    onSendMessage(message, activeMode, selectedImage || undefined);
     setMessage('');
     setActiveMode('normal');
+    setSelectedImage(null);
+    setImagePreview(null);
     
     // Re-focus textarea after sending
     setTimeout(() => {
       textareaRef.current?.focus();
     }, 0);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select a valid image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Image size must be less than 10MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSelectedImage(file);
+    const preview = URL.createObjectURL(file);
+    setImagePreview(preview);
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -108,8 +155,37 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           </Button>
         </div>
 
+        {/* Image Preview */}
+        {selectedImage && imagePreview && (
+          <div className="relative inline-block mb-2">
+            <img 
+              src={imagePreview} 
+              alt="Preview" 
+              className="h-20 rounded-lg border-2 border-border object-cover"
+            />
+            <button 
+              onClick={clearImage}
+              className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:opacity-90 transition-opacity"
+              type="button"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <p className="text-xs text-muted-foreground mt-1">
+              {selectedImage.name} ({(selectedImage.size / 1024).toFixed(1)} KB)
+            </p>
+          </div>
+        )}
+
         {/* Input row */}
         <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -121,7 +197,12 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="bg-popover z-50">
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                <ImagePlus className="h-4 w-4 mr-2" />
+                Upload Image
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setActiveMode('imageGen')}>
+                <Wrench className="h-4 w-4 mr-2" />
                 Generate Image
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -178,7 +259,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
 
           <Button
             onClick={handleSend}
-            disabled={disabled || !message.trim()}
+            disabled={disabled || (!message.trim() && !selectedImage)}
             size="icon"
             className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 hover:scale-105 h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0 transition-all duration-200 active:scale-95"
           >

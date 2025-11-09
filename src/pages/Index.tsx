@@ -138,14 +138,22 @@ const Index = () => {
 
   const handleSendMessage = async (
     message: string, 
-    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen'
+    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen',
+    image?: File
   ) => {
-    if (!message.trim()) return;
+    if (!message.trim() && !image) return;
+
+    // Convert image to preview URL if present
+    let imagePreviewUrl: string | undefined;
+    if (image) {
+      imagePreviewUrl = URL.createObjectURL(image);
+    }
 
     // Add user message
     const userMessage: Message = {
       role: 'user',
-      content: message
+      content: message || '🖼️ [Image uploaded]',
+      image: imagePreviewUrl
     };
 
     const newMessages = [...messages, userMessage];
@@ -165,7 +173,7 @@ const Index = () => {
       role: 'assistant',
       content: '',
       isLoading: true,
-      loadingText: mode === 'imageGen' ? 'Generating Image' : 'Sending...'
+      loadingText: image ? 'Analyzing image...' : mode === 'imageGen' ? 'Generating Image' : 'Sending...'
     };
     setMessages([...newMessages, loadingMessage]);
     
@@ -202,13 +210,13 @@ const Index = () => {
 
       switch (mode) {
         case 'fast':
-          response = await sendFast(message, messages);
+          response = await sendFast(message, messages, image);
           break;
         case 'normal':
-          response = await sendNormal(message, messages);
+          response = await sendNormal(message, messages, image);
           break;
         case 'super':
-          response = await sendSuper(message, messages);
+          response = await sendSuper(message, messages, image);
           break;
       case 'imageGen':
         const { imageUrl, imageBlob } = await generateImage(message, (status) => {
