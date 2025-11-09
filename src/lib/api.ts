@@ -162,8 +162,8 @@ export type ModelType = 'fast' | 'normal' | 'super' | 'imageGen';
 /**
  * Build URL for API request
  */
-function buildUrl(prompt: string, model: string): string {
-  return `${API_CONFIG.baseUrl}/${encodeURIComponent(prompt)}?model=${model}`;
+function buildUrl(model: string, seed: number): string {
+  return `${API_CONFIG.baseUrl}/api/generate`;
 }
 
 /**
@@ -236,24 +236,34 @@ async function sendRequest(
         ? `${freshInstruction}\n${history}\nUser: ${prompt}\nAssistant:`
         : `${freshInstruction}\nUser: ${prompt}\nAssistant:`;
       
-      // Build URL with or without model parameter
-      const encodedPrompt = encodeURIComponent(fullPrompt);
       const randomSeed = Math.random();
-      const url = `${API_CONFIG.baseUrl}/${encodedPrompt}?model=${config.model}&seed=${randomSeed}`;
+      const url = buildUrl(config.model, randomSeed);
       
-      let images: string[] | null = null;
+      // Use FormData for image requests, URL params for text-only
+      let response: Response;
+      
       if (image) {
-        const base64 = await imageToBase64(image);
-        images = [base64];
+        // POST request with FormData for images
+        const formData = new FormData();
+        formData.append('model', config.model);
+        formData.append('image', image);
+        formData.append('prompt', fullPrompt);
+        
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${config.useFallbackKey ? API_CONFIG.fallbackApiKey : API_CONFIG.apiKey}`
+          },
+          body: formData
+        });
+      } else {
+        // GET request with prompt in URL for text-only
+        const textUrl = `${API_CONFIG.baseUrl}/${encodeURIComponent(fullPrompt)}?model=${config.model}&seed=${randomSeed}`;
+        response = await fetch(textUrl, {
+          method: 'GET',
+          headers: getHeaders(config.useFallbackKey)
+        });
       }
-
-      const body = images && images.length > 0 ? { images } : {};
-
-      const response = await fetch(url, {
-        method: images && images.length > 0 ? 'POST' : 'GET',
-        headers: getHeaders(config.useFallbackKey),
-        ...(images && images.length > 0 && { body: JSON.stringify(body) })
-      });
 
       if (!response.ok) {
         const errorText = await response.text();
