@@ -188,9 +188,10 @@ const VoiceExplain = () => {
   const handleDownload = () => {
     if (!audioUrl) return;
 
+    const randomNumber = Math.floor(Math.random() * 1000000);
     const a = document.createElement('a');
     a.href = audioUrl;
-    a.download = `voice-explanation-${Date.now()}.mp3`;
+    a.download = `farabi.me-voice${randomNumber}.mp3`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -346,85 +347,124 @@ const VoiceExplain = () => {
             </Button>
 
             {audioUrl && (
-              <Card className="mt-6 bg-accent/10">
-                <CardContent className="pt-6">
-                  <div className="flex flex-col gap-4">
-                    <audio ref={audioRef} src={audioUrl} className="hidden" />
-                    
-                    {/* Time display */}
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(audioDuration)}</span>
+              <Card className="mt-6 bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 border-2 border-primary/20">
+                <CardContent className="pt-8 pb-8">
+                  <audio ref={audioRef} src={audioUrl} className="hidden" />
+                  
+                  <div className="flex flex-col gap-6">
+                    {/* Main heading */}
+                    <div className="text-center space-y-2">
+                      <h3 className="text-xl font-semibold flex items-center justify-center gap-2">
+                        <Volume2 className="h-6 w-6 text-primary" />
+                        Your Audio is Ready!
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Tap the play button below to start listening
+                      </p>
                     </div>
 
-                    {/* Playback controls */}
-                    <div className="flex items-center justify-center gap-2">
-                      <Button onClick={handleSkipBackward} size="icon" variant="outline">
-                        <SkipBack className="h-4 w-4" />
-                      </Button>
-
-                      <Button onClick={handlePlayPause} size="lg">
-                        {isPlaying ? (
-                          <>
-                            <Pause className="mr-2 h-4 w-4" />
-                            Pause
-                          </>
-                        ) : (
-                          <>
-                            <Play className="mr-2 h-4 w-4" />
-                            Play
-                          </>
-                        )}
-                      </Button>
-
-                      <Button onClick={handleSkipForward} size="icon" variant="outline">
-                        <SkipForward className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* Playback speed */}
+                    {/* Progress bar */}
                     <div className="space-y-2">
-                      <Label className="text-sm">Playback Speed</Label>
-                      <div className="flex gap-2">
-                        {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
-                          <Button
-                            key={rate}
-                            onClick={() => handlePlaybackRateChange(rate)}
-                            variant={playbackRate === rate ? "default" : "outline"}
-                            size="sm"
-                            className="flex-1"
-                          >
-                            {rate}x
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Volume control */}
-                    <div className="space-y-2">
-                      <Label className="text-sm flex items-center gap-2">
-                        <Volume1 className="h-4 w-4" />
-                        Volume
-                      </Label>
                       <Slider
-                        value={[volume]}
-                        onValueChange={handleVolumeChange}
+                        value={[currentTime]}
+                        onValueChange={(value) => {
+                          if (audioRef.current) {
+                            audioRef.current.currentTime = value[0];
+                            setCurrentTime(value[0]);
+                          }
+                        }}
                         min={0}
-                        max={1}
+                        max={audioDuration || 100}
                         step={0.1}
                         className="w-full"
                       />
+                      <div className="flex justify-between text-sm text-muted-foreground font-medium">
+                        <span>{formatTime(currentTime)}</span>
+                        <span>{formatTime(audioDuration)}</span>
+                      </div>
                     </div>
 
-                    {/* Download button */}
-                    <Button onClick={handleDownload} variant="outline" className="w-full">
-                      <Download className="mr-2 h-4 w-4" />
+                    {/* Main playback controls - LARGE and centered */}
+                    <div className="flex items-center justify-center gap-3 sm:gap-4">
+                      <Button 
+                        onClick={handleSkipBackward} 
+                        size="icon" 
+                        variant="outline"
+                        className="h-14 w-14 sm:h-16 sm:w-16 rounded-full border-2 hover:scale-105 transition-transform"
+                      >
+                        <SkipBack className="h-6 w-6 sm:h-7 sm:w-7" />
+                      </Button>
+
+                      <Button 
+                        onClick={handlePlayPause} 
+                        size="icon"
+                        className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-gradient-to-br from-primary to-secondary hover:opacity-90 hover:scale-105 transition-all shadow-lg"
+                      >
+                        {isPlaying ? (
+                          <Pause className="h-10 w-10 sm:h-12 sm:w-12" />
+                        ) : (
+                          <Play className="h-10 w-10 sm:h-12 sm:w-12 ml-1" />
+                        )}
+                      </Button>
+
+                      <Button 
+                        onClick={handleSkipForward} 
+                        size="icon" 
+                        variant="outline"
+                        className="h-14 w-14 sm:h-16 sm:w-16 rounded-full border-2 hover:scale-105 transition-transform"
+                      >
+                        <SkipForward className="h-6 w-6 sm:h-7 sm:w-7" />
+                      </Button>
+                    </div>
+
+                    {/* Secondary controls in a grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
+                      {/* Playback speed */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Playback Speed</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
+                            <Button
+                              key={rate}
+                              onClick={() => handlePlaybackRateChange(rate)}
+                              variant={playbackRate === rate ? "default" : "outline"}
+                              size="sm"
+                              className="h-10"
+                            >
+                              {rate}x
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Volume control */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          <VolumeIcon className="h-4 w-4" />
+                          Volume
+                        </Label>
+                        <div className="pt-3">
+                          <Slider
+                            value={[volume]}
+                            onValueChange={handleVolumeChange}
+                            min={0}
+                            max={1}
+                            step={0.1}
+                            className="w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Download button - prominent */}
+                    <Button 
+                      onClick={handleDownload} 
+                      variant="outline" 
+                      className="w-full h-12 text-base border-2 hover:bg-primary/10 hover:border-primary"
+                    >
+                      <Download className="mr-2 h-5 w-5" />
                       Download Audio
                     </Button>
-
-                    <p className="text-sm text-muted-foreground text-center">
-                      Your voice explanation is ready! Use the controls above to customize playback.
-                    </p>
                   </div>
                 </CardContent>
               </Card>
