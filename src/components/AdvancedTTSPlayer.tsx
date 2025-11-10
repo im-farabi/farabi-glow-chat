@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Pause, Play, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AdvancedTTSPlayerProps {
   text: string;
@@ -36,22 +37,21 @@ const AdvancedTTSPlayer = ({ text, onClose }: AdvancedTTSPlayerProps) => {
           .replace(/\s+/g, ' ')
           .trim();
 
-        const encodedText = encodeURIComponent(`repeat after me " ${cleanText} "`);
-        const audioUrl = `https://text.pollinations.ai/${encodedText}?model=openai-audio&voice=nova`;
-        
-        // Fetch with authorization header
-        const response = await fetch(audioUrl, {
-          headers: {
-            'Authorization': 'Bearer diO2AcUEcZmCDP_I'
+        // Call edge function for TTS
+        const { data, error } = await supabase.functions.invoke('pollinations-tts', {
+          body: {
+            text: `repeat after me " ${cleanText} "`,
+            voice: 'nova',
+            model: 'openai-audio'
           }
         });
 
-        if (!response.ok) {
+        if (error) {
           throw new Error('Failed to fetch audio');
         }
 
         // Convert to blob and create blob URL
-        const audioBlob = await response.blob();
+        const audioBlob = new Blob([data]);
         const blobUrl = URL.createObjectURL(audioBlob);
 
         const audio = new Audio(blobUrl);

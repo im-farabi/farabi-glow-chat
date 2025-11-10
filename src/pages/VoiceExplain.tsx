@@ -9,7 +9,7 @@ import { Loader2, Volume2, ArrowLeft, Home, Play, Pause, Download, SkipForward, 
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
-import { getApiConfig } from '@/lib/api';
+import { supabase } from '@/integrations/supabase/client';
 
 // Set page-specific SEO
 const useVoiceExplainPageSEO = () => {
@@ -82,43 +82,27 @@ const VoiceExplain = () => {
     try {
       const fullPrompt = buildPrompt();
       const encodedPrompt = encodeURIComponent(fullPrompt);
-      const apiUrl = `https://text.pollinations.ai/${encodedPrompt}?model=openai-audio&voice=${voice}`;
-
       toast({
         title: "Generating Audio",
         description: "Please wait, your audio is being made. It might take a few minutes or seconds.",
       });
 
-      console.log('Generating audio with URL:', apiUrl);
+      console.log('Generating audio with voice:', voice);
 
-      const { apiKey } = getApiConfig();
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-        },
+      const { data, error } = await supabase.functions.invoke('pollinations-tts', {
+        body: {
+          text: fullPrompt,
+          voice: voice,
+          model: 'openai-audio'
+        }
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error:', response.status, errorText);
-        
-        let errorMessage = 'Failed to generate voice explanation. ';
-        if (response.status === 402) {
-          errorMessage += 'API authentication required. Please try again later.';
-        } else if (response.status === 429) {
-          errorMessage += 'Rate limit reached. Please wait a moment and try again.';
-        } else if (response.status === 500) {
-          errorMessage += 'Server error. Please try again.';
-        } else {
-          errorMessage += `Error: ${response.status}`;
-        }
-        
-        throw new Error(errorMessage);
+      if (error) {
+        throw new Error('Failed to generate voice explanation.');
       }
 
-      // Get audio blob
-      const audioBlob = await response.blob();
+      // Convert data to blob
+      const audioBlob = new Blob([data]);
       
       // Validate blob
       if (audioBlob.size === 0) {

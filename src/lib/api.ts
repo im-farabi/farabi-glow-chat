@@ -1,17 +1,12 @@
 /**
  * API Configuration for FARABI.me
- * 
- * WARNING: This file contains a development API key.
- * Move this key to a server-side .env and use a proxy for production.
- * NEVER commit API keys to public repositories!
+ * Secured via Supabase Edge Functions
  */
 
+import { supabase } from '@/integrations/supabase/client';
 import { buildUserDetailsString } from './storage';
 
 const API_CONFIG = {
-  baseUrl: 'https://text.pollinations.ai',
-  apiKey: 'diO2AcUEcZmCDP_I', // DEV: do NOT commit to public repo
-  fallbackApiKey: 'WP7mIcpUNf1dJ0BW',
   models: {
     fast: 'gemini-search',
     normal: 'gemini-search',
@@ -159,23 +154,6 @@ export interface Message {
 
 export type ModelType = 'fast' | 'normal' | 'super' | 'imageGen';
 
-/**
- * Build URL for API request
- */
-function buildUrl(model: string, seed: number): string {
-  return `${API_CONFIG.baseUrl}/api/generate`;
-}
-
-/**
- * Get headers for API request
- */
-function getHeaders(useFallbackKey: boolean = false) {
-  const key = useFallbackKey ? API_CONFIG.fallbackApiKey : API_CONFIG.apiKey;
-  return {
-    'Authorization': `Bearer ${key}`,
-    'Content-Type': 'application/json'
-  };
-}
 
 /**
  * Build conversation history from recent messages
@@ -204,7 +182,7 @@ async function imageToBase64(file: File): Promise<string> {
 }
 
 /**
- * Send request to API
+ * Send request to API via Edge Function
  */
 async function sendRequest(
   prompt: string, 
@@ -213,11 +191,11 @@ async function sendRequest(
   messages: Message[] = [],
   image?: File
 ): Promise<string> {
-  // Define fallback models with proper key usage
+  // Define fallback models
   const modelConfigs = [
     { model: baseModel, label: `Primary: ${baseModel}`, useFallbackKey: false },
     { model: 'openai-large', label: 'Fallback: openai-large', useFallbackKey: false },
-    { model: 'openai', label: 'Fallback: openai (no auth)', useFallbackKey: true }
+    { model: 'openai', label: 'Fallback: openai', useFallbackKey: true }
   ];
 
   let lastError: Error | null = null;
@@ -237,45 +215,25 @@ async function sendRequest(
         : `${freshInstruction}\nUser: ${prompt}\nAssistant:`;
       
       const randomSeed = Math.random();
-      const url = buildUrl(config.model, randomSeed);
       
-      // Use FormData for image requests, URL params for text-only
-      let response: Response;
-      
-      if (image) {
-        // POST request with FormData for images
-        const formData = new FormData();
-        formData.append('model', config.model);
-        formData.append('image', image);
-        formData.append('prompt', fullPrompt);
-        
-        response = await fetch(url, {
-          method: 'POST',
-          body: formData
-        });
-      } else {
-        // GET request with prompt in URL for text-only
-        const textUrl = `${API_CONFIG.baseUrl}/${encodeURIComponent(fullPrompt)}?model=${config.model}&seed=${randomSeed}`;
-        response = await fetch(textUrl, {
-          method: 'GET',
-          headers: getHeaders(config.useFallbackKey)
-        });
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.warn(`${config.label} failed:`, response.status, errorText);
-        
-        // If content filter error, try next model
-        if (response.status === 400 && errorText.toLowerCase().includes('content')) {
-          lastError = new Error('Content filtered by AI safety policy');
-          continue;
+      // Call edge function
+      const { data, error } = await supabase.functions.invoke('pollinations-chat', {
+        body: {
+          prompt: fullPrompt,
+          model: config.model,
+          seed: randomSeed,
+          image: image ? await imageToBase64(image) : null,
+          useFallback: config.useFallbackKey
         }
-        
-        throw new Error(`API Error: ${response.status}`);
+      });
+
+      if (error) {
+        console.warn(`${config.label} failed:`, error);
+        lastError = error;
+        continue;
       }
 
-      const text = await response.text();
+      const text = data?.text;
       
       // Validate response
       if (text && text.trim().length > 0) {
@@ -324,7 +282,7 @@ export async function sendSuper(prompt: string, messages: Message[] = [], image?
 
 
 /**
- * Generate an image with enhanced prompt
+ * Generate an image with enhanced prompt via Edge Function
  */
 export async function generateImage(
   userPrompt: string, 
@@ -348,26 +306,30 @@ Return ONLY the enhanced prompt, nothing else. Make it 2-3 sentences maximum.`;
 
     const enhancedPrompt = await sendRequest(enhancementInstruction, API_CONFIG.models.normal, '', []);
     
-    // Build the image URL with the enhanced prompt
+    // Generate image via edge function
     onStatusUpdate?.('Generating Image...');
     
-    const encodedPrompt = encodeURIComponent(enhancedPrompt.trim());
-    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?nologo=true`;
-    
-    // Fetch the image and convert to blob with fallback
-    let imageResponse = await fetch(pollinationsUrl);
-    if (!imageResponse.ok) {
-      // Fallback: use simple prompt directly
+    const { data, error } = await supabase.functions.invoke('pollinations-image', {
+      body: { prompt: enhancedPrompt.trim() }
+    });
+
+    if (error) {
+      // Fallback: try with user prompt directly
       console.warn('Enhanced prompt failed, trying fallback with user prompt');
-      const fallbackUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(userPrompt)}?nologo=true`;
-      imageResponse = await fetch(fallbackUrl);
+      const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke('pollinations-image', {
+        body: { prompt: userPrompt }
+      });
       
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to generate image: ${imageResponse.status}`);
+      if (fallbackError) {
+        throw new Error('Failed to generate image');
       }
+      
+      const imageBlob = new Blob([fallbackData]);
+      const imageUrl = URL.createObjectURL(imageBlob);
+      return { imageUrl, imageBlob };
     }
     
-    const imageBlob = await imageResponse.blob();
+    const imageBlob = new Blob([data]);
     const imageUrl = URL.createObjectURL(imageBlob);
     
     return { imageUrl, imageBlob };
@@ -378,24 +340,10 @@ Return ONLY the enhanced prompt, nothing else. Make it 2-3 sentences maximum.`;
 }
 
 /**
- * Update the API key at runtime
- */
-export function setApiKey(newKey: string) {
-  API_CONFIG.apiKey = newKey;
-}
-
-/**
  * Set maximum context messages
  */
 export function setMaxContextMessages(max: number) {
   API_CONFIG.maxContextMessages = max;
-}
-
-/**
- * Get API configuration
- */
-export function getApiConfig() {
-  return { ...API_CONFIG };
 }
 
 /**

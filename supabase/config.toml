@@ -1,1 +1,10 @@
 project_id = "gjlxuvcfoqjhwzcmpaju"
+
+[functions.pollinations-chat]
+verify_jwt = false
+
+[functions.pollinations-tts]
+verify_jwt = false
+
+[functions.pollinations-image]
+verify_jwt = false
