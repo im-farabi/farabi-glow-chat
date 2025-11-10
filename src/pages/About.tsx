@@ -1,11 +1,63 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, MessageSquare, Search, Brain, Image } from 'lucide-react';
 
 const About = () => {
+  useEffect(() => {
+    document.title = "About - Farabi's AI Chatbot | Free AI Assistant Features";
+    
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'Learn about FARABI.me AI Chatbot features including AI chat, web search, reasoning, and image generation. Completely free with no signup required.');
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
+      {/* FAQ Schema */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Is it really free?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes! All features are completely free to use with no hidden costs or subscription fees."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Do I need to create an account?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No account required! Just start chatting immediately. Your chat history is saved locally in your browser."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What AI models are used?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "We use state-of-the-art AI models to provide the best possible experience across all features."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is my data private?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Your conversations are stored locally in your browser. We respect your privacy and don't track your personal data."
+              }
+            }
+          ]
+        })}
+      </script>
+      
       <header className="border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <Link to="/">

@@ -12,6 +12,18 @@ import { sendNormal } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 
+// Set page-specific SEO
+const useMCQPageSEO = () => {
+  useEffect(() => {
+    document.title = "MCQ Quiz Generator - Farabi's AI Chatbot | Free AI Quiz Maker";
+    
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'Generate AI-powered multiple choice quiz questions on any topic. Free MCQ generator with customizable difficulty levels and instant feedback.');
+    }
+  }, []);
+};
+
 interface MCQQuestion {
   question: string;
   options: string[];
@@ -26,6 +38,8 @@ interface QuizSettings {
 }
 
 const MCQGen = () => {
+  useMCQPageSEO(); // Apply page-specific SEO
+  
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -228,6 +242,28 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
   if (!quizStarted) {
     return (
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-accent/5">
+        {/* Breadcrumb Schema */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://farabi.me/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "MCQ Quiz Generator",
+                "item": "https://farabi.me/mcq-gen"
+              }
+            ]
+          })}
+        </script>
+        
         <Header />
         <main className="flex-1 container max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12">
           <Card className="border-2 md:border-4">

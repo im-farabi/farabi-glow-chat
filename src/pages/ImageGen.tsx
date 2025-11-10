@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -12,6 +12,14 @@ import { sendNormal } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 
 const ImageGen = () => {
+  useEffect(() => {
+    document.title = "AI Image Generator - Farabi's AI Chatbot | Free Image Generation";
+    
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'Generate AI images from text prompts for free. Create banners, logos, and custom images using advanced AI models. No signup required.');
+    }
+  }, []);
   const [prompt, setPrompt] = useState('');
   const [image, setImage] = useState<string>('');
   const [currentSeed, setCurrentSeed] = useState<number>(0);
@@ -197,6 +205,28 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
 
   return (
     <div className="flex flex-col h-screen bg-background">
+      {/* Breadcrumb Schema */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://farabi.me/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Image Generator",
+              "item": "https://farabi.me/image-gen"
+            }
+          ]
+        })}
+      </script>
+      
       <Header />
       
       <main className="flex-1 overflow-auto p-6">
@@ -332,8 +362,9 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                 <div className="aspect-video relative">
                   <img
                     src={image}
-                    alt="Generated image"
+                    alt={prompt ? `AI generated image: ${prompt.slice(0, 100)}` : "AI generated image"}
                     className="w-full h-full object-contain bg-muted"
+                    loading="lazy"
                   />
                 </div>
               </Card>

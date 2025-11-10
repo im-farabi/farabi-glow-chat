@@ -40,6 +40,9 @@ const AdBanner = ({ onClose }: AdBannerProps) => {
           src={selectedBanner.image} 
           alt={selectedBanner.alt}
           className="w-full h-auto rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300"
+          loading="lazy"
+          width="1200"
+          height="400"
         />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300 rounded-lg" />
       </Link>
