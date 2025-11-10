@@ -251,9 +251,6 @@ async function sendRequest(
         
         response = await fetch(url, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${config.useFallbackKey ? API_CONFIG.fallbackApiKey : API_CONFIG.apiKey}`
-          },
           body: formData
         });
       } else {
