@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Loader2, Volume2, ArrowLeft, Home, Play, Pause, Download } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Loader2, Volume2, ArrowLeft, Home, Play, Pause, Download, SkipForward, SkipBack, Volume1, Volume as VolumeIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -35,27 +36,31 @@ const VoiceExplain = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [volume, setVolume] = useState(1);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
 
   const buildPrompt = (): string => {
     let fullPrompt = prompt;
 
     // Add explanation level instructions
     if (explanationLevel === 'really-easy') {
-      fullPrompt += ' Explain like you would explain to a kid';
+      fullPrompt += ' in a way that a kid could understand';
     } else if (explanationLevel === 'simple') {
-      fullPrompt += ' Explain in a simple and easy way';
-    } else if (explanationLevel === 'normal') {
-      fullPrompt += ' Explain in a normal way';
+      fullPrompt += ' in a simple and easy way';
     }
+    // 'normal' doesn't add extra text
 
     // Add duration constraints
     if (duration === '1min') {
-      fullPrompt += ' and keep it under 1 minute with no time waste, straight to the point';
+      fullPrompt += ' and less than 1 minute';
     } else if (duration === '3min') {
-      fullPrompt += ' and keep it under 3 minutes with no time waste, straight to the point';
-    } else {
-      fullPrompt += ' with no time waste like "got it, I\'ll explain", just go straight to the point';
+      fullPrompt += ' and less than 3 minutes';
     }
+
+    // Always add this to avoid AI saying "got it, I'll explain"
+    fullPrompt += ' with no time waste like got it ill explain full straight to the point';
 
     return fullPrompt;
   };
@@ -83,19 +88,38 @@ const VoiceExplain = () => {
         description: "Please wait, your audio is being made. It might take a few minutes or seconds.",
       });
 
+      console.log('Generating audio with URL:', apiUrl);
+
       const response = await fetch(apiUrl, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_API_KEY || ''}`,
-        },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate voice explanation');
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        
+        let errorMessage = 'Failed to generate voice explanation. ';
+        if (response.status === 402) {
+          errorMessage += 'API authentication required. Please try again later.';
+        } else if (response.status === 429) {
+          errorMessage += 'Rate limit reached. Please wait a moment and try again.';
+        } else if (response.status === 500) {
+          errorMessage += 'Server error. Please try again.';
+        } else {
+          errorMessage += `Error: ${response.status}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       // Get audio blob
       const audioBlob = await response.blob();
+      
+      // Validate blob
+      if (audioBlob.size === 0) {
+        throw new Error('Received empty audio file. Please try again.');
+      }
+      
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
 
@@ -121,9 +145,39 @@ const VoiceExplain = () => {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play();
+      audioRef.current.play().catch(error => {
+        console.error('Error playing audio:', error);
+        toast({
+          title: "Playback Error",
+          description: "Failed to play audio. Please try downloading and playing locally.",
+          variant: "destructive",
+        });
+      });
     }
     setIsPlaying(!isPlaying);
+  };
+
+  const handleSkipForward = () => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.min(audioRef.current.currentTime + 10, audioRef.current.duration);
+  };
+
+  const handleSkipBackward = () => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.max(audioRef.current.currentTime - 10, 0);
+  };
+
+  const handlePlaybackRateChange = (rate: number) => {
+    if (!audioRef.current) return;
+    audioRef.current.playbackRate = rate;
+    setPlaybackRate(rate);
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    if (!audioRef.current) return;
+    const newVolume = value[0];
+    audioRef.current.volume = newVolume;
+    setVolume(newVolume);
   };
 
   const handleDownload = () => {
@@ -142,6 +196,12 @@ const VoiceExplain = () => {
     });
   };
 
+  const formatTime = (time: number): string => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     // Cleanup audio URL on unmount
     return () => {
@@ -156,12 +216,19 @@ const VoiceExplain = () => {
     if (!audio) return;
 
     const handleEnded = () => setIsPlaying(false);
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleLoadedMetadata = () => setAudioDuration(audio.duration);
+    
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
 
     return () => {
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
-  }, []);
+  }, [audioUrl]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -276,10 +343,21 @@ const VoiceExplain = () => {
             {audioUrl && (
               <Card className="mt-6 bg-accent/10">
                 <CardContent className="pt-6">
-                  <div className="flex flex-col items-center gap-4">
+                  <div className="flex flex-col gap-4">
                     <audio ref={audioRef} src={audioUrl} className="hidden" />
                     
-                    <div className="flex gap-2">
+                    {/* Time display */}
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(audioDuration)}</span>
+                    </div>
+
+                    {/* Playback controls */}
+                    <div className="flex items-center justify-center gap-2">
+                      <Button onClick={handleSkipBackward} size="icon" variant="outline">
+                        <SkipBack className="h-4 w-4" />
+                      </Button>
+
                       <Button onClick={handlePlayPause} size="lg">
                         {isPlaying ? (
                           <>
@@ -294,14 +372,53 @@ const VoiceExplain = () => {
                         )}
                       </Button>
 
-                      <Button onClick={handleDownload} variant="outline" size="lg">
-                        <Download className="mr-2 h-4 w-4" />
-                        Download
+                      <Button onClick={handleSkipForward} size="icon" variant="outline">
+                        <SkipForward className="h-4 w-4" />
                       </Button>
                     </div>
 
+                    {/* Playback speed */}
+                    <div className="space-y-2">
+                      <Label className="text-sm">Playback Speed</Label>
+                      <div className="flex gap-2">
+                        {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
+                          <Button
+                            key={rate}
+                            onClick={() => handlePlaybackRateChange(rate)}
+                            variant={playbackRate === rate ? "default" : "outline"}
+                            size="sm"
+                            className="flex-1"
+                          >
+                            {rate}x
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Volume control */}
+                    <div className="space-y-2">
+                      <Label className="text-sm flex items-center gap-2">
+                        <Volume1 className="h-4 w-4" />
+                        Volume
+                      </Label>
+                      <Slider
+                        value={[volume]}
+                        onValueChange={handleVolumeChange}
+                        min={0}
+                        max={1}
+                        step={0.1}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Download button */}
+                    <Button onClick={handleDownload} variant="outline" className="w-full">
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Audio
+                    </Button>
+
                     <p className="text-sm text-muted-foreground text-center">
-                      Your voice explanation is ready! Click play to listen or download to save it.
+                      Your voice explanation is ready! Use the controls above to customize playback.
                     </p>
                   </div>
                 </CardContent>
