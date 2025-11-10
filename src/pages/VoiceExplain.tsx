@@ -9,6 +9,7 @@ import { Loader2, Volume2, ArrowLeft, Home, Play, Pause, Download, SkipForward, 
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
+import { getApiConfig } from '@/lib/api';
 
 // Set page-specific SEO
 const useVoiceExplainPageSEO = () => {
@@ -90,8 +91,12 @@ const VoiceExplain = () => {
 
       console.log('Generating audio with URL:', apiUrl);
 
+      const { apiKey } = getApiConfig();
       const response = await fetch(apiUrl, {
         method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+        },
       });
 
       if (!response.ok) {
