@@ -12,6 +12,7 @@ import HorizonRedirect from "./pages/HorizonRedirect";
 import LovableRedirect from "./pages/LovableRedirect";
 import AdRedirect from "./pages/AdRedirect";
 import ImageGen from "./pages/ImageGen";
+import MCQGen from "./pages/MCQGen";
 import NotFound from "./pages/NotFound";
 import { getCursorPreference } from "./lib/storage";
 import { useCursorEffects } from "./hooks/useCursorEffects";
@@ -41,6 +42,7 @@ const App = () => {
           <Route path="/c/:chatId" element={<Index />} />
           <Route path="/about" element={<About />} />
           <Route path="/image-gen" element={<ImageGen />} />
+          <Route path="/mcq-gen" element={<MCQGen />} />
           <Route path="/horizon" element={<HorizonRedirect />} />
           <Route path="/lovable" element={<LovableRedirect />} />
           <Route path="/ad" element={<AdRedirect />} />

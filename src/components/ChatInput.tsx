@@ -1,7 +1,7 @@
 import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Bolt, Circle, Zap, Wrench, ImagePlus, X } from 'lucide-react';
+import { Send, Bolt, Circle, Zap, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -185,28 +185,6 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             onChange={handleImageSelect}
             className="hidden"
           />
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0"
-              >
-                <Wrench className="h-4 w-4 md:h-5 md:w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-popover z-50">
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                <ImagePlus className="h-4 w-4 mr-2" />
-                Upload Image
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveMode('imageGen')}>
-                <Wrench className="h-4 w-4 mr-2" />
-                Generate Image
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           <div className="relative flex-1">
             <Textarea

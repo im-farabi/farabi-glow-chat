@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, MessageSquare, X, MoreVertical, Edit2, Trash2, FileEdit, User, Settings, Image, QrCode } from 'lucide-react';
+import { Plus, Search, MessageSquare, X, MoreVertical, Edit2, Trash2, FileEdit, User, Settings, Image, BookCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getAllChats, truncateTitle, deleteChat, renameChat, getUserPreferences, type ChatSession } from '@/lib/storage';
 import UsageBanner from '@/components/UsageBanner';
@@ -137,6 +137,15 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
           </Button>
         </Link>
 
+        <Link to="/mcq-gen" className="block">
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+          >
+            <BookCheck className="mr-2 h-4 w-4" />
+            MCQ Generator
+          </Button>
+        </Link>
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
