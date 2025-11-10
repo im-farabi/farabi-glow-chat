@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, MessageSquare, X, MoreVertical, Edit2, Trash2, FileEdit, User, Settings, Image, BookCheck } from 'lucide-react';
+import { Plus, Search, MessageSquare, X, MoreVertical, Edit2, Trash2, FileEdit, User, Settings, Image, BookCheck, Volume2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getAllChats, truncateTitle, deleteChat, renameChat, getUserPreferences, type ChatSession } from '@/lib/storage';
 import UsageBanner from '@/components/UsageBanner';
@@ -144,6 +144,16 @@ const Sidebar = ({ currentChatId, onNewChat, onSelectChat, isOpen = true, onClos
           >
             <BookCheck className="mr-2 h-4 w-4" />
             MCQ Generator
+          </Button>
+        </Link>
+
+        <Link to="/voice-explain" className="block">
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+          >
+            <Volume2 className="mr-2 h-4 w-4" />
+            Voice Explanation
           </Button>
         </Link>
 
