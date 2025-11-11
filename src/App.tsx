@@ -15,6 +15,7 @@ import ImageGen from "./pages/ImageGen";
 import MCQGen from "./pages/MCQGen";
 import VoiceExplain from "./pages/VoiceExplain";
 import YoutubeExplain from "./pages/YoutubeExplain";
+import Owner from "./pages/Owner";
 import NotFound from "./pages/NotFound";
 import { getCursorPreference } from "./lib/storage";
 import { useCursorEffects } from "./hooks/useCursorEffects";
@@ -47,6 +48,7 @@ const App = () => {
           <Route path="/mcq-gen" element={<MCQGen />} />
           <Route path="/voice-explain" element={<VoiceExplain />} />
           <Route path="/youtube-explain" element={<YoutubeExplain />} />
+          <Route path="/owner" element={<Owner />} />
           <Route path="/horizon" element={<HorizonRedirect />} />
           <Route path="/lovable" element={<LovableRedirect />} />
           <Route path="/ad" element={<AdRedirect />} />

@@ -397,3 +397,38 @@ export function buildUserDetailsString(): string {
 
   return `\n\nThe user details:\n${lines.join('\n')}`;
 }
+
+/**
+ * Anonymous User Tracking for Owner Dashboard
+ */
+
+const ANON_USER_KEY = 'farabi_anonymous_user_id';
+const SESSION_KEY = 'farabi_session_id';
+
+/**
+ * Get or create anonymous user ID
+ */
+export function getOrCreateAnonymousUserId(): string {
+  let userId = localStorage.getItem(ANON_USER_KEY);
+  
+  if (!userId) {
+    userId = `user${Math.floor(Math.random() * 100000000)}`;
+    localStorage.setItem(ANON_USER_KEY, userId);
+  }
+  
+  return userId;
+}
+
+/**
+ * Get or create session ID (resets on browser close)
+ */
+export function getSessionId(): string {
+  let sessionId = sessionStorage.getItem(SESSION_KEY);
+  
+  if (!sessionId) {
+    sessionId = `session${Date.now()}${Math.floor(Math.random() * 10000)}`;
+    sessionStorage.setItem(SESSION_KEY, sessionId);
+  }
+  
+  return sessionId;
+}

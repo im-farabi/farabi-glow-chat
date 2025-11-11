@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          anonymous_user_id: string
+          content: string
+          created_at: string
+          has_image: boolean | null
+          id: string
+          mode: string | null
+          role: string
+          session_id: string
+        }
+        Insert: {
+          anonymous_user_id: string
+          content: string
+          created_at?: string
+          has_image?: boolean | null
+          id?: string
+          mode?: string | null
+          role: string
+          session_id: string
+        }
+        Update: {
+          anonymous_user_id?: string
+          content?: string
+          created_at?: string
+          has_image?: boolean | null
+          id?: string
+          mode?: string | null
+          role?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
+      daily_analytics: {
+        Row: {
+          countries: Json | null
+          date: string
+          id: string
+          total_messages: number | null
+          total_sessions: number | null
+          total_unique_users: number | null
+          updated_at: string
+        }
+        Insert: {
+          countries?: Json | null
+          date: string
+          id?: string
+          total_messages?: number | null
+          total_sessions?: number | null
+          total_unique_users?: number | null
+          updated_at?: string
+        }
+        Update: {
+          countries?: Json | null
+          date?: string
+          id?: string
+          total_messages?: number | null
+          total_sessions?: number | null
+          total_unique_users?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_sessions: {
+        Row: {
+          anonymous_user_id: string
+          country_code: string | null
+          country_name: string | null
+          id: string
+          ip_address: unknown
+          last_activity: string
+          session_end: string | null
+          session_id: string
+          session_start: string
+          user_agent: string | null
+        }
+        Insert: {
+          anonymous_user_id: string
+          country_code?: string | null
+          country_name?: string | null
+          id?: string
+          ip_address?: unknown
+          last_activity?: string
+          session_end?: string | null
+          session_id: string
+          session_start?: string
+          user_agent?: string | null
+        }
+        Update: {
+          anonymous_user_id?: string
+          country_code?: string | null
+          country_name?: string | null
+          id?: string
+          ip_address?: unknown
+          last_activity?: string
+          session_end?: string | null
+          session_id?: string
+          session_start?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       youtube_transcripts: {
         Row: {
           created_at: string

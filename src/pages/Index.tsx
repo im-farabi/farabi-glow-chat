@@ -12,9 +12,12 @@ import {
   saveChat, 
   getChat, 
   generateTitle,
+  getOrCreateAnonymousUserId,
+  getSessionId,
   type ChatSession 
 } from '@/lib/storage';
 import { useTimeTracking } from '@/hooks/useTimeTracking';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -42,6 +45,42 @@ const Index = () => {
   
   // Track time for cost deduction
   useTimeTracking();
+
+  // Initialize anonymous tracking and track session
+  useEffect(() => {
+    const anonymousUserId = getOrCreateAnonymousUserId();
+    const sessionId = getSessionId();
+    
+    // Track session start with country detection
+    const initSession = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('track-session', {
+          body: { 
+            anonymousUserId, 
+            sessionId, 
+            userAgent: navigator.userAgent 
+          }
+        });
+        
+        if (data?.countryName) {
+          console.log(`Session tracked from: ${data.countryName}`);
+        }
+      } catch (error) {
+        console.error('Session tracking error:', error);
+      }
+    };
+    
+    initSession();
+    
+    // Update activity every 30 seconds
+    const activityInterval = setInterval(() => {
+      supabase.functions.invoke('update-session-activity', {
+        body: { sessionId }
+      }).catch(err => console.error('Activity update error:', err));
+    }, 30000);
+    
+    return () => clearInterval(activityInterval);
+  }, []);
 
   // Load chat from URL on mount
   useEffect(() => {
@@ -158,6 +197,18 @@ const Index = () => {
 
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
+    
+    // Log user message to database
+    supabase.functions.invoke('log-message', {
+      body: {
+        anonymousUserId: getOrCreateAnonymousUserId(),
+        sessionId: getSessionId(),
+        role: 'user',
+        content: message || '🖼️ [Image uploaded]',
+        mode,
+        hasImage: !!image
+      }
+    }).catch(err => console.error('Message logging error:', err));
     
     // Set mode for loading stages
     if (mode === 'fast' || mode === 'normal' || mode === 'super') {
@@ -294,6 +345,18 @@ const Index = () => {
 
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
+
+      // Log AI response to database
+      supabase.functions.invoke('log-message', {
+        body: {
+          anonymousUserId: getOrCreateAnonymousUserId(),
+          sessionId: getSessionId(),
+          role: 'assistant',
+          content: response,
+          mode,
+          hasImage: !!generatedImageUrl
+        }
+      }).catch(err => console.error('Message logging error:', err));
 
       // Update AI message count and show banner: first at 3 messages, then every 2 messages
       const newAiCount = aiMessageCount + 1;

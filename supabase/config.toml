@@ -11,3 +11,15 @@ verify_jwt = false
 
 [functions.youtube-explain]
 verify_jwt = false
+
+[functions.track-session]
+verify_jwt = false
+
+[functions.log-message]
+verify_jwt = false
+
+[functions.update-session-activity]
+verify_jwt = false
+
+[functions.owner-dashboard]
+verify_jwt = false
