@@ -50,6 +50,8 @@ const FlashcardGen = () => {
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [flipMode, setFlipMode] = useState<'click' | 'hover'>('click');
+  const [currentPage, setCurrentPage] = useState(1);
+  const cardsPerPage = 2;
 
   const generateFlashcards = async () => {
     if (!settings.topic.trim()) {
@@ -63,7 +65,7 @@ const FlashcardGen = () => {
 
     setLoading(true);
     
-    const prompt = `Generate exactly ${settings.numCards} educational flashcards about: "${settings.topic}"
+const prompt = `Generate exactly ${settings.numCards} educational flashcards about: "${settings.topic}"
 
 Difficulty Level: ${settings.level}
 
@@ -82,7 +84,13 @@ Format your response as a valid JSON array with this EXACT structure:
   }
 ]
 
-CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`;
+CRITICAL REQUIREMENTS:
+- Return ONLY the JSON array, nothing else
+- NO markdown formatting, NO backticks, NO code blocks
+- NO explanatory text before or after the JSON
+- NO phrases like "Hope this helps" or "Here you go"
+- Start your response with [ and end with ]
+- If you include ANY text outside the JSON array, the system will fail`;
 
     try {
       const response = await sendNormal(prompt);
@@ -128,6 +136,24 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
   const handleNewSet = () => {
     setStarted(false);
     setFlashcards([]);
+    setCurrentPage(1);
+  };
+
+  const totalPages = Math.ceil(flashcards.length / cardsPerPage);
+  const startIndex = (currentPage - 1) * cardsPerPage;
+  const endIndex = startIndex + cardsPerPage;
+  const currentCards = flashcards.slice(startIndex, endIndex);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
   };
 
   if (!started) {
@@ -268,7 +294,10 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
                   <div className="text-lg md:text-xl font-semibold mb-2">
                     {flashcards.length} Flashcards - {settings.topic}
                   </div>
-                  <Progress value={100} className="h-3 md:h-4" />
+                  <div className="text-base md:text-lg text-muted-foreground mb-2">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <Progress value={(currentPage / totalPages) * 100} className="h-3 md:h-4" />
                 </div>
                 <div className="flex gap-2">
                   <Select value={flipMode} onValueChange={(value: 'click' | 'hover') => setFlipMode(value)}>
@@ -286,16 +315,43 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {flashcards.map((card, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto">
+          {currentCards.map((card, index) => (
             <FlashcardItem
-              key={index}
+              key={startIndex + index}
               card={card}
-              index={index}
+              index={startIndex + index}
               flipMode={flipMode}
             />
           ))}
         </div>
+
+        {totalPages > 1 && (
+          <Card className="border-2 md:border-4">
+            <CardContent className="pt-6">
+              <div className="flex justify-center gap-3">
+                <Button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  className="h-12 md:h-14 text-base md:text-lg px-6"
+                  size="lg"
+                >
+                  Previous
+                </Button>
+                <Button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  className="h-12 md:h-14 text-base md:text-lg px-6"
+                  size="lg"
+                >
+                  Next
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="border-2 md:border-4">
           <CardContent className="pt-6">
