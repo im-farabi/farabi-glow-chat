@@ -58,14 +58,30 @@ Deno.serve(async (req) => {
     // Get recent messages (last 100)
     const { data: recentMessages, error: messagesError } = await supabase
       .from('chat_messages')
-      .select(`
-        *,
-        user_sessions!inner(country_code, country_name)
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
       .limit(100);
 
     if (messagesError) throw messagesError;
+
+    // Get session data for these messages
+    const sessionIds = [...new Set(recentMessages?.map(m => m.session_id) || [])];
+    const { data: sessionData, error: sessionDataError } = await supabase
+      .from('user_sessions')
+      .select('session_id, country_code, country_name')
+      .in('session_id', sessionIds);
+
+    if (sessionDataError) throw sessionDataError;
+
+    // Create a map of session_id to country data
+    const sessionMap = new Map(sessionData?.map(s => [s.session_id, s]) || []);
+
+    // Merge country data into messages
+    const messagesWithCountry = recentMessages?.map(msg => ({
+      ...msg,
+      country_code: sessionMap.get(msg.session_id)?.country_code || null,
+      country_name: sessionMap.get(msg.session_id)?.country_name || null,
+    })) || [];
 
     // Get today's message count
     const { count: todayMessageCount, error: messageCountError } = await supabase
@@ -103,7 +119,7 @@ Deno.serve(async (req) => {
         success: true,
         data: {
           activeSessions: activeSessions || [],
-          recentMessages: recentMessages || [],
+          recentMessages: messagesWithCountry,
           stats: {
             activeUsers: activeSessions?.length || 0,
             uniqueUsersToday,

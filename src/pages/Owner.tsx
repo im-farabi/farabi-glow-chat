@@ -23,10 +23,8 @@ interface DashboardData {
     role: string;
     content: string;
     created_at: string;
-    user_sessions: {
-      country_name: string;
-      country_code: string;
-    };
+    country_name: string | null;
+    country_code: string | null;
   }>;
   stats: {
     activeUsers: number;
@@ -277,8 +275,8 @@ export default function Owner() {
                         <span className="font-mono text-sm text-muted-foreground">
                           {msg.anonymous_user_id}
                         </span>
-                        {msg.user_sessions?.country_name && (
-                          <Badge variant="outline">{msg.user_sessions.country_name}</Badge>
+                        {msg.country_name && (
+                          <Badge variant="outline">{msg.country_name}</Badge>
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground">
