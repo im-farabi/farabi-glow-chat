@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.pollinations-image]
 verify_jwt = false
+
+[functions.youtube-explain]
+verify_jwt = false
