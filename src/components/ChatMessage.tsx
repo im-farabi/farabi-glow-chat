@@ -72,7 +72,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
   };
 
   return (
-    <div className={`flex gap-4 px-6 lg:px-12 xl:px-24 py-6 ${isUser ? 'bg-card' : 'bg-muted/30'} ${!isUser && !isLoading ? 'animate-text-reveal' : 'animate-fade-in'}`}>
+    <div className={`flex gap-4 px-3 sm:px-6 lg:px-12 xl:px-24 py-6 max-w-full ${isUser ? 'bg-card' : 'bg-muted/30'} ${!isUser && !isLoading ? 'animate-text-reveal' : 'animate-fade-in'}`}>
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
         isUser 
           ? 'bg-muted' 
@@ -89,7 +89,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
         )}
       </div>
 
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 space-y-2 max-w-full overflow-hidden">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="font-semibold">
@@ -153,7 +153,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
             <span className="text-sm">{loadingText || 'Thinking...'}</span>
           </div>
         ) : (
-          <div className="max-w-none overflow-x-auto">
+          <div className="max-w-full overflow-x-auto break-words">
             {isDownloadMessage ? (
               <p className="whitespace-pre-wrap text-foreground">
                 {content.split('Click here to download')[0]}
@@ -165,7 +165,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
                 </button>
               </p>
             ) : (
-              <div className="prose prose-invert max-w-none overflow-x-auto">
+              <div className="prose prose-invert max-w-full overflow-x-auto [&_*]:max-w-full">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{

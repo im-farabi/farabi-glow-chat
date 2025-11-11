@@ -147,3 +147,22 @@ body.cursor-professional * {
   animation: cursor-ripple 0.6s ease-out;
   box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
 }
+
+/* Mobile-specific overflow handling */
+@media (max-width: 768px) {
+  .prose code {
+    max-width: 100%;
+    overflow-x: auto;
+    display: block;
+  }
+  
+  .prose pre {
+    max-width: calc(100vw - 1.5rem) !important;
+    overflow-x: auto;
+  }
+  
+  /* Ensure inline code breaks properly */
+  .prose code:not(pre code) {
+    word-break: break-word;
+  }
+}
