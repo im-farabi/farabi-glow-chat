@@ -33,8 +33,16 @@ export default function YoutubeExplain() {
 
       if (error) throw error;
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (data?.errorCode) {
+        const msg = data.message || (data.errorCode === 'NO_CAPTIONS' ? 'This video has no captions available.' : 'Unable to process this video.');
+        toast.info(msg);
+        setResult(null);
+        return;
+      }
+
+      if (!data?.transcript) {
+        toast.error('No transcript found for this video');
+        return;
       }
 
       setResult(data);
