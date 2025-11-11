@@ -13,6 +13,7 @@ import LovableRedirect from "./pages/LovableRedirect";
 import AdRedirect from "./pages/AdRedirect";
 import ImageGen from "./pages/ImageGen";
 import MCQGen from "./pages/MCQGen";
+import FlashcardGen from "./pages/FlashcardGen";
 import VoiceExplain from "./pages/VoiceExplain";
 import YoutubeExplain from "./pages/YoutubeExplain";
 import Owner from "./pages/Owner";
@@ -46,6 +47,7 @@ const App = () => {
           <Route path="/about" element={<About />} />
           <Route path="/image-gen" element={<ImageGen />} />
           <Route path="/mcq-gen" element={<MCQGen />} />
+          <Route path="/flashcard-gen" element={<FlashcardGen />} />
           <Route path="/voice-explain" element={<VoiceExplain />} />
           <Route path="/youtube-explain" element={<YoutubeExplain />} />
           <Route path="/owner" element={<Owner />} />

@@ -148,6 +148,15 @@ body.cursor-professional * {
   box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
 }
 
+/* 3D Flashcard Flip Animation */
+.flashcard {
+  transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.flashcard-flipped {
+  transform: rotateY(180deg);
+}
+
 /* Mobile-specific overflow handling */
 @media (max-width: 768px) {
   .prose code {
