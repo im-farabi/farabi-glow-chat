@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ImageEditorProps {
@@ -26,6 +27,8 @@ export const ImageEditor = ({ image, isOpen, onClose, onSave }: ImageEditorProps
   const [position, setPosition] = useState<'top-left' | 'top-center' | 'top-right' | 'middle-left' | 'center' | 'middle-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'>('bottom-left');
   const [shadowEnabled, setShadowEnabled] = useState(true);
   const [shadowColor, setShadowColor] = useState('#000000');
+  const [showAllPositions, setShowAllPositions] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
@@ -113,10 +116,28 @@ export const ImageEditor = ({ image, isOpen, onClose, onSave }: ImageEditorProps
   }, [image, text, fontSize, fontFamily, fontWeight, fontStyle, textColor, transparency, position, shadowEnabled, shadowColor]);
 
   useEffect(() => {
-    if (isOpen) {
-      drawImageWithText();
+    if (isOpen && canvasRef.current) {
+      // Small delay to ensure canvas is rendered
+      setTimeout(() => {
+        drawImageWithText();
+      }, 50);
     }
   }, [isOpen, drawImageWithText]);
+
+  const basicPositions = [
+    { value: 'bottom-left', label: '↙ Bottom Left' },
+    { value: 'bottom-right', label: '↘ Bottom Right' },
+    { value: 'top-left', label: '↖ Top Left' },
+    { value: 'center', label: '• Center' },
+  ];
+
+  const additionalPositions = [
+    { value: 'top-center', label: '↑ Top Center' },
+    { value: 'top-right', label: '↗ Top Right' },
+    { value: 'middle-left', label: '← Middle Left' },
+    { value: 'middle-right', label: '→ Middle Right' },
+    { value: 'bottom-center', label: '↓ Bottom Center' },
+  ];
 
   const handleSave = () => {
     const canvas = canvasRef.current;
@@ -144,29 +165,19 @@ export const ImageEditor = ({ image, isOpen, onClose, onSave }: ImageEditorProps
     }, 'image/png');
   };
 
-  const positionOptions = [
-    { value: 'top-left', label: '↖ Top Left' },
-    { value: 'top-center', label: '↑ Top Center' },
-    { value: 'top-right', label: '↗ Top Right' },
-    { value: 'middle-left', label: '← Middle Left' },
-    { value: 'center', label: '• Center' },
-    { value: 'middle-right', label: '→ Middle Right' },
-    { value: 'bottom-left', label: '↙ Bottom Left' },
-    { value: 'bottom-center', label: '↓ Bottom Center' },
-    { value: 'bottom-right', label: '↘ Bottom Right' },
-  ];
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Image</DialogTitle>
-          <DialogDescription>Add text overlay to your generated image</DialogDescription>
+          <DialogDescription>
+            Add custom text overlay to your image
+          </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Preview */}
-          <div className="space-y-2">
+          {/* Preview - Left side */}
+          <div className="space-y-2 order-2 lg:order-1">
             <Label>Preview</Label>
             <div className="border border-border rounded-lg overflow-hidden bg-muted">
               <canvas 
@@ -176,11 +187,11 @@ export const ImageEditor = ({ image, isOpen, onClose, onSave }: ImageEditorProps
             </div>
           </div>
 
-          {/* Controls */}
-          <div className="space-y-6">
-            {/* Text Settings */}
+          {/* Controls - Right side */}
+          <div className="space-y-6 order-1 lg:order-2">
+            {/* Basic Settings */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-sm">Text Settings</h3>
+              <h3 className="font-semibold">Basic Settings</h3>
               
               <div className="space-y-2">
                 <Label>Text</Label>
@@ -190,87 +201,6 @@ export const ImageEditor = ({ image, isOpen, onClose, onSave }: ImageEditorProps
                   placeholder="Enter text..."
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label>Font Size: {fontSize}px</Label>
-                <Slider 
-                  value={[fontSize]}
-                  onValueChange={([val]) => setFontSize(val)}
-                  min={12}
-                  max={200}
-                  step={1}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Font Family</Label>
-                <Select value={fontFamily} onValueChange={setFontFamily}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Poppins">Poppins</SelectItem>
-                    <SelectItem value="Arial">Arial</SelectItem>
-                    <SelectItem value="Helvetica">Helvetica</SelectItem>
-                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                    <SelectItem value="Courier New">Courier New</SelectItem>
-                    <SelectItem value="Georgia">Georgia</SelectItem>
-                    <SelectItem value="Verdana">Verdana</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Font Weight</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    variant={fontWeight === '300' ? 'default' : 'outline'}
-                    onClick={() => setFontWeight('300')}
-                    size="sm"
-                  >
-                    Light
-                  </Button>
-                  <Button
-                    variant={fontWeight === '400' ? 'default' : 'outline'}
-                    onClick={() => setFontWeight('400')}
-                    size="sm"
-                  >
-                    Regular
-                  </Button>
-                  <Button
-                    variant={fontWeight === '700' ? 'default' : 'outline'}
-                    onClick={() => setFontWeight('700')}
-                    size="sm"
-                  >
-                    Bold
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Font Style</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant={fontStyle === 'normal' ? 'default' : 'outline'}
-                    onClick={() => setFontStyle('normal')}
-                    size="sm"
-                  >
-                    Normal
-                  </Button>
-                  <Button
-                    variant={fontStyle === 'italic' ? 'default' : 'outline'}
-                    onClick={() => setFontStyle('italic')}
-                    size="sm"
-                  >
-                    Italic
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Color & Transparency */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm">Color & Transparency</h3>
               
               <div className="space-y-2">
                 <Label>Text Color</Label>
@@ -291,62 +221,188 @@ export const ImageEditor = ({ image, isOpen, onClose, onSave }: ImageEditorProps
               </div>
               
               <div className="space-y-2">
-                <Label>Transparency: {transparency}%</Label>
+                <Label>Font Size: {fontSize}px</Label>
                 <Slider 
-                  value={[transparency]}
-                  onValueChange={([val]) => setTransparency(val)}
-                  min={0}
-                  max={100}
+                  value={[fontSize]}
+                  onValueChange={([val]) => setFontSize(val)}
+                  min={12}
+                  max={200}
                   step={1}
                 />
               </div>
               
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="checkbox"
-                    checked={shadowEnabled}
-                    onChange={(e) => setShadowEnabled(e.target.checked)}
-                    className="cursor-pointer"
-                  />
-                  <Label className="cursor-pointer">Text Shadow</Label>
+                <Label>Text Position</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {basicPositions.map(({ value, label }) => (
+                    <Button
+                      key={value}
+                      variant={position === value ? 'default' : 'outline'}
+                      onClick={() => setPosition(value as any)}
+                      size="sm"
+                      className="text-xs"
+                    >
+                      {label}
+                    </Button>
+                  ))}
                 </div>
-                {shadowEnabled && (
-                  <div className="flex gap-2">
-                    <Input 
-                      type="color" 
-                      value={shadowColor}
-                      onChange={(e) => setShadowColor(e.target.value)}
-                      className="w-20 h-10 cursor-pointer"
-                    />
-                    <Input 
-                      value={shadowColor}
-                      onChange={(e) => setShadowColor(e.target.value)}
-                      placeholder="#000000"
-                      className="flex-1"
-                    />
+                
+                {!showAllPositions && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowAllPositions(true)}
+                    className="w-full text-xs"
+                    size="sm"
+                  >
+                    Load More Positions
+                  </Button>
+                )}
+                
+                {showAllPositions && (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {additionalPositions.map(({ value, label }) => (
+                      <Button
+                        key={value}
+                        variant={position === value ? 'default' : 'outline'}
+                        onClick={() => setPosition(value as any)}
+                        size="sm"
+                        className="text-xs"
+                      >
+                        {label}
+                      </Button>
+                    ))}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Position */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm">Text Position</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {positionOptions.map(({ value, label }) => (
-                  <Button
-                    key={value}
-                    variant={position === value ? 'default' : 'outline'}
-                    onClick={() => setPosition(value as any)}
-                    size="sm"
-                    className="text-xs"
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            {/* Advanced Settings */}
+            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-between"
+                  size="sm"
+                >
+                  <span className="font-semibold">Advanced Settings</span>
+                  {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent className="space-y-4 mt-4">
+                {/* Shadow Settings */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox"
+                      checked={shadowEnabled}
+                      onChange={(e) => setShadowEnabled(e.target.checked)}
+                      className="cursor-pointer"
+                    />
+                    <Label className="cursor-pointer">Enable Text Shadow</Label>
+                  </div>
+                  {shadowEnabled && (
+                    <div className="space-y-2 pl-6">
+                      <Label className="text-xs text-muted-foreground">Shadow Color</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="color" 
+                          value={shadowColor}
+                          onChange={(e) => setShadowColor(e.target.value)}
+                          className="w-20 h-10 cursor-pointer"
+                        />
+                        <Input 
+                          value={shadowColor}
+                          onChange={(e) => setShadowColor(e.target.value)}
+                          placeholder="#000000"
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Transparency */}
+                <div className="space-y-2">
+                  <Label>Transparency: {transparency}%</Label>
+                  <Slider 
+                    value={[transparency]}
+                    onValueChange={([val]) => setTransparency(val)}
+                    min={0}
+                    max={100}
+                    step={1}
+                  />
+                </div>
+                
+                {/* Font Family */}
+                <div className="space-y-2">
+                  <Label>Font Family</Label>
+                  <Select value={fontFamily} onValueChange={setFontFamily}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Poppins">Poppins</SelectItem>
+                      <SelectItem value="Arial">Arial</SelectItem>
+                      <SelectItem value="Helvetica">Helvetica</SelectItem>
+                      <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                      <SelectItem value="Courier New">Courier New</SelectItem>
+                      <SelectItem value="Georgia">Georgia</SelectItem>
+                      <SelectItem value="Verdana">Verdana</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Font Weight */}
+                <div className="space-y-2">
+                  <Label>Font Weight</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      variant={fontWeight === '300' ? 'default' : 'outline'}
+                      onClick={() => setFontWeight('300')}
+                      size="sm"
+                    >
+                      Light
+                    </Button>
+                    <Button
+                      variant={fontWeight === '400' ? 'default' : 'outline'}
+                      onClick={() => setFontWeight('400')}
+                      size="sm"
+                    >
+                      Regular
+                    </Button>
+                    <Button
+                      variant={fontWeight === '700' ? 'default' : 'outline'}
+                      onClick={() => setFontWeight('700')}
+                      size="sm"
+                    >
+                      Bold
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Font Style */}
+                <div className="space-y-2">
+                  <Label>Font Style</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={fontStyle === 'normal' ? 'default' : 'outline'}
+                      onClick={() => setFontStyle('normal')}
+                      size="sm"
+                    >
+                      Normal
+                    </Button>
+                    <Button
+                      variant={fontStyle === 'italic' ? 'default' : 'outline'}
+                      onClick={() => setFontStyle('italic')}
+                      size="sm"
+                    >
+                      Italic
+                    </Button>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </div>
 
