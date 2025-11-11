@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Sparkles, Download, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Loader2, Sparkles, Download, RefreshCw, ArrowLeft, Edit } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { sendNormal } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
+import { ImageEditor } from '@/components/ImageEditor';
 
 const ImageGen = () => {
   useEffect(() => {
@@ -30,6 +31,7 @@ const ImageGen = () => {
   const [sizePreset, setSizePreset] = useState<'banner' | 'logo' | 'custom'>('banner');
   const [customWidth, setCustomWidth] = useState('1024');
   const [customHeight, setCustomHeight] = useState('1024');
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const navigate = useNavigate();
 
   const enhancePrompt = async () => {
@@ -380,6 +382,19 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                   Download
                 </Button>
                 <Button
+                  onClick={() => setIsEditorOpen(true)}
+                  variant="outline"
+                  className="w-full bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20"
+                  style={{
+                    textShadow: '0 0 10px rgba(236, 72, 153, 0.3)',
+                  }}
+                >
+                  <Edit className="mr-2 h-4 w-4 text-pink-500" />
+                  <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">
+                    Edit
+                  </span>
+                </Button>
+                <Button
                   onClick={regenerateImage}
                   disabled={loading}
                   variant="outline"
@@ -405,6 +420,17 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
           )}
         </div>
       </main>
+
+      {image && (
+        <ImageEditor 
+          image={image}
+          isOpen={isEditorOpen}
+          onClose={() => setIsEditorOpen(false)}
+          onSave={(editedImage) => {
+            setImage(editedImage);
+          }}
+        />
+      )}
     </div>
   );
 };
