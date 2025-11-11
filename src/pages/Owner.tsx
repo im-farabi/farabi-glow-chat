@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Users, MessageSquare, Clock, Globe, Activity } from 'lucide-react';
+import { Users, MessageSquare, Clock, Globe, Activity, RefreshCw } from 'lucide-react';
 
 interface DashboardData {
   activeSessions: Array<{
@@ -41,7 +41,33 @@ export default function Owner() {
   const [petName, setPetName] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+
+  const fetchDashboardData = useCallback(async (showToast = false) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('owner-dashboard', {
+        body: { password, petName }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error('Failed to refresh data');
+        return;
+      }
+
+      setDashboardData(data.data);
+      if (showToast) {
+        toast.success('Dashboard refreshed');
+      }
+    } catch (error) {
+      console.error('Refresh error:', error);
+      if (showToast) {
+        toast.error('Failed to refresh');
+      }
+    }
+  }, [password, petName]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +95,23 @@ export default function Owner() {
       setIsLoading(false);
     }
   };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchDashboardData(true);
+    setIsRefreshing(false);
+  };
+
+  // Auto-refresh every 5 seconds
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const interval = setInterval(() => {
+      fetchDashboardData(false);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, fetchDashboardData]);
 
   const formatTimeAgo = (dateString: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 1000);
@@ -141,10 +184,22 @@ export default function Owner() {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Owner Dashboard</h1>
-          <Badge variant="secondary" className="gap-2">
-            <Activity className="h-4 w-4" />
-            Live
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Badge variant="secondary" className="gap-2">
+              <Activity className="h-4 w-4" />
+              Auto-refresh: 5s
+            </Badge>
+          </div>
         </div>
 
         {/* Stats Cards */}
