@@ -24,7 +24,7 @@ const FlashcardItem = ({ card, index, flipMode }: FlashcardItemProps) => {
   
   return (
     <div 
-      className="flashcard-container relative w-full h-[220px] md:h-[240px] cursor-pointer"
+      className="flashcard-container relative w-full h-[360px] md:h-[400px] cursor-pointer"
       style={{ perspective: '1000px' }}
       onClick={handleInteraction}
       onMouseEnter={() => handleHover(true)}
@@ -39,11 +39,11 @@ const FlashcardItem = ({ card, index, flipMode }: FlashcardItemProps) => {
       >
         {/* Front face */}
         <div 
-          className="absolute inset-0 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-secondary/10 p-6 flex flex-col justify-between shadow-lg hover:shadow-primary/20 hover:scale-[1.02] transition-all"
+          className="absolute inset-0 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-secondary/10 p-8 md:p-10 flex flex-col justify-between shadow-lg hover:shadow-primary/20 hover:scale-[1.02] transition-all"
           style={{ backfaceVisibility: 'hidden' }}
         >
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-center text-base md:text-lg font-medium leading-relaxed">
+            <p className="text-center text-xl md:text-2xl font-medium leading-relaxed px-4">
               {card.question}
             </p>
           </div>
@@ -59,14 +59,14 @@ const FlashcardItem = ({ card, index, flipMode }: FlashcardItemProps) => {
         
         {/* Back face */}
         <div 
-          className="absolute inset-0 rounded-xl border-2 border-secondary/30 bg-gradient-to-br from-secondary/10 to-accent/10 p-6 flex flex-col justify-between shadow-lg"
+          className="absolute inset-0 rounded-xl border-2 border-secondary/30 bg-gradient-to-br from-secondary/10 to-accent/10 p-8 md:p-10 flex flex-col justify-between shadow-lg"
           style={{ 
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)'
           }}
         >
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-center text-base md:text-lg leading-relaxed">
+            <p className="text-center text-xl md:text-2xl leading-relaxed px-4">
               {card.answer}
             </p>
           </div>
