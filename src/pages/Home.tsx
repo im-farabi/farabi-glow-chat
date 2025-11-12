@@ -2,8 +2,9 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ListChecks, Volume2, SquareStack, DollarSign, Infinity, UserX } from 'lucide-react';
+import { ListChecks, Volume2, SquareStack, BadgeDollarSign, Zap, UserX } from 'lucide-react';
 import { setHasVisited } from '@/lib/storage';
+import LaserFlow from '@/components/LaserFlow';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -33,12 +34,12 @@ const Home = () => {
 
   const benefits = [
     {
-      icon: DollarSign,
+      icon: BadgeDollarSign,
       title: 'No Payment!',
       description: 'No Hidden Cost; 100% Lifetime Free!'
     },
     {
-      icon: Infinity,
+      icon: Zap,
       title: 'No Limit',
       description: 'Studying must be fun and with no Limits'
     },
@@ -51,9 +52,20 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      {/* LaserFlow Background */}
+      <div className="absolute inset-0 z-0">
+        <LaserFlow 
+          color="hsl(var(--primary))"
+          horizontalBeamOffset={0}
+          verticalBeamOffset={0}
+          fogIntensity={0.3}
+          wispIntensity={3}
+        />
+      </div>
+      
       {/* Decorative background gradients */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/5 rounded-full blur-3xl" />
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl z-0" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/5 rounded-full blur-3xl z-0" />
       
       {/* Hero Section */}
       <section className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
