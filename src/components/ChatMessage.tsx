@@ -1,13 +1,11 @@
-import { User, MoreVertical, Copy, Volume2, ChevronDown, ChevronUp, ListChecks, SquareStack, Download } from 'lucide-react';
+import { User, MoreVertical, Copy, Volume2, ChevronDown, ChevronUp } from 'lucide-react';
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
 import CodeBlock from './CodeBlock';
-import FlashcardItem from './FlashcardItem';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChatMessageProps {
@@ -20,10 +18,6 @@ interface ChatMessageProps {
   responseTime?: number;
   onRead?: (text: string, advanced?: boolean) => void;
   onExplain?: (type: 'shorter' | 'easy' | 'longer') => void;
-  mcqData?: { question: string; options: string[]; correctAnswer: number }[];
-  flashcardData?: { question: string; answer: string }[];
-  audioUrl?: string;
-  audioBlob?: Blob;
 }
 
 // Add glow effect to ! and ? symbols
@@ -47,7 +41,7 @@ function addGlowToExclamations(text: string): React.ReactNode[] {
   });
 }
 
-const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, loadingText, responseTime, onRead, onExplain, mcqData, flashcardData, audioUrl, audioBlob }: ChatMessageProps) => {
+const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, loadingText, responseTime, onRead, onExplain }: ChatMessageProps) => {
   const isUser = role === 'user';
   const { toast } = useToast();
   const [explainClicked, setExplainClicked] = useState(false);
@@ -292,83 +286,6 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
           </div>
         )}
 
-        {mcqData && mcqData.length > 0 && (
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <ListChecks className="h-4 w-4" />
-              Generated MCQ Quiz ({mcqData.length} questions)
-            </div>
-            {mcqData.map((mcq, idx) => (
-              <Card key={idx} className="p-4">
-                <p className="font-medium mb-2">{idx + 1}. {mcq.question}</p>
-                <div className="space-y-2">
-                  {mcq.options.map((opt, optIdx) => (
-                    <div key={optIdx} className={`text-sm p-2 rounded ${optIdx === mcq.correctAnswer ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted/30'}`}>
-                      {String.fromCharCode(65 + optIdx)}. {opt}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {flashcardData && flashcardData.length > 0 && (
-          <div className="mt-4">
-            <div className="flex items-center gap-2 text-sm font-medium mb-3">
-              <SquareStack className="h-4 w-4" />
-              Generated Flashcards ({flashcardData.length} cards)
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {flashcardData.slice(0, 2).map((card, idx) => (
-                <FlashcardItem 
-                  key={idx}
-                  card={card}
-                  index={idx}
-                  flipMode="click"
-                />
-              ))}
-            </div>
-            {flashcardData.length > 2 && (
-              <p className="text-sm text-muted-foreground mt-2">
-                +{flashcardData.length - 2} more cards
-              </p>
-            )}
-          </div>
-        )}
-
-        {audioUrl && (
-          <div className="mt-4">
-            <div className="flex items-center gap-2 text-sm font-medium mb-2">
-              <Volume2 className="h-4 w-4" />
-              Generated Voice Explanation
-            </div>
-            <audio 
-              controls 
-              src={audioUrl}
-              className="w-full max-w-md"
-            />
-            {audioBlob && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="mt-2"
-                onClick={() => {
-                  const a = document.createElement('a');
-                  a.href = audioUrl;
-                  a.download = `farabi.me-voice${Math.floor(Math.random() * 10000)}.mp3`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                }}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download Audio
-              </Button>
-            )}
-          </div>
-        )}
-
         {role === 'assistant' && onExplain && !isLoading && !explainClicked && (
           <div className="flex gap-2 mt-3">
             <Button
@@ -417,10 +334,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
     prevProps.content === nextProps.content &&
     prevProps.isLoading === nextProps.isLoading &&
     prevProps.image === nextProps.image &&
-    prevProps.responseTime === nextProps.responseTime &&
-    prevProps.mcqData === nextProps.mcqData &&
-    prevProps.flashcardData === nextProps.flashcardData &&
-    prevProps.audioUrl === nextProps.audioUrl
+    prevProps.responseTime === nextProps.responseTime
   );
 });
 
