@@ -93,9 +93,14 @@ const Index = () => {
         setAiMessageCount(aiMsgs);
         setShowAdBanner(aiMsgs > 0 && aiMsgs % 2 === 0);
       } else {
-        // Invalid chat ID, redirect to home
-        navigate('/', { replace: true });
+        // Invalid chat ID, redirect to /c
+        navigate('/c', { replace: true });
       }
+    } else {
+      // No chatId means we're starting fresh from /c
+      setCurrentChat(createNewChat());
+      setMessages([]);
+      setIsTemporaryChat(true);
     }
   }, [chatId, navigate]);
 
