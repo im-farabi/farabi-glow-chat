@@ -52,14 +52,17 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
-      {/* LaserFlow Background */}
-      <div className="absolute inset-0 z-0">
+      {/* LaserFlow Background - Right Side */}
+      <div className="absolute top-0 right-0 w-1/2 h-full z-0 opacity-60">
         <LaserFlow 
-          color="hsl(var(--primary))"
-          horizontalBeamOffset={0}
+          color="#a855f7"
+          horizontalBeamOffset={0.3}
           verticalBeamOffset={0}
-          fogIntensity={0.3}
-          wispIntensity={3}
+          fogIntensity={0.2}
+          wispIntensity={2}
+          wispDensity={0.5}
+          dpr={1}
+          flowSpeed={0.5}
         />
       </div>
       
