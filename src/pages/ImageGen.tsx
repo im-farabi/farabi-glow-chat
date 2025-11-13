@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Loader2, Sparkles, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock, Wand2 } from 'lucide-react';
+import axios from 'axios';
 
 // ============================================
 // API Keys Configuration
@@ -37,6 +38,7 @@ const ImageGen = () => {
   }, []);
   const [prompt, setPrompt] = useState('');
   const [image, setImage] = useState<string>('');
+  const [originalImageUrl, setOriginalImageUrl] = useState<string>('');
   const [currentSeed, setCurrentSeed] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
@@ -172,6 +174,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
 
       const url = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${seed}&enhance=false&nologo=true&key=plln_pk_DSf8DvxaLKn2LbP9QQAlA5hFpQGXePYiSY1AHZQn2CiKgtO7VBKQ1FNw1xCEpRYK`;
       
+      setOriginalImageUrl(url); // Store original URL for enhancement
       const blobUrl = await fetchImageAsBlob(url);
       setImage(blobUrl);
       
@@ -234,90 +237,93 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
   };
 
   const enhanceImage = async () => {
-    if (!image) return;
+    if (!image || !originalImageUrl) {
+      toast({
+        title: 'Error',
+        description: 'No image to enhance',
+        variant: 'destructive'
+      });
+      return;
+    }
     
     setEnhancing(true);
     setStatus('Enhancing image...');
-    
-    let lastError: any = null;
     
     // Try each API key in sequence
     for (let i = 0; i < TINYUP_API_KEYS.length; i++) {
       const apiKey = TINYUP_API_KEYS[i];
       
       try {
-        // First, convert blob URL to actual blob and upload to get a public URL
-        const response = await fetch(image);
-        const blob = await response.blob();
+        console.log(`Attempting enhancement with API key ${i + 1}...`);
         
-        // Create FormData to upload the image
-        const formData = new FormData();
-        formData.append('file', blob, 'image.png');
+        const response = await axios.post(
+          'https://tinyup.app/api/upscales',
+          { source_url: originalImageUrl },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`
+            },
+            timeout: 60000 // 60 second timeout
+          }
+        );
+
+        console.log('Enhancement response:', response.data);
         
-        // Upload to a temporary hosting service (using the current blob URL directly)
-        const enhanceResponse = await fetch('https://tinyup.app/api/upscales', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            source_url: image
-          })
+        // TinyUp returns the enhanced image URL
+        const enhancedUrl = response.data.upscaled_url || response.data.result_url || response.data.url;
+        
+        if (!enhancedUrl) {
+          throw new Error('No upscaled image URL in response');
+        }
+        
+        // Fetch and convert to blob URL
+        const enhancedResponse = await fetch(enhancedUrl);
+        if (!enhancedResponse.ok) {
+          throw new Error('Failed to fetch enhanced image');
+        }
+        
+        const enhancedBlob = await enhancedResponse.blob();
+        
+        // Revoke old blob URL
+        if (image.startsWith('blob:')) {
+          URL.revokeObjectURL(image);
+        }
+        
+        const newBlobUrl = URL.createObjectURL(enhancedBlob);
+        setImage(newBlobUrl);
+        setOriginalImageUrl(enhancedUrl); // Update original URL for future enhancements
+        
+        toast({
+          title: 'Enhanced!',
+          description: 'Image has been upscaled successfully',
         });
         
-        if (!enhanceResponse.ok) {
-          const errorData = await enhanceResponse.json().catch(() => ({}));
-          throw new Error(errorData.message || `API request failed with status ${enhanceResponse.status}`);
-        }
-        
-        const result = await enhanceResponse.json();
-        
-        // The API should return an enhanced image URL
-        if (result.result_url || result.url || result.enhanced_url) {
-          const enhancedUrl = result.result_url || result.url || result.enhanced_url;
-          
-          // Fetch and convert to blob URL
-          const enhancedResponse = await fetch(enhancedUrl);
-          const enhancedBlob = await enhancedResponse.blob();
-          
-          // Revoke old blob URL
-          if (image.startsWith('blob:')) {
-            URL.revokeObjectURL(image);
-          }
-          
-          const newBlobUrl = URL.createObjectURL(enhancedBlob);
-          setImage(newBlobUrl);
-          
-          toast({
-            title: 'Enhanced!',
-            description: 'Image has been upscaled successfully',
-          });
-          
-          setEnhancing(false);
-          setStatus('');
-          return; // Success, exit the function
-        } else {
-          throw new Error('No enhanced image URL in response');
-        }
+        setEnhancing(false);
+        setStatus('');
+        return; // Success, exit function
         
       } catch (error: any) {
-        console.error(`TinyUp API key ${i + 1} failed:`, error);
-        lastError = error;
+        console.error(`Enhancement attempt ${i + 1} failed:`, error);
         
-        // If this isn't the last key, continue to the next one
+        // If this isn't the last key, continue to next one
         if (i < TINYUP_API_KEYS.length - 1) {
+          console.log(`Trying next API key...`);
           continue;
         }
+        
+        // All keys failed, show detailed error
+        const errorMessage = error.response?.data?.message 
+          || error.message 
+          || 'Unable to enhance image';
+        
+        toast({
+          title: 'Enhancement Failed',
+          description: errorMessage,
+          variant: 'destructive'
+        });
       }
     }
-    
-    // All API keys failed
-    toast({
-      title: 'Enhancement Failed',
-      description: 'Unable to enhance image. Please try again later.',
-      variant: 'destructive'
-    });
     
     setEnhancing(false);
     setStatus('');
