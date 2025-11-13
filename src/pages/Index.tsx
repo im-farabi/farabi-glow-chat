@@ -27,6 +27,10 @@ interface Message {
   isLoading?: boolean;
   loadingText?: string;
   responseTime?: number;
+  mcqData?: { question: string; options: string[]; correctAnswer: number }[];
+  flashcardData?: { question: string; answer: string }[];
+  audioUrl?: string;
+  audioBlob?: Blob;
 }
 
 const Index = () => {
@@ -93,14 +97,9 @@ const Index = () => {
         setAiMessageCount(aiMsgs);
         setShowAdBanner(aiMsgs > 0 && aiMsgs % 2 === 0);
       } else {
-        // Invalid chat ID, redirect to /c
-        navigate('/c', { replace: true });
+        // Invalid chat ID, redirect to home
+        navigate('/', { replace: true });
       }
-    } else {
-      // No chatId means we're starting fresh from /c
-      setCurrentChat(createNewChat());
-      setMessages([]);
-      setIsTemporaryChat(true);
     }
   }, [chatId, navigate]);
 
@@ -297,6 +296,23 @@ const Index = () => {
       const imageRegex = /\{image:(.+?)\}$/;
       const imageMatch = response.match(imageRegex);
 
+      // Check for {mcq:topic} syntax
+      const mcqRegex = /\{mcq:(.+?)\}$/;
+      const mcqMatch = response.match(mcqRegex);
+
+      // Check for {flashcard:topic} syntax
+      const flashcardRegex = /\{flashcard:(.+?)\}$/;
+      const flashcardMatch = response.match(flashcardRegex);
+
+      // Check for {voice:text} syntax
+      const voiceRegex = /\{voice:(.+?)\}$/;
+      const voiceMatch = response.match(voiceRegex);
+
+      let mcqData: { question: string; options: string[]; correctAnswer: number }[] | undefined;
+      let flashcardData: { question: string; answer: string }[] | undefined;
+      let audioUrl: string | undefined;
+      let audioBlob: Blob | undefined;
+
       if (imageMatch) {
         // Extract prompt and clean response
         const imagePrompt = imageMatch[1].trim();
@@ -336,6 +352,110 @@ const Index = () => {
         }
       }
 
+      if (mcqMatch) {
+        const topic = mcqMatch[1].trim();
+        const cleanedResponse = response.replace(mcqRegex, '').trim();
+        
+        setMessages(prev => {
+          const updated = [...prev];
+          const lastMsg = updated[updated.length - 1];
+          if (lastMsg?.isLoading) {
+            lastMsg.loadingText = 'Generating MCQ Quiz...';
+          }
+          return updated;
+        });
+        
+        try {
+          const mcqPrompt = `Generate exactly 5 multiple choice questions about: "${topic}"
+    
+Difficulty Level: Medium
+
+CRITICAL REQUIREMENTS:
+1. Return ONLY valid JSON - NO markdown, NO backticks, NO explanatory text
+2. Do NOT add phrases like "Here are the questions" or "Hope this helps"
+3. Do NOT wrap in code blocks or use \`\`\`json
+4. Return the raw JSON array directly
+
+Format: [{"question":"...","options":["A","B","C","D"],"correctAnswer":0}]`;
+          
+          const mcqResponse = await sendNormal(mcqPrompt);
+          const cleanJson = mcqResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          mcqData = JSON.parse(cleanJson);
+          response = cleanedResponse;
+        } catch (error) {
+          console.error('Failed to generate MCQ:', error);
+          response = cleanedResponse;
+        }
+      }
+
+      if (flashcardMatch) {
+        const topic = flashcardMatch[1].trim();
+        const cleanedResponse = response.replace(flashcardRegex, '').trim();
+        
+        setMessages(prev => {
+          const updated = [...prev];
+          const lastMsg = updated[updated.length - 1];
+          if (lastMsg?.isLoading) {
+            lastMsg.loadingText = 'Generating Flashcards...';
+          }
+          return updated;
+        });
+        
+        try {
+          const flashcardPrompt = `Generate exactly 4 educational flashcards about: "${topic}"
+
+CRITICAL REQUIREMENTS:
+1. Return ONLY valid JSON - NO markdown, NO backticks, NO explanatory text
+2. Do NOT add phrases like "Here are the flashcards" or "Hope this helps"
+3. Do NOT wrap in code blocks or use \`\`\`json
+4. Return the raw JSON array directly
+
+Format: [{"question":"...","answer":"..."}]`;
+          
+          const flashcardResponse = await sendNormal(flashcardPrompt);
+          const cleanJson = flashcardResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          flashcardData = JSON.parse(cleanJson);
+          response = cleanedResponse;
+        } catch (error) {
+          console.error('Failed to generate flashcards:', error);
+          response = cleanedResponse;
+        }
+      }
+
+      if (voiceMatch) {
+        const textToSpeak = voiceMatch[1].trim();
+        const cleanedResponse = response.replace(voiceRegex, '').trim();
+        
+        setMessages(prev => {
+          const updated = [...prev];
+          const lastMsg = updated[updated.length - 1];
+          if (lastMsg?.isLoading) {
+            lastMsg.loadingText = 'Generating Voice...';
+          }
+          return updated;
+        });
+        
+        try {
+          const { data, error } = await supabase.functions.invoke('pollinations-tts', {
+            body: {
+              text: textToSpeak,
+              voice: 'nova',
+              model: 'openai-audio'
+            }
+          });
+          
+          if (!error && data) {
+            const blob = new Blob([data], { type: 'audio/mpeg' });
+            audioUrl = URL.createObjectURL(blob);
+            audioBlob = blob;
+          }
+          response = cleanedResponse;
+        } catch (error) {
+          console.error('Failed to generate voice:', error);
+          response = cleanedResponse;
+        }
+      }
+
       // Replace loading message with actual response
       const endTime = performance.now();
       const responseTime = (endTime - startTime) / 1000;
@@ -345,7 +465,11 @@ const Index = () => {
       content: response,
       image: generatedImageUrl,
       imageBlob: generatedImageBlob,
-      responseTime: responseTime
+      responseTime: responseTime,
+      mcqData,
+      flashcardData,
+      audioUrl,
+      audioBlob
     };
 
       const finalMessages = [...newMessages, assistantMessage];

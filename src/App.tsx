@@ -6,11 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
-import { Navigate } from "react-router-dom";
 import Index from "./pages/Index";
-import Home from "./pages/Home";
 import About from "./pages/About";
-import { hasVisitedBefore } from "./lib/storage";
 import HorizonRedirect from "./pages/HorizonRedirect";
 import LovableRedirect from "./pages/LovableRedirect";
 import AdRedirect from "./pages/AdRedirect";
@@ -38,7 +35,6 @@ const App = () => {
   // Add cursor click effects and sounds
   useCursorEffects();
 
-
   return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -46,9 +42,7 @@ const App = () => {
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/c" element={<Index />} />
+          <Route path="/" element={<Index />} />
           <Route path="/c/:chatId" element={<Index />} />
           <Route path="/about" element={<About />} />
           <Route path="/image-gen" element={<ImageGen />} />

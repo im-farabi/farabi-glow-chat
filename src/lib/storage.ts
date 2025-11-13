@@ -399,20 +399,6 @@ export function buildUserDetailsString(): string {
 }
 
 /**
- * Landing page visit tracking
- */
-
-const HAS_VISITED_KEY = 'hasVisitedBefore';
-
-export const hasVisitedBefore = (): boolean => {
-  return localStorage.getItem(HAS_VISITED_KEY) === 'true';
-};
-
-export const setHasVisited = (): void => {
-  localStorage.setItem(HAS_VISITED_KEY, 'true');
-};
-
-/**
  * Anonymous User Tracking for Owner Dashboard
  */
 
