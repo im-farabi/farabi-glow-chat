@@ -5,12 +5,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle2, XCircle, BookCheck, ArrowRight, RotateCcw, Sparkles, Clock, Timer, ArrowLeft, Home, X } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, BookCheck, ArrowRight, RotateCcw, Sparkles, Clock, Timer, ArrowLeft, Home, X, History, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { sendNormal } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
+import { getMCQHistory, saveMCQToHistory, deleteMCQFromHistory, MCQHistoryItem } from '@/lib/storage';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Set page-specific SEO
 const useMCQPageSEO = () => {
@@ -57,11 +60,17 @@ const MCQGen = () => {
   const [loading, setLoading] = useState(false);
   const [quizStarted, setQuizStarted] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
+  const [history, setHistory] = useState<MCQHistoryItem[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   
   // Timer states
   const [timeLeft, setTimeLeft] = useState(10);
   const [totalTimeElapsed, setTotalTimeElapsed] = useState(0);
   const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    setHistory(getMCQHistory());
+  }, []);
 
   const currentQuestion = questions[currentIndex];
   const progress = ((currentIndex + 1) / questions.length) * 100;
@@ -221,6 +230,15 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
       setQuestionStartTime(null);
       setTimeLeft(10);
     } else {
+      // Save to history when quiz is completed
+      saveMCQToHistory({
+        topic: settings.topic,
+        numQuestions: settings.numQuestions,
+        level: settings.level,
+        score: score + (selectedAnswer === questions[currentIndex].correctAnswer ? 1 : 0),
+        totalQuestions: questions.length
+      });
+      setHistory(getMCQHistory());
       setQuizCompleted(true);
     }
   };
@@ -236,6 +254,20 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
     setTotalTimeElapsed(0);
     setQuestionStartTime(null);
     setTimeLeft(10);
+  };
+
+  const deleteHistoryItem = (id: string) => {
+    deleteMCQFromHistory(id);
+    setHistory(getMCQHistory());
+    toast({
+      title: 'Deleted',
+      description: 'History item removed'
+    });
+  };
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   // Settings Panel
@@ -278,6 +310,54 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
                   <ArrowLeft className="mr-2 h-5 w-5" />
                   Back to Chat
                 </Button>
+                <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <History className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="w-[400px] sm:w-[540px]">
+                    <SheetHeader>
+                      <SheetTitle>MCQ History</SheetTitle>
+                      <SheetDescription>
+                        Your recent quiz completions
+                      </SheetDescription>
+                    </SheetHeader>
+                    <ScrollArea className="h-[calc(100vh-120px)] mt-6">
+                      <div className="space-y-4 pr-4">
+                        {history.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-8">No history yet</p>
+                        ) : (
+                          history.map((item) => (
+                            <Card key={item.id} className="p-4 space-y-2 hover:bg-accent/50 transition-colors">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 space-y-2">
+                                  <p className="text-sm font-medium line-clamp-2">{item.topic}</p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Clock className="h-3 w-3" />
+                                    {formatDate(item.timestamp)}
+                                  </div>
+                                  <div className="text-xs space-y-1">
+                                    <p>Level: <span className="font-medium">{item.level}</span></p>
+                                    <p>Score: <span className="font-medium text-primary">{item.score}/{item.totalQuestions}</span> ({Math.round((item.score / item.totalQuestions) * 100)}%)</p>
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive shrink-0"
+                                  onClick={() => deleteHistoryItem(item.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
               </div>
               <CardTitle className="flex items-center gap-3 text-3xl md:text-4xl">
                 <BookCheck className="h-8 w-8 md:h-10 md:w-10 text-primary" />

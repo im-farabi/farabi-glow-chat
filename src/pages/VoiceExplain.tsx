@@ -5,11 +5,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Loader2, Volume2, ArrowLeft, Home, Play, Pause, Download, SkipForward, SkipBack, Volume1, Volume as VolumeIcon } from 'lucide-react';
+import { Loader2, Volume2, ArrowLeft, Home, Play, Pause, Download, SkipForward, SkipBack, Volume1, Volume as VolumeIcon, History, Trash2, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import { supabase } from '@/integrations/supabase/client';
+import { getVoiceHistory, saveVoiceToHistory, deleteVoiceFromHistory, VoiceHistoryItem } from '@/lib/storage';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Set page-specific SEO
 const useVoiceExplainPageSEO = () => {
@@ -41,6 +44,12 @@ const VoiceExplain = () => {
   const [volume, setVolume] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [history, setHistory] = useState<VoiceHistoryItem[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    setHistory(getVoiceHistory());
+  }, []);
 
   const buildPrompt = (): string => {
     let fullPrompt = prompt;
@@ -111,6 +120,15 @@ const VoiceExplain = () => {
       
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
+
+      // Save to history
+      saveVoiceToHistory({
+        prompt: prompt,
+        voice: voice,
+        explanationLevel: explanationLevel,
+        duration: duration
+      });
+      setHistory(getVoiceHistory());
 
       toast({
         title: "Audio Generated!",
@@ -220,28 +238,115 @@ const VoiceExplain = () => {
     };
   }, [audioUrl]);
 
+  const deleteHistoryItem = (id: string) => {
+    deleteVoiceFromHistory(id);
+    setHistory(getVoiceHistory());
+    toast({
+      title: 'Deleted',
+      description: 'History item removed'
+    });
+  };
+
+  const loadFromHistory = (item: VoiceHistoryItem) => {
+    setPrompt(item.prompt);
+    setVoice(item.voice as 'nova' | 'alloy' | 'orion');
+    setExplanationLevel(item.explanationLevel as 'really-easy' | 'simple' | 'normal');
+    setDuration(item.duration as '1min' | '3min' | 'auto');
+    setIsHistoryOpen(false);
+    toast({
+      title: 'Loaded from history',
+      description: 'Settings restored'
+    });
+  };
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/')}
-            aria-label="Go home"
-          >
-            <Home className="h-5 w-5" />
-          </Button>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/')}
+              aria-label="Go home"
+            >
+              <Home className="h-5 w-5" />
+            </Button>
+          </div>
+          <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon">
+                <History className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-[400px] sm:w-[540px]">
+              <SheetHeader>
+                <SheetTitle>Voice History</SheetTitle>
+                <SheetDescription>
+                  Your recent voice explanations
+                </SheetDescription>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100vh-120px)] mt-6">
+                <div className="space-y-4 pr-4">
+                  {history.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No history yet</p>
+                  ) : (
+                    history.map((item) => (
+                      <Card key={item.id} className="p-4 space-y-2 hover:bg-accent/50 transition-colors">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 space-y-2">
+                            <p className="text-sm font-medium line-clamp-2">{item.prompt}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              {formatDate(item.timestamp)}
+                            </div>
+                            <div className="text-xs space-y-1">
+                              <p>Voice: <span className="font-medium capitalize">{item.voice}</span></p>
+                              <p>Level: <span className="font-medium">{item.explanationLevel}</span></p>
+                              <p>Duration: <span className="font-medium">{item.duration}</span></p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => loadFromHistory(item)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => deleteHistoryItem(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
         </div>
 
         <Card className="backdrop-blur-sm bg-card/50">

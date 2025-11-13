@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Sparkles, Download, RefreshCw, ArrowLeft, Edit } from 'lucide-react';
+import { Loader2, Sparkles, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,9 @@ import { Label } from '@/components/ui/label';
 import { sendNormal } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import { ImageEditor } from '@/components/ImageEditor';
+import { getImageHistory, saveImageToHistory, deleteImageFromHistory, ImageHistoryItem } from '@/lib/storage';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const ImageGen = () => {
   useEffect(() => {
@@ -32,7 +35,13 @@ const ImageGen = () => {
   const [customWidth, setCustomWidth] = useState('1024');
   const [customHeight, setCustomHeight] = useState('1024');
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [history, setHistory] = useState<ImageHistoryItem[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setHistory(getImageHistory());
+  }, []);
 
   const enhancePrompt = async () => {
     const trimmedPrompt = prompt.trim();
@@ -155,6 +164,14 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
       const blobUrl = await fetchImageAsBlob(url);
       setImage(blobUrl);
       
+      // Save to history
+      saveImageToHistory({
+        prompt: trimmedPrompt,
+        imageUrl: blobUrl,
+        sizePreset: sizePreset === 'custom' ? `${width}x${height}` : sizePreset
+      });
+      setHistory(getImageHistory());
+      
       toast({
         title: 'Success!',
         description: 'Image generated successfully',
@@ -205,6 +222,38 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
     generateImage(true);
   };
 
+  const loadFromHistory = (item: ImageHistoryItem) => {
+    setPrompt(item.prompt);
+    setImage(item.imageUrl);
+    if (item.sizePreset.includes('x')) {
+      const [w, h] = item.sizePreset.split('x');
+      setSizePreset('custom');
+      setCustomWidth(w);
+      setCustomHeight(h);
+    } else {
+      setSizePreset(item.sizePreset as 'banner' | 'logo' | 'custom');
+    }
+    setIsHistoryOpen(false);
+    toast({
+      title: 'Loaded from history',
+      description: 'Image and settings restored'
+    });
+  };
+
+  const deleteHistoryItem = (id: string) => {
+    deleteImageFromHistory(id);
+    setHistory(getImageHistory());
+    toast({
+      title: 'Deleted',
+      description: 'History item removed'
+    });
+  };
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Breadcrumb Schema */}
@@ -234,23 +283,87 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
       <main className="flex-1 overflow-auto p-6">
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/')}
-                className="shrink-0"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  Image Generator
-                </h1>
-                <p className="text-muted-foreground">
-                  Generate AI images from your prompts
-                </p>
+            <div className="flex items-center gap-3 justify-between">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/')}
+                  className="shrink-0"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    Image Generator
+                  </h1>
+                  <p className="text-muted-foreground">
+                    Generate AI images from your prompts
+                  </p>
+                </div>
               </div>
+              <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <History className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent className="w-[400px] sm:w-[540px]">
+                  <SheetHeader>
+                    <SheetTitle>Image History</SheetTitle>
+                    <SheetDescription>
+                      Your recent image generations
+                    </SheetDescription>
+                  </SheetHeader>
+                  <ScrollArea className="h-[calc(100vh-120px)] mt-6">
+                    <div className="space-y-4 pr-4">
+                      {history.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-8">No history yet</p>
+                      ) : (
+                        history.map((item) => (
+                          <Card key={item.id} className="p-4 space-y-3 hover:bg-accent/50 transition-colors">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 space-y-2">
+                                <p className="text-sm font-medium line-clamp-2">{item.prompt}</p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  {formatDate(item.timestamp)}
+                                </div>
+                                <p className="text-xs text-muted-foreground">Size: {item.sizePreset}</p>
+                              </div>
+                              <div className="flex gap-1 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => loadFromHistory(item)}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => deleteHistoryItem(item.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            {item.imageUrl && (
+                              <img 
+                                src={item.imageUrl} 
+                                alt="Generated" 
+                                className="w-full h-32 object-cover rounded border"
+                              />
+                            )}
+                          </Card>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
 

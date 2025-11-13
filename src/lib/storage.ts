@@ -399,6 +399,201 @@ export function buildUserDetailsString(): string {
 }
 
 /**
+ * Feature History Management
+ */
+
+// Image Generation History
+const IMAGE_HISTORY_KEY = 'farabi_image_history';
+
+export interface ImageHistoryItem {
+  id: string;
+  prompt: string;
+  imageUrl: string;
+  sizePreset: string;
+  timestamp: number;
+}
+
+export function getImageHistory(): ImageHistoryItem[] {
+  try {
+    const data = localStorage.getItem(IMAGE_HISTORY_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error loading image history:', error);
+    return [];
+  }
+}
+
+export function saveImageToHistory(item: Omit<ImageHistoryItem, 'id' | 'timestamp'>): void {
+  try {
+    const history = getImageHistory();
+    const newItem: ImageHistoryItem = {
+      ...item,
+      id: Date.now().toString(),
+      timestamp: Date.now()
+    };
+    history.unshift(newItem);
+    // Keep only last 20 items
+    if (history.length > 20) history.pop();
+    localStorage.setItem(IMAGE_HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.error('Error saving image history:', error);
+  }
+}
+
+export function deleteImageFromHistory(id: string): void {
+  try {
+    const history = getImageHistory().filter(item => item.id !== id);
+    localStorage.setItem(IMAGE_HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.error('Error deleting image from history:', error);
+  }
+}
+
+// MCQ History
+const MCQ_HISTORY_KEY = 'farabi_mcq_history';
+
+export interface MCQHistoryItem {
+  id: string;
+  topic: string;
+  numQuestions: number;
+  level: string;
+  score: number;
+  totalQuestions: number;
+  timestamp: number;
+}
+
+export function getMCQHistory(): MCQHistoryItem[] {
+  try {
+    const data = localStorage.getItem(MCQ_HISTORY_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error loading MCQ history:', error);
+    return [];
+  }
+}
+
+export function saveMCQToHistory(item: Omit<MCQHistoryItem, 'id' | 'timestamp'>): void {
+  try {
+    const history = getMCQHistory();
+    const newItem: MCQHistoryItem = {
+      ...item,
+      id: Date.now().toString(),
+      timestamp: Date.now()
+    };
+    history.unshift(newItem);
+    // Keep only last 20 items
+    if (history.length > 20) history.pop();
+    localStorage.setItem(MCQ_HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.error('Error saving MCQ history:', error);
+  }
+}
+
+export function deleteMCQFromHistory(id: string): void {
+  try {
+    const history = getMCQHistory().filter(item => item.id !== id);
+    localStorage.setItem(MCQ_HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.error('Error deleting MCQ from history:', error);
+  }
+}
+
+// Flashcard History
+const FLASHCARD_HISTORY_KEY = 'farabi_flashcard_history';
+
+export interface FlashcardHistoryItem {
+  id: string;
+  topic: string;
+  numCards: number;
+  level: string;
+  timestamp: number;
+}
+
+export function getFlashcardHistory(): FlashcardHistoryItem[] {
+  try {
+    const data = localStorage.getItem(FLASHCARD_HISTORY_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error loading flashcard history:', error);
+    return [];
+  }
+}
+
+export function saveFlashcardToHistory(item: Omit<FlashcardHistoryItem, 'id' | 'timestamp'>): void {
+  try {
+    const history = getFlashcardHistory();
+    const newItem: FlashcardHistoryItem = {
+      ...item,
+      id: Date.now().toString(),
+      timestamp: Date.now()
+    };
+    history.unshift(newItem);
+    // Keep only last 20 items
+    if (history.length > 20) history.pop();
+    localStorage.setItem(FLASHCARD_HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.error('Error saving flashcard history:', error);
+  }
+}
+
+export function deleteFlashcardFromHistory(id: string): void {
+  try {
+    const history = getFlashcardHistory().filter(item => item.id !== id);
+    localStorage.setItem(FLASHCARD_HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.error('Error deleting flashcard from history:', error);
+  }
+}
+
+// Voice Explanation History
+const VOICE_HISTORY_KEY = 'farabi_voice_history';
+
+export interface VoiceHistoryItem {
+  id: string;
+  prompt: string;
+  voice: string;
+  explanationLevel: string;
+  duration: string;
+  timestamp: number;
+}
+
+export function getVoiceHistory(): VoiceHistoryItem[] {
+  try {
+    const data = localStorage.getItem(VOICE_HISTORY_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error loading voice history:', error);
+    return [];
+  }
+}
+
+export function saveVoiceToHistory(item: Omit<VoiceHistoryItem, 'id' | 'timestamp'>): void {
+  try {
+    const history = getVoiceHistory();
+    const newItem: VoiceHistoryItem = {
+      ...item,
+      id: Date.now().toString(),
+      timestamp: Date.now()
+    };
+    history.unshift(newItem);
+    // Keep only last 20 items
+    if (history.length > 20) history.pop();
+    localStorage.setItem(VOICE_HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.error('Error saving voice history:', error);
+  }
+}
+
+export function deleteVoiceFromHistory(id: string): void {
+  try {
+    const history = getVoiceHistory().filter(item => item.id !== id);
+    localStorage.setItem(VOICE_HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.error('Error deleting voice from history:', error);
+  }
+}
+
+/**
  * Anonymous User Tracking for Owner Dashboard
  */
 

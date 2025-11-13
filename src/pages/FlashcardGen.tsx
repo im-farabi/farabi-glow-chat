@@ -5,12 +5,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, SquareStack, ArrowLeft, RotateCcw, Sparkles, Home } from 'lucide-react';
+import { Loader2, SquareStack, ArrowLeft, RotateCcw, Sparkles, Home, History, Trash2, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendNormal } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import FlashcardItem from '@/components/FlashcardItem';
+import { getFlashcardHistory, saveFlashcardToHistory, deleteFlashcardFromHistory, FlashcardHistoryItem } from '@/lib/storage';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const useFlashcardPageSEO = () => {
   useEffect(() => {
@@ -52,6 +55,12 @@ const FlashcardGen = () => {
   const [flipMode, setFlipMode] = useState<'click' | 'hover'>('click');
   const [currentPage, setCurrentPage] = useState(1);
   const cardsPerPage = 2;
+  const [history, setHistory] = useState<FlashcardHistoryItem[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    setHistory(getFlashcardHistory());
+  }, []);
 
   const generateFlashcards = async () => {
     if (!settings.topic.trim()) {
@@ -117,6 +126,14 @@ CRITICAL REQUIREMENTS:
       setFlashcards(generatedCards);
       setStarted(true);
       
+      // Save to history
+      saveFlashcardToHistory({
+        topic: settings.topic,
+        numCards: settings.numCards,
+        level: settings.level
+      });
+      setHistory(getFlashcardHistory());
+      
       toast({
         title: "Flashcards generated!",
         description: `${settings.numCards} flashcards ready`,
@@ -154,6 +171,20 @@ CRITICAL REQUIREMENTS:
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
+  };
+
+  const deleteHistoryItem = (id: string) => {
+    deleteFlashcardFromHistory(id);
+    setHistory(getFlashcardHistory());
+    toast({
+      title: 'Deleted',
+      description: 'History item removed'
+    });
+  };
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   if (!started) {
@@ -194,6 +225,54 @@ CRITICAL REQUIREMENTS:
                   <ArrowLeft className="mr-2 h-5 w-5" />
                   Back to Chat
                 </Button>
+                <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <History className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="w-[400px] sm:w-[540px]">
+                    <SheetHeader>
+                      <SheetTitle>Flashcard History</SheetTitle>
+                      <SheetDescription>
+                        Your recent flashcard generations
+                      </SheetDescription>
+                    </SheetHeader>
+                    <ScrollArea className="h-[calc(100vh-120px)] mt-6">
+                      <div className="space-y-4 pr-4">
+                        {history.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-8">No history yet</p>
+                        ) : (
+                          history.map((item) => (
+                            <Card key={item.id} className="p-4 space-y-2 hover:bg-accent/50 transition-colors">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 space-y-2">
+                                  <p className="text-sm font-medium line-clamp-2">{item.topic}</p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Clock className="h-3 w-3" />
+                                    {formatDate(item.timestamp)}
+                                  </div>
+                                  <div className="text-xs space-y-1">
+                                    <p>Cards: <span className="font-medium">{item.numCards}</span></p>
+                                    <p>Level: <span className="font-medium">{item.level}</span></p>
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive shrink-0"
+                                  onClick={() => deleteHistoryItem(item.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
               </div>
               <CardTitle className="flex items-center gap-3 text-3xl md:text-4xl">
                 <SquareStack className="h-8 w-8 md:h-10 md:w-10 text-primary" />
