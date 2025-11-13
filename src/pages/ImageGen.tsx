@@ -2,7 +2,18 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Sparkles, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock } from 'lucide-react';
+import { Loader2, Sparkles, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock, Wand2 } from 'lucide-react';
+
+// ============================================
+// API Keys Configuration
+// ============================================
+const TINYUP_API_KEYS = [
+  '8c65fc62-2ff8-4119-8222-6ca78d772abc',
+  '5f2b353b-a98c-4e9e-8b2a-41e618b9bb72',
+  '4f35c6c8-c4b9-412c-b376-a20343df0876',
+  // Add more API keys here as needed
+];
+// ============================================
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -220,6 +231,96 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
 
   const regenerateImage = () => {
     generateImage(true);
+  };
+
+  const enhanceImage = async () => {
+    if (!image) return;
+    
+    setEnhancing(true);
+    setStatus('Enhancing image...');
+    
+    let lastError: any = null;
+    
+    // Try each API key in sequence
+    for (let i = 0; i < TINYUP_API_KEYS.length; i++) {
+      const apiKey = TINYUP_API_KEYS[i];
+      
+      try {
+        // First, convert blob URL to actual blob and upload to get a public URL
+        const response = await fetch(image);
+        const blob = await response.blob();
+        
+        // Create FormData to upload the image
+        const formData = new FormData();
+        formData.append('file', blob, 'image.png');
+        
+        // Upload to a temporary hosting service (using the current blob URL directly)
+        const enhanceResponse = await fetch('https://tinyup.app/api/upscales', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            source_url: image
+          })
+        });
+        
+        if (!enhanceResponse.ok) {
+          const errorData = await enhanceResponse.json().catch(() => ({}));
+          throw new Error(errorData.message || `API request failed with status ${enhanceResponse.status}`);
+        }
+        
+        const result = await enhanceResponse.json();
+        
+        // The API should return an enhanced image URL
+        if (result.result_url || result.url || result.enhanced_url) {
+          const enhancedUrl = result.result_url || result.url || result.enhanced_url;
+          
+          // Fetch and convert to blob URL
+          const enhancedResponse = await fetch(enhancedUrl);
+          const enhancedBlob = await enhancedResponse.blob();
+          
+          // Revoke old blob URL
+          if (image.startsWith('blob:')) {
+            URL.revokeObjectURL(image);
+          }
+          
+          const newBlobUrl = URL.createObjectURL(enhancedBlob);
+          setImage(newBlobUrl);
+          
+          toast({
+            title: 'Enhanced!',
+            description: 'Image has been upscaled successfully',
+          });
+          
+          setEnhancing(false);
+          setStatus('');
+          return; // Success, exit the function
+        } else {
+          throw new Error('No enhanced image URL in response');
+        }
+        
+      } catch (error: any) {
+        console.error(`TinyUp API key ${i + 1} failed:`, error);
+        lastError = error;
+        
+        // If this isn't the last key, continue to the next one
+        if (i < TINYUP_API_KEYS.length - 1) {
+          continue;
+        }
+      }
+    }
+    
+    // All API keys failed
+    toast({
+      title: 'Enhancement Failed',
+      description: 'Unable to enhance image. Please try again later.',
+      variant: 'destructive'
+    });
+    
+    setEnhancing(false);
+    setStatus('');
   };
 
   const loadFromHistory = (item: ImageHistoryItem) => {
@@ -506,6 +607,31 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                   <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">
                     Edit
                   </span>
+                </Button>
+                <Button
+                  onClick={enhanceImage}
+                  disabled={enhancing}
+                  variant="outline"
+                  className="w-full bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20"
+                  style={{
+                    textShadow: '0 0 10px rgba(236, 72, 153, 0.3)',
+                  }}
+                >
+                  {enhancing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin text-pink-500" />
+                      <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">
+                        Enhancing...
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="mr-2 h-4 w-4 text-pink-500" />
+                      <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">
+                        Enhance Image
+                      </span>
+                    </>
+                  )}
                 </Button>
                 <Button
                   onClick={regenerateImage}
