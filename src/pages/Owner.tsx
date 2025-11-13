@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Users, MessageSquare, Clock, Globe, Activity, RefreshCw } from 'lucide-react';
+import { Users, MessageSquare, Clock, Globe, Activity, RefreshCw, Heart } from 'lucide-react';
 
 interface DashboardData {
   activeSessions: Array<{
@@ -25,6 +25,14 @@ interface DashboardData {
     created_at: string;
     country_name: string | null;
     country_code: string | null;
+  }>;
+  recentDonations?: Array<{
+    id: string;
+    anonymous_user_id: string;
+    donation_type: string;
+    amount: string;
+    message: string | null;
+    created_at: string;
   }>;
   stats: {
     activeUsers: number;
@@ -85,8 +93,20 @@ export default function Owner() {
         return;
       }
 
+      // Fetch recent donations
+      const { data: donationsData } = await supabase
+        .from('donations')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      const dashboardWithDonations = {
+        ...data.data,
+        recentDonations: donationsData || []
+      };
+
       setIsAuthenticated(true);
-      setDashboardData(data.data);
+      setDashboardData(dashboardWithDonations);
       toast.success('Welcome, Owner!');
     } catch (error) {
       console.error('Login error:', error);
@@ -307,6 +327,48 @@ export default function Owner() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Recent Donations */}
+        {dashboardData.recentDonations && dashboardData.recentDonations.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-pink-500" />
+                Recent Donations
+              </CardTitle>
+              <CardDescription>Latest donation notifications from supporters</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-3">
+                  {dashboardData.recentDonations.map((donation) => (
+                    <div key={donation.id} className="p-4 rounded-lg border bg-gradient-to-r from-pink-500/5 to-purple-500/5">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="capitalize">
+                            {donation.donation_type.replace('_', ' ')}
+                          </Badge>
+                          <span className="font-mono text-sm text-muted-foreground">
+                            {donation.anonymous_user_id}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTimeAgo(donation.created_at)}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold">Amount: {donation.amount}</p>
+                        {donation.message && (
+                          <p className="text-sm text-muted-foreground italic">"{donation.message}"</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Live Conversation Monitor */}
         <Card>

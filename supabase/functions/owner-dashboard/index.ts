@@ -64,6 +64,15 @@ Deno.serve(async (req) => {
 
     if (messagesError) throw messagesError;
 
+    // Get recent donations (last 20)
+    const { data: recentDonations, error: donationsError } = await supabase
+      .from('donations')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (donationsError) console.error('Donations fetch error:', donationsError);
+
     // Get session data for these messages
     const sessionIds = [...new Set(recentMessages?.map(m => m.session_id) || [])];
     const { data: sessionData, error: sessionDataError } = await supabase
@@ -120,6 +129,7 @@ Deno.serve(async (req) => {
         data: {
           activeSessions: activeSessions || [],
           recentMessages: messagesWithCountry,
+          recentDonations: recentDonations || [],
           stats: {
             activeUsers: activeSessions?.length || 0,
             uniqueUsersToday,

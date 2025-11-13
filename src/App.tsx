@@ -11,6 +11,8 @@ import About from "./pages/About";
 import HorizonRedirect from "./pages/HorizonRedirect";
 import LovableRedirect from "./pages/LovableRedirect";
 import AdRedirect from "./pages/AdRedirect";
+import DonateRedirect from "./pages/DonateRedirect";
+import Support from "./pages/Support";
 import ImageGen from "./pages/ImageGen";
 import MCQGen from "./pages/MCQGen";
 import FlashcardGen from "./pages/FlashcardGen";
@@ -56,6 +58,8 @@ const App = () => {
           <Route path="/horizon" element={<HorizonRedirect />} />
           <Route path="/lovable" element={<LovableRedirect />} />
           <Route path="/ad" element={<AdRedirect />} />
+          <Route path="/donate" element={<DonateRedirect />} />
+          <Route path="/support" element={<Support />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

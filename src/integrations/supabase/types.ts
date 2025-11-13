@@ -77,6 +77,33 @@ export type Database = {
         }
         Relationships: []
       }
+      donations: {
+        Row: {
+          amount: string
+          anonymous_user_id: string
+          created_at: string
+          donation_type: string
+          id: string
+          message: string | null
+        }
+        Insert: {
+          amount: string
+          anonymous_user_id: string
+          created_at?: string
+          donation_type: string
+          id?: string
+          message?: string | null
+        }
+        Update: {
+          amount?: string
+          anonymous_user_id?: string
+          created_at?: string
+          donation_type?: string
+          id?: string
+          message?: string | null
+        }
+        Relationships: []
+      }
       user_sessions: {
         Row: {
           anonymous_user_id: string
