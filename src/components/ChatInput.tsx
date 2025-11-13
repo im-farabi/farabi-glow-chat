@@ -244,6 +244,11 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             <Send className="h-5 w-5 md:h-6 md:w-6 font-bold" strokeWidth={2.5} />
           </Button>
         </div>
+        
+        {/* AI disclaimer */}
+        <p className="text-xs text-muted-foreground text-center mt-2">
+          AI Can Make Mistakes!
+        </p>
       </div>
 
       {activeMode !== 'normal' && (

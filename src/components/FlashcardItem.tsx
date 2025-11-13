@@ -10,25 +10,12 @@ interface FlashcardItemProps {
 const FlashcardItem = ({ card, index, flipMode }: FlashcardItemProps) => {
   const [isFlipped, setIsFlipped] = useState(false);
   
-  const handleInteraction = () => {
-    if (flipMode === 'click') {
-      setIsFlipped(!isFlipped);
-    }
-  };
-  
-  const handleHover = (hover: boolean) => {
-    if (flipMode === 'hover') {
-      setIsFlipped(hover);
-    }
-  };
-  
   return (
-    <div 
-      className="flashcard-container relative w-full h-[360px] md:h-[400px] cursor-pointer"
-      style={{ perspective: '1000px' }}
-      onClick={handleInteraction}
-      onMouseEnter={() => handleHover(true)}
-      onMouseLeave={() => handleHover(false)}
+    <div
+      className="relative w-full h-[300px] md:h-[350px] perspective-1000 cursor-pointer"
+      onClick={flipMode === 'click' ? () => setIsFlipped(!isFlipped) : undefined}
+      onMouseEnter={flipMode === 'hover' ? () => setIsFlipped(true) : undefined}
+      onMouseLeave={flipMode === 'hover' ? () => setIsFlipped(false) : undefined}
     >
       <div 
         className={`flashcard relative w-full h-full transition-transform duration-[600ms] ${isFlipped ? 'flashcard-flipped' : ''}`}

@@ -611,27 +611,29 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
               <div className="pt-4 md:pt-6 space-y-4">
                 <div className={`p-5 md:p-6 rounded-lg md:rounded-xl border-3 ${
                   selectedAnswer === currentQuestion.correctAnswer
-                    ? 'bg-green-50 dark:bg-green-950/30 border-green-500'
-                    : 'bg-red-50 dark:bg-red-950/30 border-red-500'
+                    ? 'bg-green-500/10 border-green-500'
+                    : 'bg-red-500/10 border-red-500'
                 }`}>
                   <div className="flex items-start gap-3 md:gap-4">
                     {selectedAnswer === currentQuestion.correctAnswer ? (
-                      <CheckCircle2 className="h-7 w-7 md:h-8 md:w-8 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                      <CheckCircle2 className="h-7 w-7 md:h-8 md:w-8 text-green-500 flex-shrink-0 mt-0.5" />
                     ) : (
-                      <XCircle className="h-7 w-7 md:h-8 md:w-8 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                      <XCircle className="h-7 w-7 md:h-8 md:w-8 text-red-500 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1">
-                      <h3 className="font-bold text-lg md:text-xl mb-2">
+                      <h3 className={`font-bold text-lg md:text-xl mb-2 ${
+                        selectedAnswer === currentQuestion.correctAnswer ? 'text-green-500' : 'text-red-500'
+                      }`}>
                         {selectedAnswer === currentQuestion.correctAnswer ? 'Correct! ✓' : 'Incorrect ✗'}
                       </h3>
                       {selectedAnswer !== currentQuestion.correctAnswer && selectedAnswer !== -1 && (
-                        <p className="text-sm md:text-base mb-2">
+                        <p className="text-sm md:text-base mb-2 text-foreground">
                           Correct answer: <span className="font-semibold">
                             {String.fromCharCode(65 + currentQuestion.correctAnswer)}. {currentQuestion.options[currentQuestion.correctAnswer]}
                           </span>
                         </p>
                       )}
-                      <p className="text-base md:text-lg opacity-90 leading-relaxed">
+                      <p className="text-base md:text-lg text-foreground/90 leading-relaxed">
                         {currentQuestion.explanation}
                       </p>
                     </div>

@@ -119,8 +119,8 @@ const Index = () => {
       const deltaX = touchEndX - touchStartX;
       const deltaY = Math.abs(touchStartY - touchEndY);
       
-      // Swipe left detected (and mostly horizontal)
-      if (deltaX < -50 && deltaY < 50) {
+      // Swipe right detected (and mostly horizontal) - open sidebar
+      if (deltaX > 50 && deltaY < 50) {
         setIsSidebarOpen(true);
       }
     };

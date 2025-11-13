@@ -394,6 +394,33 @@ CRITICAL REQUIREMENTS:
           </CardContent>
         </Card>
 
+        {totalPages > 1 && (
+          <Card className="border-2 md:border-4">
+            <CardContent className="pt-6">
+              <div className="flex justify-center gap-3">
+                <Button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer"
+                  size="lg"
+                >
+                  Previous
+                </Button>
+                <Button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer"
+                  size="lg"
+                >
+                  Next
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto">
           {currentCards.map((card, index) => (
             <FlashcardItem
@@ -413,7 +440,7 @@ CRITICAL REQUIREMENTS:
                   onClick={handlePrevPage}
                   disabled={currentPage === 1}
                   variant="outline"
-                  className="h-12 md:h-14 text-base md:text-lg px-6"
+                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer"
                   size="lg"
                 >
                   Previous
@@ -422,7 +449,7 @@ CRITICAL REQUIREMENTS:
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
                   variant="outline"
-                  className="h-12 md:h-14 text-base md:text-lg px-6"
+                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer"
                   size="lg"
                 >
                   Next

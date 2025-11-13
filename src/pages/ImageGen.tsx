@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Sparkles, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock, Wand2 } from 'lucide-react';
+import { Loader2, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock, Wand2, Sparkles } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,10 +27,8 @@ const ImageGen = () => {
   }, []);
   const [prompt, setPrompt] = useState('');
   const [image, setImage] = useState<string>('');
-  const [originalImageUrl, setOriginalImageUrl] = useState<string>('');
   const [currentSeed, setCurrentSeed] = useState<number>(0);
   const [loading, setLoading] = useState(false);
-  const [enhancing, setEnhancing] = useState(false);
   const { toast } = useToast();
   const [status, setStatus] = useState('');
   const [sizePreset, setSizePreset] = useState<'banner' | 'logo' | 'custom'>('banner');
@@ -57,7 +55,8 @@ const ImageGen = () => {
       return;
     }
 
-    setEnhancing(true);
+    setLoading(true);
+    setStatus('Enhancing prompt...');
     try {
       const enhanced = await sendNormal(
         `CRITICAL INSTRUCTION: Respond with ONLY the enhanced image prompt. NO greetings, NO explanations, NO markdown formatting (**, etc), NO emojis, NO extra text, NO {image:...} tags whatsoever.
@@ -96,7 +95,8 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
         variant: 'destructive'
       });
     } finally {
-      setEnhancing(false);
+      setLoading(false);
+      setStatus('');
     }
   };
 
@@ -163,7 +163,6 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
 
       const url = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${seed}&enhance=false&nologo=true&key=plln_pk_DSf8DvxaLKn2LbP9QQAlA5hFpQGXePYiSY1AHZQn2CiKgtO7VBKQ1FNw1xCEpRYK`;
       
-      setOriginalImageUrl(url); // Store original URL for enhancement
       const blobUrl = await fetchImageAsBlob(url);
       setImage(blobUrl);
       
@@ -223,76 +222,6 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
 
   const regenerateImage = () => {
     generateImage(true);
-  };
-
-  const enhanceImage = async () => {
-    if (!image || !originalImageUrl) {
-      toast({
-        title: 'Error',
-        description: 'No image to enhance',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    setEnhancing(true);
-    setStatus('Enhancing image...');
-    
-    try {
-      console.log('Calling image-upscale edge function...');
-      
-      const { data, error } = await supabase.functions.invoke('image-upscale', {
-        body: { source_url: originalImageUrl }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to enhance image');
-      }
-
-      console.log('Enhancement response:', data);
-      
-      const enhancedUrl = data.upscaled_url;
-      
-      if (!enhancedUrl) {
-        throw new Error('No upscaled image URL in response');
-      }
-      
-      // Fetch and convert to blob URL
-      const enhancedResponse = await fetch(enhancedUrl);
-      if (!enhancedResponse.ok) {
-        throw new Error('Failed to fetch enhanced image');
-      }
-      
-      const enhancedBlob = await enhancedResponse.blob();
-      
-      // Revoke old blob URL
-      if (image.startsWith('blob:')) {
-        URL.revokeObjectURL(image);
-      }
-      
-      const newBlobUrl = URL.createObjectURL(enhancedBlob);
-      setImage(newBlobUrl);
-      setOriginalImageUrl(enhancedUrl);
-      
-      toast({
-        title: 'Enhanced!',
-        description: 'Image has been upscaled successfully',
-      });
-      
-    } catch (error: any) {
-      console.error('Enhancement error:', error);
-      
-      const errorMessage = error.message || 'Unable to enhance image';
-      
-      toast({
-        title: 'Enhancement Failed',
-        description: errorMessage,
-        variant: 'destructive'
-      });
-    } finally {
-      setEnhancing(false);
-      setStatus('');
-    }
   };
 
   const loadFromHistory = (item: ImageHistoryItem) => {
@@ -505,11 +434,11 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
             <div className="flex gap-2">
               <Button
                 onClick={enhancePrompt}
-                disabled={loading || enhancing}
+                disabled={loading}
                 variant="outline"
                 className="flex-1"
               >
-                {enhancing ? (
+                {loading && status.includes('Enhancing') ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Enhancing...
@@ -523,10 +452,10 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
               </Button>
               <Button
                 onClick={() => generateImage(false)}
-                disabled={loading || enhancing}
+                disabled={loading}
                 className="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
               >
-                {loading ? (
+                {loading && !status.includes('Enhancing') ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Generating...
@@ -581,8 +510,8 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                   </span>
                 </Button>
                 <Button
-                  onClick={enhanceImage}
-                  disabled={enhancing}
+                  onClick={regenerateImage}
+                  disabled={loading}
                   variant="outline"
                   className="w-full bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20"
                   style={{

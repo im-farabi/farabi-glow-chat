@@ -1,5 +1,6 @@
 import { Menu, MessageSquareDashed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 import {
   Tooltip,
   TooltipContent,
@@ -36,24 +37,36 @@ const Header = ({ onMenuClick, isTemporaryChat, onToggleTemporaryChat }: HeaderP
           </h1>
         </div>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={isTemporaryChat ? "default" : "ghost"}
-                size="icon"
-                onClick={onToggleTemporaryChat}
-                className={isTemporaryChat ? "bg-gradient-to-r from-primary to-secondary" : ""}
-                aria-label="Toggle temporary chat"
-              >
-                <MessageSquareDashed className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{isTemporaryChat ? 'Temporary mode active - chats won\'t be saved' : 'Enable temporary chat mode'}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+            <Link to="/terms" className="hover:text-foreground transition-colors">
+              Terms
+            </Link>
+            <span>•</span>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">
+              Privacy
+            </Link>
+          </div>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={isTemporaryChat ? "default" : "ghost"}
+                  size="icon"
+                  onClick={onToggleTemporaryChat}
+                  className={isTemporaryChat ? "bg-gradient-to-r from-primary to-secondary" : ""}
+                  aria-label="Toggle temporary chat"
+                >
+                  <MessageSquareDashed className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isTemporaryChat ? 'Temporary mode active - chats won\'t be saved' : 'Enable temporary chat mode'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
     </header>
   );

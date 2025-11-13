@@ -14,10 +14,11 @@ import AdRedirect from "./pages/AdRedirect";
 import ImageGen from "./pages/ImageGen";
 import MCQGen from "./pages/MCQGen";
 import FlashcardGen from "./pages/FlashcardGen";
-import VoiceExplain from "./pages/VoiceExplain";
 import YoutubeExplain from "./pages/YoutubeExplain";
 import Owner from "./pages/Owner";
 import NotFound from "./pages/NotFound";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import { getCursorPreference } from "./lib/storage";
 import { useCursorEffects } from "./hooks/useCursorEffects";
 
@@ -48,9 +49,10 @@ const App = () => {
           <Route path="/image-gen" element={<ImageGen />} />
           <Route path="/mcq-gen" element={<MCQGen />} />
           <Route path="/flashcard-gen" element={<FlashcardGen />} />
-          <Route path="/voice-explain" element={<VoiceExplain />} />
           <Route path="/youtube-explain" element={<YoutubeExplain />} />
           <Route path="/owner" element={<Owner />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/horizon" element={<HorizonRedirect />} />
           <Route path="/lovable" element={<LovableRedirect />} />
           <Route path="/ad" element={<AdRedirect />} />

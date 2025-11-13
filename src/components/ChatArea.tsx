@@ -59,7 +59,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {isMobile ? (
-        <div ref={scrollAreaRef} className="flex-1 mobile-scroll relative">
+        <div ref={scrollAreaRef} className="flex-1 mobile-scroll relative pb-4">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8">
               <div className="text-center space-y-6 max-w-2xl mx-auto">
