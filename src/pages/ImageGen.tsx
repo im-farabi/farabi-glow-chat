@@ -513,31 +513,6 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                   onClick={regenerateImage}
                   disabled={loading}
                   variant="outline"
-                  className="w-full bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20"
-                  style={{
-                    textShadow: '0 0 10px rgba(236, 72, 153, 0.3)',
-                  }}
-                >
-                  {enhancing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin text-pink-500" />
-                      <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">
-                        Enhancing...
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 className="mr-2 h-4 w-4 text-pink-500" />
-                      <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">
-                        Enhance Image
-                      </span>
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={regenerateImage}
-                  disabled={loading}
-                  variant="outline"
                   className="w-full"
                 >
                   {loading ? (
