@@ -3,18 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Loader2, Sparkles, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock, Wand2 } from 'lucide-react';
-import axios from 'axios';
-
-// ============================================
-// API Keys Configuration
-// ============================================
-const TINYUP_API_KEYS = [
-  '8c65fc62-2ff8-4119-8222-6ca78d772abc',
-  '5f2b353b-a98c-4e9e-8b2a-41e618b9bb72',
-  '4f35c6c8-c4b9-412c-b376-a20343df0876',
-  // Add more API keys here as needed
-];
-// ============================================
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,6 +14,7 @@ import { ImageEditor } from '@/components/ImageEditor';
 import { getImageHistory, saveImageToHistory, deleteImageFromHistory, ImageHistoryItem } from '@/lib/storage';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
 
 const ImageGen = () => {
   useEffect(() => {
@@ -249,84 +238,61 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
     setEnhancing(true);
     setStatus('Enhancing image...');
     
-    // Try each API key in sequence
-    for (let i = 0; i < TINYUP_API_KEYS.length; i++) {
-      const apiKey = TINYUP_API_KEYS[i];
+    try {
+      console.log('Calling image-upscale edge function...');
       
-      try {
-        console.log(`Attempting enhancement with API key ${i + 1}...`);
-        
-        const response = await axios.post(
-          'https://tinyup.app/api/upscales',
-          { source_url: originalImageUrl },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey}`
-            },
-            timeout: 60000 // 60 second timeout
-          }
-        );
+      const { data, error } = await supabase.functions.invoke('image-upscale', {
+        body: { source_url: originalImageUrl }
+      });
 
-        console.log('Enhancement response:', response.data);
-        
-        // TinyUp returns the enhanced image URL
-        const enhancedUrl = response.data.upscaled_url || response.data.result_url || response.data.url;
-        
-        if (!enhancedUrl) {
-          throw new Error('No upscaled image URL in response');
-        }
-        
-        // Fetch and convert to blob URL
-        const enhancedResponse = await fetch(enhancedUrl);
-        if (!enhancedResponse.ok) {
-          throw new Error('Failed to fetch enhanced image');
-        }
-        
-        const enhancedBlob = await enhancedResponse.blob();
-        
-        // Revoke old blob URL
-        if (image.startsWith('blob:')) {
-          URL.revokeObjectURL(image);
-        }
-        
-        const newBlobUrl = URL.createObjectURL(enhancedBlob);
-        setImage(newBlobUrl);
-        setOriginalImageUrl(enhancedUrl); // Update original URL for future enhancements
-        
-        toast({
-          title: 'Enhanced!',
-          description: 'Image has been upscaled successfully',
-        });
-        
-        setEnhancing(false);
-        setStatus('');
-        return; // Success, exit function
-        
-      } catch (error: any) {
-        console.error(`Enhancement attempt ${i + 1} failed:`, error);
-        
-        // If this isn't the last key, continue to next one
-        if (i < TINYUP_API_KEYS.length - 1) {
-          console.log(`Trying next API key...`);
-          continue;
-        }
-        
-        // All keys failed, show detailed error
-        const errorMessage = error.response?.data?.message 
-          || error.message 
-          || 'Unable to enhance image';
-        
-        toast({
-          title: 'Enhancement Failed',
-          description: errorMessage,
-          variant: 'destructive'
-        });
+      if (error) {
+        throw new Error(error.message || 'Failed to enhance image');
       }
+
+      console.log('Enhancement response:', data);
+      
+      const enhancedUrl = data.upscaled_url;
+      
+      if (!enhancedUrl) {
+        throw new Error('No upscaled image URL in response');
+      }
+      
+      // Fetch and convert to blob URL
+      const enhancedResponse = await fetch(enhancedUrl);
+      if (!enhancedResponse.ok) {
+        throw new Error('Failed to fetch enhanced image');
+      }
+      
+      const enhancedBlob = await enhancedResponse.blob();
+      
+      // Revoke old blob URL
+      if (image.startsWith('blob:')) {
+        URL.revokeObjectURL(image);
+      }
+      
+      const newBlobUrl = URL.createObjectURL(enhancedBlob);
+      setImage(newBlobUrl);
+      setOriginalImageUrl(enhancedUrl);
+      
+      toast({
+        title: 'Enhanced!',
+        description: 'Image has been upscaled successfully',
+      });
+      
+    } catch (error: any) {
+      console.error('Enhancement error:', error);
+      
+      const errorMessage = error.message || 'Unable to enhance image';
+      
+      toast({
+        title: 'Enhancement Failed',
+        description: errorMessage,
+        variant: 'destructive'
+      });
+    } finally {
+      setEnhancing(false);
+      setStatus('');
     }
-    
-    setEnhancing(false);
-    setStatus('');
   };
 
   const loadFromHistory = (item: ImageHistoryItem) => {

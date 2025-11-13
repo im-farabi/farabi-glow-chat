@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.owner-dashboard]
 verify_jwt = false
+
+[functions.image-upscale]
+verify_jwt = false
