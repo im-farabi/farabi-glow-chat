@@ -138,7 +138,7 @@ const Terms = () => {
             <section>
               <h2 className="text-2xl font-semibold mb-3 text-foreground">10. Third-Party Services</h2>
               <p>
-                Our platform integrates with third-party AI services (Pollinations AI) and infrastructure providers. 
+                Our platform integrates with open-source AI APIs and infrastructure providers to deliver our services. 
                 We are not responsible for the availability, accuracy, or policies of these external services.
               </p>
             </section>
