@@ -38,11 +38,6 @@ const App = () => {
   // Add cursor click effects and sounds
   useCursorEffects();
 
-  // Redirect logic component
-  const RootRedirect = () => {
-    const visited = hasVisitedBefore();
-    return visited ? <Navigate to="/c" replace /> : <Navigate to="/home" replace />;
-  };
 
   return (
   <QueryClientProvider client={queryClient}>
@@ -51,7 +46,7 @@ const App = () => {
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<RootRedirect />} />
+          <Route path="/" element={<Home />} />
           <Route path="/home" element={<Home />} />
           <Route path="/c" element={<Index />} />
           <Route path="/c/:chatId" element={<Index />} />
