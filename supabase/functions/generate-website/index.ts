@@ -39,10 +39,11 @@ serve(async (req) => {
 CRITICAL RULES:
 1. Generate three separate code sections: HTML, CSS, and JavaScript
 2. HTML must include complete structure with <!DOCTYPE html>, <head>, and <body>
-3. CSS should be modern, responsive, and visually appealing
-4. JavaScript should be functional and bug-free (only if needed)
+3. CSS should be modern, responsive, and visually appealing with animations when requested
+4. JavaScript MUST be included for: redirects, button clicks, form handling, or any interactive features
 5. Keep websites simple - no backend, no external APIs, no frameworks
 6. Use inline comments to explain key sections
+7. Always generate the JAVASCRIPT section even if empty - write "// No JavaScript needed" if truly none required
 
 FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
 === HTML ===
@@ -52,9 +53,12 @@ FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
 [complete CSS code here]
 
 === JAVASCRIPT ===
-[complete JavaScript code here]
+[complete JavaScript code here OR "// No JavaScript needed"]
 
-IMPORTANT: Follow this exact format with the === markers!`;
+IMPORTANT: 
+- Follow this exact format with the === markers!
+- For redirects, ALWAYS use JavaScript with window.location or onclick handlers
+- For animations, prefer CSS but use JS for complex interactions`;
 
     const requestBody = {
       messages: [
