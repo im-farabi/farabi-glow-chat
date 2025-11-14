@@ -104,6 +104,7 @@ ${fullHtml}
 
     return new Response(fullHtml, {
       headers: {
+        ...corsHeaders,
         'Content-Type': 'text/html; charset=utf-8',
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'SAMEORIGIN',
