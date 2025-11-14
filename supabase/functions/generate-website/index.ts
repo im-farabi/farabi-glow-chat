@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, type = 'all', context = {} } = await req.json();
 
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
       return new Response(
@@ -21,7 +21,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Generating website for prompt:', prompt);
+    console.log(`Generating ${type} for prompt:`, prompt);
 
     // Prioritize seed tier key for openai-large
     const seedKey = Deno.env.get('POLLINATIONS_FALLBACK_API_KEY');
@@ -34,7 +34,64 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are a website code generator. Generate complete, working website code based on user descriptions.
+    let systemPrompt = '';
+    
+    if (type === 'html') {
+      systemPrompt = `You are an HTML code generator. Generate ONLY HTML structure based on user descriptions.
+
+CRITICAL RULES:
+1. Generate ONLY HTML - no CSS styling, no JavaScript
+2. Include complete structure with <!DOCTYPE html>, <head>, and <body>
+3. Use semantic HTML5 elements (header, nav, main, section, article, footer)
+4. Add appropriate class names for styling later
+5. Keep structure clean and simple
+6. Use placeholder text where needed
+7. Add comments to explain sections
+
+RESPONSE FORMAT:
+[complete HTML code here - just the HTML, nothing else]`;
+    } else if (type === 'css') {
+      const htmlContext = context.html || '';
+      systemPrompt = `You are a CSS code generator. Generate ONLY CSS styling based on user descriptions.
+
+EXISTING HTML STRUCTURE:
+${htmlContext}
+
+CRITICAL RULES:
+1. Generate ONLY CSS - no HTML, no JavaScript
+2. Make it modern, responsive, and visually appealing
+3. Use animations and transitions when requested
+4. Use mobile-first responsive design with media queries
+5. Use modern CSS features (flexbox, grid, custom properties)
+6. Add smooth transitions and hover effects
+7. Match the class names from the HTML provided
+
+RESPONSE FORMAT:
+[complete CSS code here - just the CSS, nothing else]`;
+    } else if (type === 'js') {
+      const htmlContext = context.html || '';
+      const cssContext = context.css || '';
+      systemPrompt = `You are a JavaScript code generator. Generate ONLY JavaScript code based on user descriptions.
+
+EXISTING HTML STRUCTURE:
+${htmlContext}
+
+EXISTING CSS:
+${cssContext}
+
+CRITICAL RULES:
+1. Generate ONLY JavaScript - no HTML, no CSS
+2. Add interactivity based on user request (redirects, animations, form handling, etc.)
+3. Use modern ES6+ JavaScript
+4. Add event listeners and DOM manipulation as needed
+5. Keep code simple and well-commented
+6. If no interactivity is needed, write "// No JavaScript needed"
+
+RESPONSE FORMAT:
+[complete JavaScript code here - just the JS, nothing else]`;
+    } else {
+      // Default 'all' type - generate everything
+      systemPrompt = `You are a website code generator. Generate complete, working website code based on user descriptions.
 
 CRITICAL RULES:
 1. Generate three separate code sections: HTML, CSS, and JavaScript
@@ -59,6 +116,7 @@ IMPORTANT:
 - Follow this exact format with the === markers!
 - For redirects, ALWAYS use JavaScript with window.location or onclick handlers
 - For animations, prefer CSS but use JS for complex interactions`;
+    }
 
     const requestBody = {
       messages: [
@@ -155,7 +213,28 @@ IMPORTANT:
     const aiResponse = await response.text();
     console.log('AI Response received, length:', aiResponse.length);
 
-    // Parse the response to extract HTML, CSS, and JS
+    // Handle single-section responses for specific types
+    if (type === 'html') {
+      const cleanHtml = aiResponse.trim();
+      return new Response(
+        JSON.stringify({ html: cleanHtml }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else if (type === 'css') {
+      const cleanCss = aiResponse.trim();
+      return new Response(
+        JSON.stringify({ css: cleanCss }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else if (type === 'js') {
+      const cleanJs = aiResponse.trim();
+      return new Response(
+        JSON.stringify({ js: cleanJs }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // For 'all' type, parse the full response
     const { html, css, js } = parseWebsiteCode(aiResponse);
 
     if (!html || html.trim().length === 0) {
