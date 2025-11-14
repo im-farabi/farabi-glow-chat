@@ -161,7 +161,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
         ) : (
           <div className="max-w-full overflow-x-auto break-words">
             {isDownloadMessage ? (
-              <p className="whitespace-pre-wrap text-foreground">
+              <p className="whitespace-pre-wrap text-foreground text-lg">
                 {content.split('Click here to download')[0]}
                 <button
                   onClick={handleDownload}
@@ -221,7 +221,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
                         }
                         return child;
                       });
-                      return <p className="whitespace-pre-wrap text-foreground mb-4 last:mb-0" {...rest}>{processedChildren}</p>;
+                      return <p className="whitespace-pre-wrap text-foreground text-lg mb-4 last:mb-0" {...rest}>{processedChildren}</p>;
                     },
                     h1(props) {
                       const { children, ...rest } = props;
@@ -300,10 +300,10 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
             </div>
             {mcqData.map((mcq, idx) => (
               <Card key={idx} className="p-4">
-                <p className="font-medium mb-2">{idx + 1}. {mcq.question}</p>
+                <p className="font-medium mb-2 text-lg">{idx + 1}. {mcq.question}</p>
                 <div className="space-y-2">
                   {mcq.options.map((opt, optIdx) => (
-                    <div key={optIdx} className={`text-sm p-2 rounded ${optIdx === mcq.correctAnswer ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted/30'}`}>
+                    <div key={optIdx} className={`text-base p-2 rounded ${optIdx === mcq.correctAnswer ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted/30'}`}>
                       {String.fromCharCode(65 + optIdx)}. {opt}
                     </div>
                   ))}
