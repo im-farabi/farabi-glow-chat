@@ -23,8 +23,16 @@ serve(async (req) => {
 
     console.log('Generating website for prompt:', prompt);
 
-    const pollinationsApiKey = Deno.env.get('POLLINATIONS_API_KEY');
-    const fallbackKey = Deno.env.get('POLLINATIONS_FALLBACK_API_KEY');
+    // Prioritize seed tier key for openai-large
+    const seedKey = Deno.env.get('POLLINATIONS_FALLBACK_API_KEY');
+    const backupKey = Deno.env.get('POLLINATIONS_API_KEY');
+
+    if (!seedKey && !backupKey) {
+      return new Response(
+        JSON.stringify({ error: 'API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const systemPrompt = `You are a website code generator. Generate complete, working website code based on user descriptions.
 
@@ -58,30 +66,54 @@ IMPORTANT: Follow this exact format with the === markers!`;
       jsonMode: false
     };
 
-    let response;
-    let usedFallback = false;
+    const makeRequest = async (apiKey: string, retries = 2): Promise<Response> => {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          if (attempt > 0) {
+            console.log(`Retry attempt ${attempt} after 300ms backoff...`);
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+
+          const response = await fetch('https://text.pollinations.ai/', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+          });
+
+          // Retry on transient server errors
+          if ([502, 503, 504].includes(response.status) && attempt < retries) {
+            console.log(`Got ${response.status}, will retry...`);
+            continue;
+          }
+
+          return response;
+        } catch (error) {
+          if (attempt === retries) throw error;
+          console.log(`Network error on attempt ${attempt + 1}, retrying...`);
+        }
+      }
+      throw new Error('Max retries exceeded');
+    };
+
+    let response: Response | undefined;
 
     try {
-      response = await fetch('https://text.pollinations.ai/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(pollinationsApiKey && { 'X-API-Key': pollinationsApiKey })
-        },
-        body: JSON.stringify(requestBody)
-      });
+      // Try seed key first if available
+      if (seedKey) {
+        console.log('Using seed tier API key for openai-large...');
+        response = await makeRequest(seedKey);
+      } else if (backupKey) {
+        console.log('Using backup API key...');
+        response = await makeRequest(backupKey);
+      }
 
-      if (!response.ok && fallbackKey) {
-        console.log('Primary API failed, trying fallback...');
-        usedFallback = true;
-        response = await fetch('https://text.pollinations.ai/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': fallbackKey
-          },
-          body: JSON.stringify(requestBody)
-        });
+      // If first key fails and alternate exists, try alternate
+      if (response && !response.ok && seedKey && backupKey) {
+        console.log('Seed key failed, trying backup key...');
+        response = await makeRequest(backupKey);
       }
     } catch (error) {
       console.error('Error calling Pollinations API:', error);
@@ -91,8 +123,25 @@ IMPORTANT: Follow this exact format with the === markers!`;
       );
     }
 
-    if (!response.ok) {
-      console.error('Pollinations API error:', await response.text());
+    if (!response || !response.ok) {
+      const errorText = response ? await response.text() : 'No response received';
+      console.error(`Pollinations API error (${response?.status || 'unknown'}):`, errorText);
+
+      // Handle specific error codes
+      if (response?.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'Payment required. Please upgrade your API key or add credits.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (response?.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       return new Response(
         JSON.stringify({ error: 'Failed to generate website. Please try again later.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
