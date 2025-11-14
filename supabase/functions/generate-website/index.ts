@@ -79,7 +79,7 @@ IMPORTANT:
       model: 'openai-large',
       seed: Date.now(),
       jsonMode: false,
-      max_tokens: 6000
+      max_tokens: 8000
     };
 
     const makeRequest = async (apiKey: string, retries = 2): Promise<Response> => {
