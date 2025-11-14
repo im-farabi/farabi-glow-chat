@@ -78,7 +78,8 @@ IMPORTANT:
       ],
       model: 'openai-large',
       seed: Date.now(),
-      jsonMode: false
+      jsonMode: false,
+      max_tokens: 6000
     };
 
     const makeRequest = async (apiKey: string, retries = 2): Promise<Response> => {
@@ -177,7 +178,16 @@ IMPORTANT:
       );
     }
 
-    console.log('Successfully generated website code');
+    // Validate that HTML is complete (not truncated)
+    if (!html.trim().endsWith('</html>')) {
+      console.warn('AI response was truncated. HTML does not end with </html>. Length:', html.length);
+      return new Response(
+        JSON.stringify({ error: 'The AI response was incomplete. Please try using a simpler or shorter prompt.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Successfully generated complete website code, length:', html.length);
 
     return new Response(
       JSON.stringify({ html, css: '', js: '' }),
