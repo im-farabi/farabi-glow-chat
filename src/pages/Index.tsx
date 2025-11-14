@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
-import { sendFast, sendNormal, sendSuper, generateImage } from '@/lib/api';
+import { sendFast, sendNormal, sendSuper, sendCoder, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 
@@ -181,7 +181,7 @@ const Index = () => {
 
   const handleSendMessage = async (
     message: string, 
-    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen',
+    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder',
     image?: File
   ) => {
     if (!message.trim() && !image) return;
@@ -215,8 +215,8 @@ const Index = () => {
     }).catch(err => console.error('Message logging error:', err));
     
     // Set mode for loading stages
-    if (mode === 'fast' || mode === 'normal' || mode === 'super') {
-      setCurrentMode(mode);
+    if (mode === 'fast' || mode === 'normal' || mode === 'super' || mode === 'coder') {
+      setCurrentMode(mode as 'fast' | 'normal' | 'super');
     }
     
     setIsLoading(true);
@@ -234,11 +234,13 @@ const Index = () => {
     
     // Update loading text dynamically for non-imageGen modes
     let updateInterval: NodeJS.Timeout | null = null;
-    if (mode !== 'imageGen' && (mode === 'fast' || mode === 'normal' || mode === 'super')) {
+    if (mode !== 'imageGen' && (mode === 'fast' || mode === 'normal' || mode === 'super' || mode === 'coder')) {
       const stages = mode === 'fast' 
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Reading Instructions...' }, { time: 1500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }]
         : mode === 'normal'
         ? [{ time: 500, text: 'Sending...' }, { time: 1500, text: 'Reading Instructions...' }, { time: 2000, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }]
+        : mode === 'coder'
+        ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Reading Instructions...' }, { time: 1500, text: 'Analyzing Code Requirements...' }, { time: Infinity, text: 'Generating Code...' }]
         : [{ time: 500, text: 'Sending...' }, { time: 2000, text: 'Reading Instructions...' }, { time: 2500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }];
       
       const startTime = Date.now();
@@ -272,6 +274,9 @@ const Index = () => {
           break;
         case 'super':
           response = await sendSuper(message, messages, image);
+          break;
+        case 'coder':
+          response = await sendCoder(message, messages, image);
           break;
       case 'imageGen':
         const { imageUrl, imageBlob } = await generateImage(message, (status) => {
@@ -471,6 +476,16 @@ Format: [{"question":"...","answer":"..."}]`;
       audioUrl,
       audioBlob
     };
+
+      // Check for coding keywords and suggest Coder mode
+      const codingKeywords = ['program', 'code', 'coding', 'javascript', 'python', 'website', 'html', 'css', 'react', 'function', 'variable', 'array', 'object', 'class', 'method', 'api', 'database', 'sql', 'nodejs', 'typescript', 'java', 'c++', 'php', 'ruby', 'swift', 'kotlin'];
+      const messageContainsCoding = codingKeywords.some(keyword => 
+        message.toLowerCase().includes(keyword.toLowerCase())
+      );
+
+      if (messageContainsCoding && mode !== 'coder') {
+        assistantMessage.content += '\n\n💡 **Tip:** Choose **Coder** in the Toolbox to generate optimized code!';
+      }
 
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);

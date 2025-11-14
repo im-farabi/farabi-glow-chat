@@ -1,7 +1,7 @@
 import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Bolt, Circle, Zap, X } from 'lucide-react';
+import { Send, Bolt, Circle, Zap, X, Code2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,13 +13,13 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen', image?: File) => void;
+  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder', image?: File) => void;
   disabled?: boolean;
 }
 
 const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   const [message, setMessage] = useState('');
-  const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen'>('normal');
+  const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder'>('normal');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showRecommended, setShowRecommended] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -153,6 +153,17 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             <Zap className="h-3 w-3 md:h-4 md:w-4 md:mr-1 font-bold text-green-500" strokeWidth={2.5} />
             <span className="hidden sm:inline">Super</span>
           </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveMode(activeMode === 'coder' ? 'normal' : 'coder')}
+            className={`text-xs md:text-sm ${activeMode === 'coder' ? 'bg-accent' : ''}`}
+            title="Coding Assistant"
+          >
+            <Code2 className="h-3 w-3 md:h-4 md:w-4 md:mr-1 text-blue-500" />
+            <span className="hidden sm:inline">Coder</span>
+          </Button>
         </div>
 
         {/* Image Preview */}
@@ -262,6 +273,11 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
             <>
               <Zap className="h-3 w-3 font-bold text-green-500" strokeWidth={2.5} />
               <span>Super mode active</span>
+            </>
+          ) : activeMode === 'coder' ? (
+            <>
+              <Code2 className="h-3 w-3 text-blue-500" />
+              <span>Coder mode active</span>
             </>
           ) : (
             <>
