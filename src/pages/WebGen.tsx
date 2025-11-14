@@ -49,11 +49,8 @@ export default function WebGen() {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [userWebsites, setUserWebsites] = useState<Website[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
   const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
 
@@ -129,10 +126,6 @@ export default function WebGen() {
       // Switch to manual tab
       setActiveTab("manual");
 
-      // Clear validation state
-      setValidationErrors([]);
-      setValidationWarnings([]);
-
       toast({
         title: "✨ Website Generated!",
         description: "Your code is ready! Now add a title and slug, then publish.",
@@ -146,47 +139,6 @@ export default function WebGen() {
       });
     } finally {
       setIsGenerating(false);
-    }
-  };
-
-  const handleValidate = async () => {
-    if (!html.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "HTML content is required",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsValidating(true);
-    try {
-      const result = await validateWebsiteCode(html, css, js);
-      setValidationErrors(result.errors);
-      setValidationWarnings(result.warnings);
-      
-      if (result.valid) {
-        toast({
-          title: "✅ Validation Passed",
-          description: result.warnings.length > 0 
-            ? `All checks passed with ${result.warnings.length} warning(s)`
-            : "All checks passed!",
-        });
-      } else {
-        toast({
-          title: "❌ Validation Failed",
-          description: `Found ${result.errors.length} error(s)`,
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Validation Error",
-        description: "Failed to validate code",
-        variant: "destructive"
-      });
-    } finally {
-      setIsValidating(false);
     }
   };
 
@@ -305,8 +257,6 @@ ${fullHtml}
         setTitle("");
         setSlug("");
         setAiPrompt("");
-        setValidationErrors([]);
-        setValidationWarnings([]);
         setActiveTab("ai");
         
         // Reload websites
@@ -354,8 +304,6 @@ ${fullHtml}
     setJs("");
     setTitle("");
     setSlug("");
-    setValidationErrors([]);
-    setValidationWarnings([]);
     setPublishedUrl(null);
     setActiveTab("ai");
     
@@ -580,9 +528,6 @@ ${fullHtml}
                   <Eye className="h-4 w-4 mr-2" />
                   Preview
                 </Button>
-                <Button onClick={handleValidate} variant="outline" disabled={!html.trim() || isValidating}>
-                  {isValidating ? "Validating..." : "Validate Code"}
-                </Button>
                 <Button 
                   onClick={handlePublish} 
                   disabled={!html.trim() || !title.trim() || (!editingWebsiteId && slugStatus !== "available") || isPublishing || (!editingWebsiteId && userWebsites.length >= 3)}
@@ -630,28 +575,6 @@ ${fullHtml}
                   <p className="text-sm text-muted-foreground mt-2">
                     💡 Tip: You can also visit using the short link /{slug}
                   </p>
-                </div>
-              )}
-
-              {(validationErrors.length > 0 || validationWarnings.length > 0) && (
-                <div className="mt-4 p-4 bg-muted rounded">
-                  <h3 className="font-medium mb-2">📝 Validation Results:</h3>
-                  {validationErrors.length > 0 && (
-                    <div className="mb-2">
-                      <p className="text-sm text-red-500 font-medium">Errors:</p>
-                      <ul className="list-disc list-inside text-sm text-red-500">
-                        {validationErrors.map((err, idx) => <li key={idx}>{err}</li>)}
-                      </ul>
-                    </div>
-                  )}
-                  {validationWarnings.length > 0 && (
-                    <div>
-                      <p className="text-sm text-yellow-500 font-medium">Warnings:</p>
-                      <ul className="list-disc list-inside text-sm text-yellow-500">
-                        {validationWarnings.map((warn, idx) => <li key={idx}>{warn}</li>)}
-                      </ul>
-                    </div>
-                  )}
                 </div>
               )}
             </Card>
