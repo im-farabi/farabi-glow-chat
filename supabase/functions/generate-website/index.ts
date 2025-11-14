@@ -37,28 +37,39 @@ serve(async (req) => {
     const systemPrompt = `You are a website code generator. Generate complete, working website code based on user descriptions.
 
 CRITICAL RULES:
-1. Generate three separate code sections: HTML, CSS, and JavaScript
+1. Generate EVERYTHING in a single HTML file with inline <style> and <script> tags
 2. HTML must include complete structure with <!DOCTYPE html>, <head>, and <body>
-3. CSS should be modern, responsive, and visually appealing with animations when requested
-4. JavaScript MUST be included for: redirects, button clicks, form handling, or any interactive features
-5. Keep websites simple - no backend, no external APIs, no frameworks
-6. Use inline comments to explain key sections
-7. Always generate the JAVASCRIPT section even if empty - write "// No JavaScript needed" if truly none required
+3. Put ALL CSS inside <style> tags in the <head> section
+4. Put ALL JavaScript inside <script> tags at the end of <body>
+5. CSS should be modern, responsive, and visually appealing with animations when requested
+6. JavaScript MUST be included for: redirects, button clicks, form handling, or any interactive features
+7. Keep websites simple - no backend, no external APIs, no frameworks
+8. Use inline comments to explain key sections
 
-FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
-=== HTML ===
-[complete HTML code here]
-
-=== CSS ===
-[complete CSS code here]
-
-=== JAVASCRIPT ===
-[complete JavaScript code here OR "// No JavaScript needed"]
+EXAMPLE FORMAT:
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Title</title>
+  <style>
+    /* All your CSS here */
+  </style>
+</head>
+<body>
+  <!-- All your HTML content here -->
+  
+  <script>
+    // All your JavaScript here
+  </script>
+</body>
+</html>
 
 IMPORTANT: 
-- Follow this exact format with the === markers!
 - For redirects, ALWAYS use JavaScript with window.location or onclick handlers
-- For animations, prefer CSS but use JS for complex interactions`;
+- For animations, prefer CSS but use JS for complex interactions
+- Everything must be in ONE complete HTML file`;
 
     const requestBody = {
       messages: [
@@ -155,8 +166,8 @@ IMPORTANT:
     const aiResponse = await response.text();
     console.log('AI Response received, length:', aiResponse.length);
 
-    // Parse the response to extract HTML, CSS, and JS
-    const { html, css, js } = parseWebsiteCode(aiResponse);
+    // Extract the complete HTML (which now contains everything inline)
+    const html = extractCompleteHTML(aiResponse);
 
     if (!html || html.trim().length === 0) {
       console.error('Failed to parse HTML from response');
@@ -166,23 +177,10 @@ IMPORTANT:
       );
     }
 
-    // Ensure JAVASCRIPT section is populated when prompt implies interactivity (e.g., redirects)
-    let finalJs = js && js.trim().length > 0 ? js : '';
-    if (!finalJs) {
-      const urlMatch = (prompt as string).match(/https?:\/\/[^\s]+|[a-z0-9.-]+\.[a-z]{2,}/i);
-      if (urlMatch) {
-        const rawUrl = urlMatch[0];
-        const normalizedUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
-        finalJs = `// Auto-generated redirect handler based on your prompt\ndocument.addEventListener('DOMContentLoaded', function () {\n  var targetUrl = "${normalizedUrl}";\n  var candidates = Array.prototype.slice.call(document.querySelectorAll('a, button, [role="button"], .cta, #cta'));\n  var bound = false;\n  for (var i = 0; i < candidates.length; i++) {\n    var el = candidates[i];\n    var text = (el.textContent || '').trim().toLowerCase();\n    if (text.indexOf('click me') !== -1 || el.id === 'cta' || (el.classList && el.classList.contains('cta'))) {\n      el.addEventListener('click', function (e) { e.preventDefault(); window.location.href = targetUrl; });\n      bound = true;\n      break;\n    }\n  }\n  if (!bound) {\n    document.body.addEventListener('click', function (e) {\n      var t = e.target;\n      var btn = t && (t.closest ? t.closest('a, button, [role="button"], .cta, #cta') : null);\n      if (btn) { e.preventDefault(); window.location.href = targetUrl; }\n    }, { once: true });\n  }\n});`;
-      } else {
-        finalJs = '// No JavaScript needed';
-      }
-    }
-
     console.log('Successfully generated website code');
 
     return new Response(
-      JSON.stringify({ html, css, js: finalJs }),
+      JSON.stringify({ html, css: '', js: '' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
@@ -195,31 +193,20 @@ IMPORTANT:
   }
 });
 
-function parseWebsiteCode(aiResponse: string): { html: string; css: string; js: string } {
+function extractCompleteHTML(aiResponse: string): string {
   // Remove markdown code blocks if present
-  let cleanResponse = aiResponse.replace(/```html\n?/gi, '').replace(/```css\n?/gi, '').replace(/```javascript\n?/gi, '').replace(/```\n?/g, '');
+  let cleanResponse = aiResponse.replace(/```html\n?/gi, '').replace(/```\n?/g, '');
 
-  // Try to extract using === markers
-  const htmlMatch = cleanResponse.match(/===\s*HTML\s*===\s*([\s\S]*?)(?=\s*===\s*(?:CSS|JAVASCRIPT)|$)/i);
-  const cssMatch = cleanResponse.match(/===\s*CSS\s*===\s*([\s\S]*?)(?=\s*===\s*(?:HTML|JAVASCRIPT)|$)/i);
-  const jsMatch = cleanResponse.match(/===\s*JAVASCRIPT\s*===\s*([\s\S]*?)(?=\s*===\s*(?:HTML|CSS)|$)/i);
-
-  let html = htmlMatch ? htmlMatch[1].trim() : "";
-  let css = cssMatch ? cssMatch[1].trim() : "";
-  let js = jsMatch ? jsMatch[1].trim() : "";
-
-  // Fallback: if no markers found, try to extract HTML from the response
-  if (!html) {
-    const docTypeMatch = cleanResponse.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);
-    if (docTypeMatch) {
-      html = docTypeMatch[1].trim();
-    }
+  // Try to extract complete HTML document
+  const docTypeMatch = cleanResponse.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);
+  if (docTypeMatch) {
+    return docTypeMatch[1].trim();
   }
 
-  // Clean up any remaining markdown artifacts
-  html = html.replace(/```/g, '').trim();
-  css = css.replace(/```/g, '').trim();
-  js = js.replace(/```/g, '').trim();
+  // If no DOCTYPE found, check if response is already clean HTML
+  if (cleanResponse.trim().startsWith('<html') || cleanResponse.trim().startsWith('<!DOCTYPE')) {
+    return cleanResponse.trim();
+  }
 
-  return { html, css, js };
+  return "";
 }
