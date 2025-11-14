@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ChevronRight, ChevronDown, Eye, Send, Trash2, ExternalLink, X, Copy, Sparkles, Code, Loader2, CheckCircle, Circle } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronDown, ChevronLeft, Eye, Send, Trash2, ExternalLink, X, Copy, Sparkles, Code, Loader2, CheckCircle, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -240,10 +240,24 @@ export default function WebGen() {
       }
 
       if (editingWebsiteId) {
-        await updateWebsite(editingWebsiteId, anonymousUserId, title, slug, html, css, js);
+        await updateWebsite({
+          websiteId: editingWebsiteId,
+          anonymousUserId,
+          title,
+          html,
+          css,
+          js
+        });
         toast({ title: "Website Updated!", description: "Your changes have been published" });
       } else {
-        await publishWebsite(anonymousUserId, title, slug, html, css, js);
+        await publishWebsite({
+          anonymousUserId,
+          slug,
+          title,
+          html,
+          css,
+          js
+        });
         toast({ title: "Website Published!", description: "Your website is now live" });
       }
 
@@ -488,14 +502,14 @@ export default function WebGen() {
               )}
 
               {currentStep !== 1 && (
-                <Button variant="secondary" onClick={() => setCurrentStep((prev) => (prev as number) - 1)}>
+                <Button variant="secondary" onClick={() => setCurrentStep((currentStep - 1) as 1 | 2 | 3)}>
                   <ChevronLeft className="mr-2 h-4 w-4" />
                   Back to Step {currentStep - 1}
                 </Button>
               )}
 
               {currentStep !== 3 && htmlGenerated && cssGenerated && (
-                <Button onClick={() => setCurrentStep((prev) => (prev as number) + 1)}>
+                <Button onClick={() => setCurrentStep((currentStep + 1) as 1 | 2 | 3)}>
                   Continue to Step {currentStep + 1}
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
