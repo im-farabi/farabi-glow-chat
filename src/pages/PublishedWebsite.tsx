@@ -1,43 +1,61 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+
+type ErrorType = "missing-slug" | "not-found" | "server-error" | null;
 
 export default function PublishedWebsite() {
   const { slug } = useParams<{ slug: string }>();
   const [loading, setLoading] = useState(true);
   const [htmlContent, setHtmlContent] = useState("");
-  const [error, setError] = useState(false);
+  const [errorType, setErrorType] = useState<ErrorType>(null);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchWebsite = async () => {
-      if (!slug) {
-        setError(true);
-        setLoading(false);
+  const fetchWebsite = async () => {
+    if (!slug) {
+      setErrorType("missing-slug");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setErrorType(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('serve-website', {
+        body: { slug }
+      });
+
+      if (error) {
+        console.error("Error loading website:", error);
+        if (error.message?.includes('404')) {
+          setErrorType("not-found");
+        } else {
+          setErrorType("server-error");
+        }
         return;
       }
 
-      try {
-        const { data, error } = await supabase.functions.invoke('serve-website', {
-          body: { slug }
-        });
-
-        if (error) throw error;
-
-        if (data) {
-          // The serve-website function returns the full HTML as text
-          // We need to handle it as a string response
-          setHtmlContent(data);
-        } else {
-          setError(true);
-        }
-      } catch (err) {
-        console.error("Error loading website:", err);
-        setError(true);
-      } finally {
-        setLoading(false);
+      if (data) {
+        setHtmlContent(data);
+      } else {
+        setErrorType("not-found");
       }
-    };
+    } catch (err: any) {
+      console.error("Error loading website:", err);
+      if (err.message?.includes('404') || err.status === 404) {
+        setErrorType("not-found");
+      } else {
+        setErrorType("server-error");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchWebsite();
   }, [slug]);
 
@@ -52,18 +70,40 @@ export default function PublishedWebsite() {
     );
   }
 
-  if (error) {
+  if (errorType) {
+    const errorMessages = {
+      "missing-slug": {
+        title: "Missing Website Address",
+        description: "This page is missing a website address. Please check the URL.",
+      },
+      "not-found": {
+        title: "Website Not Found",
+        description: "This website doesn't exist or isn't published yet.",
+      },
+      "server-error": {
+        title: "Server Error",
+        description: "Something went wrong loading this website. Please try again.",
+      },
+    };
+
+    const { title, description } = errorMessages[errorType];
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md p-8">
-          <h1 className="text-4xl font-bold mb-4">404</h1>
-          <h2 className="text-2xl font-semibold mb-2">Website Not Found</h2>
-          <p className="text-muted-foreground mb-6">
-            The website you're looking for doesn't exist or has been removed.
-          </p>
-          <a href="/" className="text-primary hover:underline">
-            Go back to home
-          </a>
+          <h1 className="text-4xl font-bold mb-4 text-foreground">
+            {errorType === "missing-slug" || errorType === "not-found" ? "404" : "500"}
+          </h1>
+          <h2 className="text-2xl font-semibold mb-2 text-foreground">{title}</h2>
+          <p className="text-muted-foreground mb-6">{description}</p>
+          <div className="flex gap-2 justify-center">
+            <Button onClick={fetchWebsite} variant="outline">
+              Retry
+            </Button>
+            <Button asChild>
+              <a href="/">Go to Home</a>
+            </Button>
+          </div>
         </div>
       </div>
     );

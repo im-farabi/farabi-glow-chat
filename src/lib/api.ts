@@ -497,6 +497,32 @@ export async function deleteWebsite(anonymousUserId: string, websiteId: string):
   }
 }
 
+export async function updateWebsite(websiteData: {
+  anonymousUserId: string;
+  websiteId: string;
+  title: string;
+  html: string;
+  css?: string;
+  js?: string;
+}): Promise<{ success: boolean; websiteUrl?: string; error?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke('update-website', {
+      body: websiteData
+    });
+
+    if (error) throw error;
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to update website');
+    }
+    
+    return data;
+  } catch (error: any) {
+    console.error('Error updating website:', error);
+    throw new Error(error.message || 'Failed to update website');
+  }
+}
+
 /**
  * Debug helper for testing
  */

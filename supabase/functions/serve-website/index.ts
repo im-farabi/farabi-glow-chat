@@ -1,14 +1,40 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.0';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
-    // Read slug from request body
-    const { slug } = await req.json();
+    // Support both POST (JSON body) and GET (query params)
+    let slug: string | null = null;
+    
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        slug = body.slug;
+      } catch {
+        // If JSON parsing fails, try query params
+      }
+    }
+    
+    if (!slug) {
+      const url = new URL(req.url);
+      slug = url.searchParams.get('slug');
+    }
     
     console.log('Serving website:', slug);
 
     if (!slug) {
-      return new Response('Slug parameter is required', { status: 400 });
+      return new Response(
+        JSON.stringify({ error: 'Slug parameter is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -24,15 +50,21 @@ Deno.serve(async (req) => {
       .single();
 
     if (error || !website) {
-      console.error('Website not found:', error);
-      return new Response('Website not found', { status: 404 });
+      console.error('Website not found for slug:', slug, error);
+      return new Response(
+        JSON.stringify({ error: 'Website not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Increment view count
-    await supabase
+    // Increment view count (non-blocking)
+    supabase
       .from('user_websites')
       .update({ views_count: (website.views_count || 0) + 1 })
-      .eq('id', website.id);
+      .eq('id', website.id)
+      .then(({ error }) => {
+        if (error) console.error('Failed to increment view count:', error);
+      });
 
     // Combine HTML, CSS, and JS
     let fullHtml = website.html_content;
@@ -80,6 +112,9 @@ ${fullHtml}
 
   } catch (error) {
     console.error('Error in serve-website:', error);
-    return new Response('Internal server error', { status: 500 });
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 });
