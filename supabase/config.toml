@@ -3,6 +3,9 @@ project_id = "gjlxuvcfoqjhwzcmpaju"
 [functions.pollinations-chat]
 verify_jwt = false
 
+[functions.generate-website]
+verify_jwt = false
+
 [functions.pollinations-tts]
 verify_jwt = false
 
