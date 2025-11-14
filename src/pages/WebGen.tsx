@@ -15,6 +15,9 @@ interface Website {
   title: string;
   views_count: number;
   created_at: string;
+  html_content?: string;
+  css_content?: string;
+  js_content?: string;
 }
 
 export default function WebGen() {
@@ -44,6 +47,7 @@ export default function WebGen() {
   const [userWebsites, setUserWebsites] = useState<Website[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Website Generator - Farabi's AI Chatbot | Create Free Websites";
@@ -231,6 +235,38 @@ ${fullHtml}
     }
   };
 
+  const handleEdit = async (website: Website) => {
+    setEditingWebsiteId(website.id);
+    setTitle(website.title);
+    setSlug(website.slug);
+    
+    // Fetch full website content
+    const websites = await getUserWebsites(anonymousUserId);
+    const fullWebsite = websites.find(w => w.id === website.id);
+    
+    if (fullWebsite) {
+      setHtml(fullWebsite.html_content || '');
+      setCss(fullWebsite.css_content || '');
+      setJs(fullWebsite.js_content || '');
+    }
+    
+    toast({
+      title: "Edit Mode",
+      description: "You are now editing this website. Click Publish to save changes.",
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingWebsiteId(null);
+    setHtml("");
+    setCss("");
+    setJs("");
+    setTitle("");
+    setSlug("");
+    setValidationErrors([]);
+    setValidationWarnings([]);
+  };
+
   const handleDelete = async (websiteId: string) => {
     if (!confirm("Are you sure you want to delete this website?")) return;
 
@@ -278,7 +314,16 @@ ${fullHtml}
         </div>
 
         <Card className="p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Create Your Website ({userWebsites.length}/3 created)</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">
+              {editingWebsiteId ? "Edit Your Website" : `Create Your Website (${userWebsites.length}/3 created)`}
+            </h2>
+            {editingWebsiteId && (
+              <Button onClick={handleCancelEdit} variant="outline" size="sm">
+                Cancel Edit
+              </Button>
+            )}
+          </div>
           
           <div className="space-y-4 mb-6">
             <div>
@@ -367,10 +412,10 @@ ${fullHtml}
             </Button>
             <Button 
               onClick={handlePublish} 
-              disabled={!html.trim() || !title.trim() || slugStatus !== "available" || isPublishing || userWebsites.length >= 3}
+              disabled={!html.trim() || !title.trim() || slugStatus !== "available" || isPublishing || (!editingWebsiteId && userWebsites.length >= 3)}
             >
               <Send className="h-4 w-4 mr-2" />
-              {isPublishing ? "Publishing..." : "Publish"}
+              {isPublishing ? (editingWebsiteId ? "Updating..." : "Publishing...") : (editingWebsiteId ? "Update" : "Publish")}
             </Button>
           </div>
 
@@ -418,6 +463,13 @@ ${fullHtml}
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     </Link>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEdit(website)}
+                    >
+                      Edit
+                    </Button>
                     <Button 
                       variant="destructive" 
                       size="sm"

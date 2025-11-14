@@ -6,7 +6,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Users, MessageSquare, Clock, Globe, Activity, RefreshCw, Heart } from 'lucide-react';
+import { Users, MessageSquare, Clock, Globe, Activity, RefreshCw, Heart, Trash2, ExternalLink } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+interface Website {
+  id: string;
+  anonymous_user_id: string;
+  slug: string;
+  title: string;
+  views_count: number;
+  created_at: string;
+  is_published: boolean;
+}
 
 interface DashboardData {
   activeSessions: Array<{
@@ -51,6 +62,8 @@ export default function Owner() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [websites, setWebsites] = useState<Website[]>([]);
+  const [websitesLoading, setWebsitesLoading] = useState(false);
 
   const fetchDashboardData = useCallback(async (showToast = false) => {
     try {
@@ -107,6 +120,7 @@ export default function Owner() {
 
       setIsAuthenticated(true);
       setDashboardData(dashboardWithDonations);
+      await fetchWebsites();
       toast.success('Welcome, Owner!');
     } catch (error) {
       console.error('Login error:', error);
@@ -119,7 +133,50 @@ export default function Owner() {
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     await fetchDashboardData(true);
+    await fetchWebsites();
     setIsRefreshing(false);
+  };
+
+  const fetchWebsites = async () => {
+    setWebsitesLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('owner-websites', {
+        body: { password, petName }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setWebsites(data.websites || []);
+      }
+    } catch (error) {
+      console.error('Error fetching websites:', error);
+      toast.error('Failed to load websites');
+    } finally {
+      setWebsitesLoading(false);
+    }
+  };
+
+  const handleDeleteWebsite = async (websiteId: string) => {
+    if (!confirm('Are you sure you want to delete this website?')) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('owner-delete-website', {
+        body: { password, petName, websiteId }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success('Website deleted successfully');
+        await fetchWebsites();
+      } else {
+        toast.error('Failed to delete website');
+      }
+    } catch (error) {
+      console.error('Error deleting website:', error);
+      toast.error('Failed to delete website');
+    }
   };
 
   // Auto-refresh every 5 seconds
@@ -222,6 +279,13 @@ export default function Owner() {
           </div>
         </div>
 
+        <Tabs defaultValue="analytics" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="websites">User Websites ({websites.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="analytics" className="space-y-6 mt-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
@@ -409,6 +473,84 @@ export default function Owner() {
             </ScrollArea>
           </CardContent>
         </Card>
+        </TabsContent>
+
+        <TabsContent value="websites" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                User Generated Websites
+              </CardTitle>
+              <CardDescription>All websites created by users with the Website Generator</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {websitesLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Loading websites...</p>
+                </div>
+              ) : websites.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No websites created yet</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[600px]">
+                  <div className="space-y-3">
+                    {websites.map((website) => (
+                      <div key={website.id} className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Badge variant={website.is_published ? 'default' : 'secondary'}>
+                              {website.is_published ? 'Published' : 'Draft'}
+                            </Badge>
+                            <span className="font-semibold truncate">{website.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a 
+                              href={`/web/${website.slug}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-primary hover:underline flex items-center gap-1"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              View
+                            </a>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteWebsite(website.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">User ID: </span>
+                            <span className="font-mono text-xs">{website.anonymous_user_id}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Slug: </span>
+                            <span className="font-mono">/web/{website.slug}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Views: </span>
+                            <span className="font-semibold">{website.views_count}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Created: </span>
+                            <span>{formatTimeAgo(website.created_at)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
