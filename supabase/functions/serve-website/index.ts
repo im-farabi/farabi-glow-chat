@@ -2,8 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.0';
 
 Deno.serve(async (req) => {
   try {
-    const url = new URL(req.url);
-    const slug = url.searchParams.get('slug');
+    // Read slug from request body
+    const { slug } = await req.json();
     
     console.log('Serving website:', slug);
 
