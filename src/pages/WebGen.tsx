@@ -434,113 +434,159 @@ ${fullHtml}
           </TabsContent>
 
           <TabsContent value="manual">
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">
+            <Card className="p-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold">
                   {editingWebsiteId ? "Edit Your Website" : `Create Your Website (${userWebsites.length}/3 created)`}
                 </h2>
                 {editingWebsiteId && (
-                  <Button onClick={handleCancelEdit} variant="outline" size="sm">
+                  <Button onClick={handleCancelEdit} variant="outline">
                     Cancel Edit
                   </Button>
                 )}
               </div>
+
+              {!editingWebsiteId && (
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    💡 <strong>New to coding?</strong> Use the <strong>AI Generate</strong> tab to create your website automatically!
+                  </p>
+                </div>
+              )}
               
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Website Title</label>
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="My Awesome Website"
-                    maxLength={100}
-                  />
+              <div className="space-y-6 mb-8">
+                <div className="bg-muted/30 p-6 rounded-lg border-2 border-primary/20">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <span className="bg-primary text-primary-foreground w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                    Name Your Website
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-base font-medium mb-3">Website Name</label>
+                      <Input
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="My Awesome Website"
+                        maxLength={100}
+                        className="h-14 text-lg"
+                      />
+                      <p className="text-sm text-muted-foreground mt-2">
+                        This is the title visitors will see
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-base font-medium mb-3">Page Address (URL)</label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-lg font-mono">farabi.me/web/</span>
+                        <Input
+                          value={slug}
+                          onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                          placeholder="my-website"
+                          className="flex-1 h-14 text-lg font-mono"
+                          maxLength={50}
+                        />
+                        {getSlugBadge()}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Choose a unique address for your website (only letters, numbers, and hyphens)
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">Your Website URL</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">farabi.me/web/</span>
-                    <Input
-                      value={slug}
-                      onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                      placeholder="my-website"
-                      className="flex-1"
-                      maxLength={50}
-                    />
-                    {getSlugBadge()}
+                <div className="bg-muted/30 p-6 rounded-lg border-2 border-primary/20">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <span className="bg-primary text-primary-foreground w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                    Preview & Publish
+                  </h3>
+                  
+                  <div className="flex gap-3 flex-wrap">
+                    <Button 
+                      onClick={handlePreview} 
+                      variant="outline" 
+                      disabled={!html.trim()}
+                      size="lg"
+                      className="text-base"
+                    >
+                      <Eye className="h-5 w-5 mr-2" />
+                      Preview Website
+                    </Button>
+                    <Button 
+                      onClick={handlePublish} 
+                      disabled={!html.trim() || !title.trim() || (!editingWebsiteId && slugStatus !== "available") || isPublishing || (!editingWebsiteId && userWebsites.length >= 3)}
+                      size="lg"
+                      className="text-base"
+                    >
+                      <Send className="h-5 w-5 mr-2" />
+                      {isPublishing ? (editingWebsiteId ? "Updating..." : "Publishing...") : (editingWebsiteId ? "Update Website" : "Publish Website")}
+                    </Button>
+                    {editingWebsiteId && (
+                      <Button onClick={handleCancelEdit} variant="ghost" size="lg">
+                        <X className="h-5 w-5 mr-2" />
+                        Cancel
+                      </Button>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Only lowercase letters, numbers, and hyphens (3-50 characters)
-                  </p>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span className="bg-primary text-primary-foreground w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                  Edit Your Code
+                </h3>
+              </div>
+
+              <div className="space-y-3">
                 <Collapsible open={htmlOpen} onOpenChange={setHtmlOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted/50 rounded hover:bg-muted">
-                    {htmlOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    <span className="font-medium">index.html [REQUIRED]</span>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                    {htmlOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                    <span className="font-semibold text-base">index.html <span className="text-red-500">*</span></span>
+                    <span className="text-sm text-muted-foreground ml-auto">Required</span>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2">
+                  <CollapsibleContent className="mt-3">
                     <Textarea
                       value={html}
                       onChange={(e) => setHtml(e.target.value)}
                       placeholder="<!DOCTYPE html>&#10;<html>&#10;<head>&#10;  <title>My Website</title>&#10;</head>&#10;<body>&#10;  <h1>Hello World!</h1>&#10;</body>&#10;</html>"
-                      className="font-mono text-sm min-h-[300px]"
+                      className="font-mono text-sm min-h-[350px]"
                     />
                   </CollapsibleContent>
                 </Collapsible>
 
                 <Collapsible open={cssOpen} onOpenChange={setCssOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted/50 rounded hover:bg-muted">
-                    {cssOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    <span className="font-medium">styles.css [Optional]</span>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                    {cssOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                    <span className="font-semibold text-base">styles.css</span>
+                    <span className="text-sm text-muted-foreground ml-auto">Optional</span>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2">
+                  <CollapsibleContent className="mt-3">
                     <Textarea
                       value={css}
                       onChange={(e) => setCss(e.target.value)}
                       placeholder="body {&#10;  font-family: Arial, sans-serif;&#10;  margin: 0;&#10;  padding: 20px;&#10;}"
-                      className="font-mono text-sm min-h-[200px]"
+                      className="font-mono text-sm min-h-[250px]"
                     />
                   </CollapsibleContent>
                 </Collapsible>
 
                 <Collapsible open={jsOpen} onOpenChange={setJsOpen}>
-                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted/50 rounded hover:bg-muted">
-                    {jsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    <span className="font-medium">script.js [Optional]</span>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                    {jsOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                    <span className="font-semibold text-base">script.js</span>
+                    <span className="text-sm text-muted-foreground ml-auto">Optional</span>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2">
+                  <CollapsibleContent className="mt-3">
                     <Textarea
                       value={js}
                       onChange={(e) => setJs(e.target.value)}
                       placeholder="console.log('Hello from my website!');&#10;&#10;document.addEventListener('DOMContentLoaded', () => {&#10;  // Your code here&#10;});"
-                      className="font-mono text-sm min-h-[200px]"
+                      className="font-mono text-sm min-h-[250px]"
                     />
                   </CollapsibleContent>
                 </Collapsible>
-              </div>
-
-              <div className="flex gap-2 mt-6 flex-wrap">
-                <Button onClick={handlePreview} variant="outline" disabled={!html.trim()}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Preview
-                </Button>
-                <Button 
-                  onClick={handlePublish} 
-                  disabled={!html.trim() || !title.trim() || (!editingWebsiteId && slugStatus !== "available") || isPublishing || (!editingWebsiteId && userWebsites.length >= 3)}
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  {isPublishing ? (editingWebsiteId ? "Updating..." : "Publishing...") : (editingWebsiteId ? "Update" : "Publish")}
-                </Button>
-                {editingWebsiteId && (
-                  <Button onClick={handleCancelEdit} variant="ghost">
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel Edit
-                  </Button>
-                )}
               </div>
 
               {publishedUrl && (
