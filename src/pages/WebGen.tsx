@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ChevronRight, ChevronDown, Eye, Send, Trash2, ExternalLink } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronDown, Eye, Send, Trash2, ExternalLink, X, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { checkSlugAvailability, validateWebsiteCode, publishWebsite, getUserWebsites, deleteWebsite } from "@/lib/api";
+import { checkSlugAvailability, validateWebsiteCode, publishWebsite, getUserWebsites, deleteWebsite, updateWebsite } from "@/lib/api";
 
 interface Website {
   id: string;
@@ -48,6 +48,7 @@ export default function WebGen() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [editingWebsiteId, setEditingWebsiteId] = useState<string | null>(null);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Website Generator - Farabi's AI Chatbot | Create Free Websites";
@@ -177,7 +178,7 @@ ${fullHtml}
       return;
     }
 
-    if (slugStatus !== "available") {
+    if (!editingWebsiteId && slugStatus !== "available") {
       toast({
         title: "Publish Error",
         description: "Please choose an available slug",
@@ -186,7 +187,7 @@ ${fullHtml}
       return;
     }
 
-    if (userWebsites.length >= 3) {
+    if (!editingWebsiteId && userWebsites.length >= 3) {
       toast({
         title: "Limit Reached",
         description: "You have reached the maximum of 3 websites. Delete one to create a new website.",
@@ -197,22 +198,41 @@ ${fullHtml}
 
     setIsPublishing(true);
     try {
-      const result = await publishWebsite({
-        anonymousUserId,
-        slug,
-        title,
-        html,
-        css,
-        js
-      });
+      let result;
+      
+      if (editingWebsiteId) {
+        // Update existing website
+        result = await updateWebsite({
+          anonymousUserId,
+          websiteId: editingWebsiteId,
+          title,
+          html,
+          css,
+          js
+        });
+      } else {
+        // Create new website
+        result = await publishWebsite({
+          anonymousUserId,
+          slug,
+          title,
+          html,
+          css,
+          js
+        });
+      }
 
       if (result.success) {
+        const action = editingWebsiteId ? "Updated" : "Published";
         toast({
-          title: "🎉 Website Published!",
+          title: `🎉 Website ${action}!`,
           description: `Your website is live at /web/${slug}`,
         });
         
+        setPublishedUrl(result.websiteUrl || `/web/${slug}`);
+        
         // Reset form
+        setEditingWebsiteId(null);
         setHtml("");
         setCss("");
         setJs("");
@@ -226,8 +246,8 @@ ${fullHtml}
       }
     } catch (error: any) {
       toast({
-        title: "Publish Error",
-        description: error.message || "Failed to publish website",
+        title: editingWebsiteId ? "Update Error" : "Publish Error",
+        description: error.message || `Failed to ${editingWebsiteId ? 'update' : 'publish'} website`,
         variant: "destructive"
       });
     } finally {
@@ -265,6 +285,7 @@ ${fullHtml}
     setSlug("");
     setValidationErrors([]);
     setValidationWarnings([]);
+    setPublishedUrl(null);
   };
 
   const handleDelete = async (websiteId: string) => {
@@ -402,7 +423,7 @@ ${fullHtml}
             </Collapsible>
           </div>
 
-          <div className="flex gap-2 mt-6">
+          <div className="flex gap-2 mt-6 flex-wrap">
             <Button onClick={handlePreview} variant="outline" disabled={!html.trim()}>
               <Eye className="h-4 w-4 mr-2" />
               Preview
@@ -412,12 +433,53 @@ ${fullHtml}
             </Button>
             <Button 
               onClick={handlePublish} 
-              disabled={!html.trim() || !title.trim() || slugStatus !== "available" || isPublishing || (!editingWebsiteId && userWebsites.length >= 3)}
+              disabled={!html.trim() || !title.trim() || (!editingWebsiteId && slugStatus !== "available") || isPublishing || (!editingWebsiteId && userWebsites.length >= 3)}
             >
               <Send className="h-4 w-4 mr-2" />
               {isPublishing ? (editingWebsiteId ? "Updating..." : "Publishing...") : (editingWebsiteId ? "Update" : "Publish")}
             </Button>
+            {editingWebsiteId && (
+              <Button onClick={handleCancelEdit} variant="ghost">
+                <X className="h-4 w-4 mr-2" />
+                Cancel Edit
+              </Button>
+            )}
           </div>
+
+          {publishedUrl && (
+            <div className="mt-4 p-4 bg-primary/10 rounded-lg">
+              <h3 className="font-medium mb-2 text-primary">🎉 Website Live!</h3>
+              <div className="flex gap-2 items-center">
+                <Input 
+                  value={publishedUrl} 
+                  readOnly 
+                  className="font-mono text-sm"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(publishedUrl);
+                    toast({ title: "Copied!", description: "URL copied to clipboard" });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  asChild
+                >
+                  <a href={publishedUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open
+                  </a>
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                💡 Tip: You can also visit using the short link /{slug}
+              </p>
+            </div>
+          )}
 
           {(validationErrors.length > 0 || validationWarnings.length > 0) && (
             <div className="mt-4 p-4 bg-muted rounded">
