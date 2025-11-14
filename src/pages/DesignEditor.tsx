@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Canvas as FabricCanvas, FabricImage, Rect, Circle, Triangle, Textbox, ActiveSelection } from "fabric";
+import { Canvas as FabricCanvas, FabricImage, Rect, Circle, Triangle, Textbox } from "fabric";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import Header from "@/components/Header";
 import { 
   Download, 
@@ -15,26 +13,25 @@ import {
   Circle as CircleIcon, 
   Triangle as TriangleIcon,
   Trash2,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
   Copy,
-  Layers,
   ZoomIn,
   ZoomOut,
-  RotateCw,
-  Lock,
-  Unlock
+  Layers,
+  ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 export default function DesignEditor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [selectedObject, setSelectedObject] = useState<any>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 800 });
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showProperties, setShowProperties] = useState(false);
 
   useEffect(() => {
     document.title = "Design Editor | ProStudy AI";
@@ -56,9 +53,18 @@ export default function DesignEditor() {
       backgroundColor: "#ffffff",
     });
 
-    canvas.on("selection:created", (e) => setSelectedObject(e.selected?.[0]));
-    canvas.on("selection:updated", (e) => setSelectedObject(e.selected?.[0]));
-    canvas.on("selection:cleared", () => setSelectedObject(null));
+    canvas.on("selection:created", (e) => {
+      setSelectedObject(e.selected?.[0]);
+      setShowProperties(true);
+    });
+    canvas.on("selection:updated", (e) => {
+      setSelectedObject(e.selected?.[0]);
+      setShowProperties(true);
+    });
+    canvas.on("selection:cleared", () => {
+      setSelectedObject(null);
+      setShowProperties(false);
+    });
 
     setFabricCanvas(canvas);
 
@@ -67,14 +73,99 @@ export default function DesignEditor() {
     };
   }, [canvasSize]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!fabricCanvas) return;
+
+      // Delete key
+      if (e.key === "Delete" && selectedObject) {
+        fabricCanvas.remove(selectedObject);
+        fabricCanvas.renderAll();
+        toast.success("Object deleted");
+      }
+
+      // Ctrl/Cmd + D for duplicate
+      if ((e.ctrlKey || e.metaKey) && e.key === "d" && selectedObject) {
+        e.preventDefault();
+        duplicateSelected();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [fabricCanvas, selectedObject]);
+
+  // Drag and drop from computer
+  useEffect(() => {
+    const container = canvasContainerRef.current;
+    if (!container || !fabricCanvas) return;
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDragging(true);
+    };
+
+    const handleDragLeave = () => {
+      setIsDragging(false);
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+
+      const file = e.dataTransfer?.files?.[0];
+      if (!file || !file.type.startsWith("image/")) {
+        toast.error("Please drop an image file");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const imgElement = new Image();
+        imgElement.onload = () => {
+          FabricImage.fromURL(event.target?.result as string).then((img) => {
+            const rect = container.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            img.set({
+              left: x / zoom,
+              top: y / zoom,
+              scaleX: Math.min(300 / img.width!, 1),
+              scaleY: Math.min(300 / img.height!, 1),
+            });
+
+            fabricCanvas.add(img);
+            fabricCanvas.setActiveObject(img);
+            fabricCanvas.renderAll();
+            toast.success("Image added!");
+          });
+        };
+        imgElement.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    container.addEventListener("dragover", handleDragOver);
+    container.addEventListener("dragleave", handleDragLeave);
+    container.addEventListener("drop", handleDrop);
+
+    return () => {
+      container.removeEventListener("dragover", handleDragOver);
+      container.removeEventListener("dragleave", handleDragLeave);
+      container.removeEventListener("drop", handleDrop);
+    };
+  }, [fabricCanvas, zoom]);
+
   const addText = () => {
     if (!fabricCanvas) return;
 
     const text = new Textbox("Double click to edit", {
-      left: 100,
-      top: 100,
+      left: canvasSize.width / 2 - 100,
+      top: canvasSize.height / 2 - 20,
       width: 200,
-      fontSize: 24,
+      fontSize: 32,
       fill: "#000000",
       fontFamily: "Arial",
     });
@@ -89,31 +180,34 @@ export default function DesignEditor() {
     if (!fabricCanvas) return;
 
     let shape;
+    const centerX = canvasSize.width / 2;
+    const centerY = canvasSize.height / 2;
+
     switch (type) {
       case "rectangle":
         shape = new Rect({
-          left: 100,
-          top: 100,
+          left: centerX - 75,
+          top: centerY - 75,
           fill: "#3b82f6",
-          width: 100,
-          height: 100,
+          width: 150,
+          height: 150,
         });
         break;
       case "circle":
         shape = new Circle({
-          left: 100,
-          top: 100,
+          left: centerX - 75,
+          top: centerY - 75,
           fill: "#10b981",
-          radius: 50,
+          radius: 75,
         });
         break;
       case "triangle":
         shape = new Triangle({
-          left: 100,
-          top: 100,
+          left: centerX - 75,
+          top: centerY - 75,
           fill: "#f59e0b",
-          width: 100,
-          height: 100,
+          width: 150,
+          height: 150,
         });
         break;
     }
@@ -124,45 +218,58 @@ export default function DesignEditor() {
     toast.success("Shape added!");
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !fabricCanvas) return;
+  const handleImageUpload = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file || !fabricCanvas) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const imgElement = new Image();
-      imgElement.src = event.target?.result as string;
-      imgElement.onload = () => {
-        FabricImage.fromURL(imgElement.src).then((img) => {
-          img.scaleToWidth(300);
-          fabricCanvas.add(img);
-          fabricCanvas.setActiveObject(img);
-          fabricCanvas.renderAll();
-          toast.success("Image uploaded!");
-        });
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const imgElement = new Image();
+        imgElement.onload = () => {
+          FabricImage.fromURL(event.target?.result as string).then((img) => {
+            img.set({
+              left: canvasSize.width / 2 - 150,
+              top: canvasSize.height / 2 - 150,
+              scaleX: Math.min(300 / img.width!, 1),
+              scaleY: Math.min(300 / img.height!, 1),
+            });
+
+            fabricCanvas.add(img);
+            fabricCanvas.setActiveObject(img);
+            fabricCanvas.renderAll();
+            toast.success("Image uploaded!");
+          });
+        };
+        imgElement.src = event.target?.result as string;
       };
+      reader.readAsDataURL(file);
     };
-    reader.readAsDataURL(file);
+    input.click();
   };
 
   const deleteSelected = () => {
     if (!fabricCanvas || !selectedObject) return;
     fabricCanvas.remove(selectedObject);
     fabricCanvas.renderAll();
-    toast.success("Object deleted!");
+    toast.success("Object deleted");
   };
 
   const duplicateSelected = () => {
     if (!fabricCanvas || !selectedObject) return;
+
     selectedObject.clone().then((cloned: any) => {
       cloned.set({
-        left: (selectedObject.left || 0) + 20,
-        top: (selectedObject.top || 0) + 20,
+        left: cloned.left + 20,
+        top: cloned.top + 20,
       });
       fabricCanvas.add(cloned);
       fabricCanvas.setActiveObject(cloned);
       fabricCanvas.renderAll();
-      toast.success("Object duplicated!");
+      toast.success("Object duplicated");
     });
   };
 
@@ -178,56 +285,25 @@ export default function DesignEditor() {
     fabricCanvas.renderAll();
   };
 
-  const updateObjectProperty = (property: string, value: any) => {
-    if (!fabricCanvas || !selectedObject) return;
-    selectedObject.set(property, value);
-    fabricCanvas.renderAll();
+  const handleZoomIn = () => {
+    const newZoom = Math.min(zoom * 1.2, 3);
+    setZoom(newZoom);
+    fabricCanvas?.setZoom(newZoom);
   };
 
-  const setTextAlign = (align: string) => {
-    if (!fabricCanvas || !selectedObject || selectedObject.type !== "textbox") return;
-    selectedObject.set("textAlign", align);
-    fabricCanvas.renderAll();
-  };
-
-  const toggleLock = () => {
-    if (!fabricCanvas || !selectedObject) return;
-    const isLocked = selectedObject.lockMovementX;
-    selectedObject.set({
-      lockMovementX: !isLocked,
-      lockMovementY: !isLocked,
-      lockRotation: !isLocked,
-      lockScalingX: !isLocked,
-      lockScalingY: !isLocked,
-      selectable: isLocked,
-    });
-    fabricCanvas.renderAll();
-    toast.success(isLocked ? "Object unlocked!" : "Object locked!");
-  };
-
-  const zoomIn = () => {
-    if (!fabricCanvas) return;
-    const zoom = fabricCanvas.getZoom();
-    fabricCanvas.setZoom(zoom * 1.1);
-  };
-
-  const zoomOut = () => {
-    if (!fabricCanvas) return;
-    const zoom = fabricCanvas.getZoom();
-    fabricCanvas.setZoom(zoom * 0.9);
-  };
-
-  const resetZoom = () => {
-    if (!fabricCanvas) return;
-    fabricCanvas.setZoom(1);
+  const handleZoomOut = () => {
+    const newZoom = Math.max(zoom / 1.2, 0.1);
+    setZoom(newZoom);
+    fabricCanvas?.setZoom(newZoom);
   };
 
   const downloadDesign = () => {
     if (!fabricCanvas) return;
+
     const dataURL = fabricCanvas.toDataURL({
       format: "png",
       quality: 1,
-      multiplier: 1,
+      multiplier: 2,
     });
 
     const link = document.createElement("a");
@@ -237,351 +313,344 @@ export default function DesignEditor() {
     toast.success("Design downloaded!");
   };
 
-  const clearCanvas = () => {
-    if (!fabricCanvas) return;
-    fabricCanvas.clear();
-    fabricCanvas.backgroundColor = "#ffffff";
+  const updateObjectProperty = (property: string, value: any) => {
+    if (!selectedObject || !fabricCanvas) return;
+
+    selectedObject.set(property, value);
     fabricCanvas.renderAll();
-    toast.success("Canvas cleared!");
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
       
-      <div className="container mx-auto p-4">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Design Editor</h1>
-          <p className="text-muted-foreground">Create stunning designs with drag-and-drop editing</p>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Tools */}
+        <div className="w-20 bg-card border-r border-border flex flex-col items-center py-6 gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={addText}
+            className="w-12 h-12 hover:bg-accent"
+            title="Add Text"
+          >
+            <Type className="w-5 h-5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleImageUpload}
+            className="w-12 h-12 hover:bg-accent"
+            title="Upload Image"
+          >
+            <Upload className="w-5 h-5" />
+          </Button>
+
+          <Separator className="w-8" />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => addShape("rectangle")}
+            className="w-12 h-12 hover:bg-accent"
+            title="Add Rectangle"
+          >
+            <Square className="w-5 h-5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => addShape("circle")}
+            className="w-12 h-12 hover:bg-accent"
+            title="Add Circle"
+          >
+            <CircleIcon className="w-5 h-5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => addShape("triangle")}
+            className="w-12 h-12 hover:bg-accent"
+            title="Add Triangle"
+          >
+            <TriangleIcon className="w-5 h-5" />
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr_250px] gap-4">
-          {/* Left Toolbar */}
-          <div className="bg-card border border-border rounded-lg p-4 space-y-4">
-            <div>
-              <h3 className="font-semibold mb-3">Tools</h3>
-              <div className="space-y-2">
-                <Button onClick={addText} variant="outline" className="w-full justify-start">
-                  <Type className="mr-2 h-4 w-4" />
-                  Add Text
-                </Button>
-                
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="w-full justify-start">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Image
-                </Button>
-              </div>
+        {/* Main Canvas Area */}
+        <div className="flex-1 flex flex-col bg-muted/30">
+          {/* Top Toolbar */}
+          <div className="h-14 bg-card border-b border-border flex items-center justify-between px-6">
+            <div className="flex items-center gap-2">
+              <Select
+                value={`${canvasSize.width}x${canvasSize.height}`}
+                onValueChange={(value) => {
+                  const [width, height] = value.split("x").map(Number);
+                  setCanvasSize({ width, height });
+                }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1920x1080">1920 × 1080</SelectItem>
+                  <SelectItem value="1200x800">1200 × 800</SelectItem>
+                  <SelectItem value="1080x1080">1080 × 1080</SelectItem>
+                  <SelectItem value="1080x1920">1080 × 1920</SelectItem>
+                  <SelectItem value="800x600">800 × 600</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <Separator />
-
-            <div>
-              <h3 className="font-semibold mb-3">Shapes</h3>
-              <div className="space-y-2">
-                <Button onClick={() => addShape("rectangle")} variant="outline" className="w-full justify-start">
-                  <Square className="mr-2 h-4 w-4" />
-                  Rectangle
-                </Button>
-                <Button onClick={() => addShape("circle")} variant="outline" className="w-full justify-start">
-                  <CircleIcon className="mr-2 h-4 w-4" />
-                  Circle
-                </Button>
-                <Button onClick={() => addShape("triangle")} variant="outline" className="w-full justify-start">
-                  <TriangleIcon className="mr-2 h-4 w-4" />
-                  Triangle
-                </Button>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div>
-              <h3 className="font-semibold mb-3">Canvas Size</h3>
-              <div className="space-y-2">
-                <Select
-                  value={`${canvasSize.width}x${canvasSize.height}`}
-                  onValueChange={(value) => {
-                    const [width, height] = value.split("x").map(Number);
-                    setCanvasSize({ width, height });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1200x800">1200 x 800 (Default)</SelectItem>
-                    <SelectItem value="1920x1080">1920 x 1080 (HD)</SelectItem>
-                    <SelectItem value="1080x1080">1080 x 1080 (Square)</SelectItem>
-                    <SelectItem value="1080x1920">1080 x 1920 (Story)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handleZoomOut}>
+                <ZoomOut className="w-4 h-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground w-16 text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <Button variant="ghost" size="icon" onClick={handleZoomIn}>
+                <ZoomIn className="w-4 h-4" />
+              </Button>
+              
+              <Separator orientation="vertical" className="h-6 mx-2" />
+              
+              <Button variant="default" onClick={downloadDesign} className="gap-2">
+                <Download className="w-4 h-4" />
+                Download
+              </Button>
             </div>
           </div>
 
-          {/* Canvas Area */}
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex gap-2">
-                <Button onClick={zoomOut} size="sm" variant="outline">
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <Button onClick={resetZoom} size="sm" variant="outline">
-                  Reset
-                </Button>
-                <Button onClick={zoomIn} size="sm" variant="outline">
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={clearCanvas} size="sm" variant="outline">
-                  Clear
-                </Button>
-                <Button onClick={downloadDesign} size="sm">
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
-                </Button>
-              </div>
-            </div>
-            
-            <ScrollArea className="h-[calc(100vh-250px)]">
-              <div className="flex items-center justify-center p-4 bg-muted/20 rounded-lg">
-                <div className="shadow-2xl">
-                  <canvas ref={canvasRef} />
+          {/* Canvas */}
+          <div 
+            ref={canvasContainerRef}
+            className={`flex-1 flex items-center justify-center p-8 overflow-auto relative ${
+              isDragging ? "bg-primary/10 border-2 border-dashed border-primary" : ""
+            }`}
+          >
+            {isDragging && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
+                <div className="text-center">
+                  <Upload className="w-12 h-12 mx-auto mb-2 text-primary" />
+                  <p className="text-lg font-medium">Drop your image here</p>
                 </div>
               </div>
-            </ScrollArea>
-          </div>
-
-          {/* Right Properties Panel */}
-          <div className="bg-card border border-border rounded-lg p-4">
-            <h3 className="font-semibold mb-4">Properties</h3>
+            )}
             
-            {selectedObject ? (
-              <ScrollArea className="h-[calc(100vh-200px)]">
-                <div className="space-y-4">
-                  <div className="flex gap-2">
-                    <Button onClick={duplicateSelected} size="sm" variant="outline" className="flex-1">
-                      <Copy className="mr-1 h-3 w-3" />
-                      Copy
-                    </Button>
-                    <Button onClick={deleteSelected} size="sm" variant="outline" className="flex-1">
-                      <Trash2 className="mr-1 h-3 w-3" />
-                      Delete
-                    </Button>
-                  </div>
+            <div className="shadow-2xl" style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}>
+              <canvas ref={canvasRef} className="border border-border" />
+            </div>
+          </div>
+        </div>
 
-                  <Separator />
+        {/* Right Properties Panel */}
+        {showProperties && selectedObject && (
+          <div className="w-80 bg-card border-l border-border overflow-auto">
+            <div className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Properties</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowProperties(false)}
+                  className="h-8 w-8"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </div>
 
-                  <div>
-                    <Label className="text-sm">Position X</Label>
-                    <Input
-                      type="number"
-                      value={Math.round(selectedObject.left || 0)}
-                      onChange={(e) => updateObjectProperty("left", Number(e.target.value))}
-                      className="mt-1"
-                    />
-                  </div>
+              <div className="space-y-4">
+                {/* Quick Actions */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={duplicateSelected}
+                    title="Duplicate (Ctrl+D)"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={deleteSelected}
+                    title="Delete (Del)"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={bringToFront}
+                    title="Bring to Front"
+                  >
+                    <Layers className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={sendToBack}
+                    title="Send to Back"
+                  >
+                    <Layers className="w-4 h-4 rotate-180" />
+                  </Button>
+                </div>
 
-                  <div>
-                    <Label className="text-sm">Position Y</Label>
-                    <Input
-                      type="number"
-                      value={Math.round(selectedObject.top || 0)}
-                      onChange={(e) => updateObjectProperty("top", Number(e.target.value))}
-                      className="mt-1"
-                    />
-                  </div>
+                <Separator />
 
-                  {selectedObject.type !== "textbox" && (
-                    <>
-                      <div>
-                        <Label className="text-sm">Width</Label>
-                        <Input
-                          type="number"
-                          value={Math.round((selectedObject.width || 0) * (selectedObject.scaleX || 1))}
-                          onChange={(e) => updateObjectProperty("scaleX", Number(e.target.value) / (selectedObject.width || 1))}
-                          className="mt-1"
-                        />
-                      </div>
-
-                      <div>
-                        <Label className="text-sm">Height</Label>
-                        <Input
-                          type="number"
-                          value={Math.round((selectedObject.height || 0) * (selectedObject.scaleY || 1))}
-                          onChange={(e) => updateObjectProperty("scaleY", Number(e.target.value) / (selectedObject.height || 1))}
-                          className="mt-1"
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div>
-                    <Label className="text-sm">Rotation</Label>
-                    <div className="flex gap-2 mt-1">
+                {/* Position */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Position</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">X</Label>
                       <Input
                         type="number"
-                        value={Math.round(selectedObject.angle || 0)}
-                        onChange={(e) => updateObjectProperty("angle", Number(e.target.value))}
+                        value={Math.round(selectedObject.left || 0)}
+                        onChange={(e) => updateObjectProperty("left", Number(e.target.value))}
+                        className="h-9"
                       />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => updateObjectProperty("angle", (selectedObject.angle || 0) + 45)}
-                      >
-                        <RotateCw className="h-4 w-4" />
-                      </Button>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Y</Label>
+                      <Input
+                        type="number"
+                        value={Math.round(selectedObject.top || 0)}
+                        onChange={(e) => updateObjectProperty("top", Number(e.target.value))}
+                        className="h-9"
+                      />
                     </div>
                   </div>
+                </div>
 
-                  <div>
-                    <Label className="text-sm">Opacity</Label>
-                    <Slider
-                      value={[(selectedObject.opacity || 1) * 100]}
-                      onValueChange={([value]) => updateObjectProperty("opacity", value / 100)}
-                      max={100}
-                      step={1}
-                      className="mt-2"
-                    />
+                {/* Size */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Size</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Width</Label>
+                      <Input
+                        type="number"
+                        value={Math.round((selectedObject.width || 0) * (selectedObject.scaleX || 1))}
+                        onChange={(e) => {
+                          const newWidth = Number(e.target.value);
+                          updateObjectProperty("scaleX", newWidth / (selectedObject.width || 1));
+                        }}
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Height</Label>
+                      <Input
+                        type="number"
+                        value={Math.round((selectedObject.height || 0) * (selectedObject.scaleY || 1))}
+                        onChange={(e) => {
+                          const newHeight = Number(e.target.value);
+                          updateObjectProperty("scaleY", newHeight / (selectedObject.height || 1));
+                        }}
+                        className="h-9"
+                      />
+                    </div>
                   </div>
+                </div>
 
-                  {selectedObject.type === "textbox" && (
-                    <>
-                      <Separator />
-                      <div>
-                        <Label className="text-sm">Font Size</Label>
+                {/* Rotation */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Rotation</Label>
+                  <Input
+                    type="number"
+                    value={Math.round(selectedObject.angle || 0)}
+                    onChange={(e) => updateObjectProperty("angle", Number(e.target.value))}
+                    className="h-9"
+                  />
+                </div>
+
+                {/* Opacity */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Opacity</Label>
+                  <Slider
+                    value={[(selectedObject.opacity || 1) * 100]}
+                    onValueChange={([value]) => updateObjectProperty("opacity", value / 100)}
+                    max={100}
+                    step={1}
+                  />
+                  <div className="text-xs text-muted-foreground text-right">
+                    {Math.round((selectedObject.opacity || 1) * 100)}%
+                  </div>
+                </div>
+
+                {/* Text-specific properties */}
+                {selectedObject.type === "textbox" && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Text</Label>
+                      
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Font Size</Label>
                         <Input
                           type="number"
-                          value={selectedObject.fontSize || 24}
+                          value={selectedObject.fontSize || 20}
                           onChange={(e) => updateObjectProperty("fontSize", Number(e.target.value))}
-                          className="mt-1"
+                          className="h-9"
                         />
                       </div>
 
-                      <div>
-                        <Label className="text-sm">Font Family</Label>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Font Family</Label>
                         <Select
                           value={selectedObject.fontFamily || "Arial"}
                           onValueChange={(value) => updateObjectProperty("fontFamily", value)}
                         >
-                          <SelectTrigger className="mt-1">
+                          <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Arial">Arial</SelectItem>
+                            <SelectItem value="Helvetica">Helvetica</SelectItem>
                             <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                            <SelectItem value="Courier New">Courier New</SelectItem>
+                            <SelectItem value="Courier">Courier</SelectItem>
                             <SelectItem value="Georgia">Georgia</SelectItem>
-                            <SelectItem value="Verdana">Verdana</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
-                      <div>
-                        <Label className="text-sm mb-2 block">Text Align</Label>
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setTextAlign("left")}
-                            className="flex-1"
-                          >
-                            <AlignLeft className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setTextAlign("center")}
-                            className="flex-1"
-                          >
-                            <AlignCenter className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setTextAlign("right")}
-                            className="flex-1"
-                          >
-                            <AlignRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label className="text-sm">Text Color</Label>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Text Color</Label>
                         <Input
                           type="color"
                           value={selectedObject.fill || "#000000"}
                           onChange={(e) => updateObjectProperty("fill", e.target.value)}
-                          className="mt-1 h-10"
+                          className="h-10"
                         />
                       </div>
-                    </>
-                  )}
+                    </div>
+                  </>
+                )}
 
-                  {selectedObject.type !== "textbox" && (
-                    <div>
-                      <Label className="text-sm">Fill Color</Label>
+                {/* Shape-specific properties */}
+                {(selectedObject.type === "rect" || selectedObject.type === "circle" || selectedObject.type === "triangle") && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Fill Color</Label>
                       <Input
                         type="color"
                         value={selectedObject.fill || "#000000"}
                         onChange={(e) => updateObjectProperty("fill", e.target.value)}
-                        className="mt-1 h-10"
+                        className="h-10"
                       />
                     </div>
-                  )}
-
-                  <Separator />
-
-                  <div>
-                    <Label className="text-sm mb-2 block">Layer Order</Label>
-                    <div className="flex gap-2">
-                      <Button onClick={bringToFront} size="sm" variant="outline" className="flex-1">
-                        <Layers className="mr-1 h-3 w-3" />
-                        Front
-                      </Button>
-                      <Button onClick={sendToBack} size="sm" variant="outline" className="flex-1">
-                        <Layers className="mr-1 h-3 w-3" />
-                        Back
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={toggleLock}
-                    size="sm"
-                    variant="outline"
-                    className="w-full"
-                  >
-                    {selectedObject.lockMovementX ? (
-                      <>
-                        <Unlock className="mr-2 h-4 w-4" />
-                        Unlock
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="mr-2 h-4 w-4" />
-                        Lock
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </ScrollArea>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Select an object to edit its properties
-              </p>
-            )}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
