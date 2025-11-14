@@ -168,7 +168,7 @@ IMPORTANT:
     console.log('AI Response received, length:', aiResponse.length);
 
     // Extract the complete HTML (which now contains everything inline)
-    const html = extractCompleteHTML(aiResponse);
+    let html = extractCompleteHTML(aiResponse);
 
     if (!html || html.trim().length === 0) {
       console.error('Failed to parse HTML from response');
@@ -178,16 +178,39 @@ IMPORTANT:
       );
     }
 
-    // Validate that HTML is complete (not truncated)
+    // Validate that HTML is complete (not truncated) and attempt to fix if needed
     if (!html.trim().endsWith('</html>')) {
       console.warn('AI response was truncated. HTML does not end with </html>. Length:', html.length);
-      return new Response(
-        JSON.stringify({ error: 'The AI response was incomplete. Please try using a simpler or shorter prompt.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      
+      // Try to auto-close the HTML if it's mostly complete
+      const hasHtmlTag = html.includes('<html');
+      const hasBodyTag = html.includes('<body');
+      
+      if (hasHtmlTag || hasBodyTag) {
+        console.log('Attempting to auto-complete truncated HTML...');
+        
+        // Close any open tags
+        if (!html.includes('</script>') && html.includes('<script')) {
+          html += '\n  </script>';
+        }
+        if (!html.includes('</body>') && hasBodyTag) {
+          html += '\n</body>';
+        }
+        if (!html.includes('</html>') && hasHtmlTag) {
+          html += '\n</html>';
+        }
+        
+        console.log('Auto-completed HTML. New length:', html.length);
+      } else {
+        // Response is too incomplete to salvage
+        return new Response(
+          JSON.stringify({ error: 'The AI response was too incomplete. Please try a much simpler prompt or break it into smaller features.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
-    console.log('Successfully generated complete website code, length:', html.length);
+    console.log('Successfully generated website code, length:', html.length);
 
     return new Response(
       JSON.stringify({ html, css: '', js: '' }),
