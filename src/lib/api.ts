@@ -483,19 +483,6 @@ export async function getUserWebsites(anonymousUserId: string): Promise<any[]> {
   }
 }
 
-export async function deleteWebsite(anonymousUserId: string, websiteId: string): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.functions.invoke('delete-website', {
-      body: { anonymousUserId, websiteId }
-    });
-
-    if (error) throw error;
-    return data?.success || false;
-  } catch (error) {
-    console.error('Error deleting website:', error);
-    throw new Error('Failed to delete website');
-  }
-}
 
 export async function updateWebsite(websiteData: {
   anonymousUserId: string;

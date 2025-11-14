@@ -45,13 +45,7 @@ verify_jwt = false
 [functions.serve-website]
 verify_jwt = false
 
-[functions.delete-website]
-verify_jwt = false
-
 [functions.owner-websites]
-verify_jwt = false
-
-[functions.owner-delete-website]
 verify_jwt = false
 
 [functions.update-website]

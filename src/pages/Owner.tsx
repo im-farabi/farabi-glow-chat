@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Users, MessageSquare, Clock, Globe, Activity, RefreshCw, Heart, Trash2, ExternalLink } from 'lucide-react';
+import { Users, MessageSquare, Clock, Globe, Activity, RefreshCw, Heart, ExternalLink } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Website {
@@ -157,27 +157,6 @@ export default function Owner() {
     }
   };
 
-  const handleDeleteWebsite = async (websiteId: string) => {
-    if (!confirm('Are you sure you want to delete this website?')) return;
-
-    try {
-      const { data, error } = await supabase.functions.invoke('owner-delete-website', {
-        body: { password, petName, websiteId }
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        toast.success('Website deleted successfully');
-        await fetchWebsites();
-      } else {
-        toast.error('Failed to delete website');
-      }
-    } catch (error) {
-      console.error('Error deleting website:', error);
-      toast.error('Failed to delete website');
-    }
-  };
 
   // Auto-refresh every 5 seconds
   useEffect(() => {
@@ -515,13 +494,6 @@ export default function Owner() {
                               <ExternalLink className="h-3 w-3" />
                               View
                             </a>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeleteWebsite(website.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4 text-sm">

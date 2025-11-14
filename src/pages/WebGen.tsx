@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ChevronRight, ChevronDown, Eye, Send, Trash2, ExternalLink, X, Copy, Sparkles, Code, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronDown, Eye, Send, ExternalLink, X, Copy, Sparkles, Code, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { checkSlugAvailability, validateWebsiteCode, publishWebsite, getUserWebsites, deleteWebsite, updateWebsite } from "@/lib/api";
+import { checkSlugAvailability, validateWebsiteCode, publishWebsite, getUserWebsites, updateWebsite } from "@/lib/api";
 
 interface Website {
   id: string;
@@ -313,24 +313,6 @@ ${fullHtml}
     });
   };
 
-  const handleDelete = async (websiteId: string) => {
-    if (!confirm("Are you sure you want to delete this website?")) return;
-
-    try {
-      await deleteWebsite(anonymousUserId, websiteId);
-      toast({
-        title: "Website Deleted",
-        description: "Your website has been deleted successfully",
-      });
-      await loadUserWebsites();
-    } catch (error) {
-      toast({
-        title: "Delete Error",
-        description: "Failed to delete website",
-        variant: "destructive"
-      });
-    }
-  };
 
   const getSlugBadge = () => {
     switch (slugStatus) {
@@ -654,13 +636,6 @@ ${fullHtml}
                       onClick={() => handleEdit(website)}
                     >
                       Edit
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => handleDelete(website.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
