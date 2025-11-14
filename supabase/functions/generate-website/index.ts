@@ -166,6 +166,53 @@ IMPORTANT:
       );
     }
 
+    // Ensure CSS is populated - generate basic styling if empty
+    let finalCss = css && css.trim().length > 0 ? css : `/* Basic styling */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+}
+
+h1, h2, h3 {
+  margin-bottom: 20px;
+  color: #667eea;
+}
+
+button, .button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+button:hover, .button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}`;
+
     // Ensure JAVASCRIPT section is populated when prompt implies interactivity (e.g., redirects)
     let finalJs = js && js.trim().length > 0 ? js : '';
     if (!finalJs) {
@@ -182,7 +229,7 @@ IMPORTANT:
     console.log('Successfully generated website code');
 
     return new Response(
-      JSON.stringify({ html, css, js: finalJs }),
+      JSON.stringify({ html, css: finalCss, js: finalJs }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

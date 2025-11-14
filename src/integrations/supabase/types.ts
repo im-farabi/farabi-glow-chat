@@ -143,6 +143,81 @@ export type Database = {
         }
         Relationships: []
       }
+      user_websites: {
+        Row: {
+          anonymous_user_id: string
+          created_at: string
+          css_content: string | null
+          html_content: string
+          id: string
+          is_published: boolean
+          js_content: string | null
+          slug: string
+          title: string
+          updated_at: string
+          views_count: number | null
+        }
+        Insert: {
+          anonymous_user_id: string
+          created_at?: string
+          css_content?: string | null
+          html_content: string
+          id?: string
+          is_published?: boolean
+          js_content?: string | null
+          slug: string
+          title: string
+          updated_at?: string
+          views_count?: number | null
+        }
+        Update: {
+          anonymous_user_id?: string
+          created_at?: string
+          css_content?: string | null
+          html_content?: string
+          id?: string
+          is_published?: boolean
+          js_content?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string
+          views_count?: number | null
+        }
+        Relationships: []
+      }
+      verifications: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          roblox_user_id: string | null
+          roblox_username: string | null
+          verification_code: string
+          verified: boolean | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          roblox_user_id?: string | null
+          roblox_username?: string | null
+          verification_code: string
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          roblox_user_id?: string | null
+          roblox_username?: string | null
+          verification_code?: string
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       youtube_transcripts: {
         Row: {
           created_at: string
@@ -178,6 +253,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_verifications: { Args: never; Returns: undefined }
       delete_expired_transcripts: { Args: never; Returns: undefined }
     }
     Enums: {
