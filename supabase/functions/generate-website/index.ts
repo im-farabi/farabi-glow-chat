@@ -166,10 +166,23 @@ IMPORTANT:
       );
     }
 
+    // Ensure JAVASCRIPT section is populated when prompt implies interactivity (e.g., redirects)
+    let finalJs = js && js.trim().length > 0 ? js : '';
+    if (!finalJs) {
+      const urlMatch = (prompt as string).match(/https?:\/\/[^\s]+|[a-z0-9.-]+\.[a-z]{2,}/i);
+      if (urlMatch) {
+        const rawUrl = urlMatch[0];
+        const normalizedUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+        finalJs = `// Auto-generated redirect handler based on your prompt\ndocument.addEventListener('DOMContentLoaded', function () {\n  var targetUrl = "${normalizedUrl}";\n  var candidates = Array.prototype.slice.call(document.querySelectorAll('a, button, [role="button"], .cta, #cta'));\n  var bound = false;\n  for (var i = 0; i < candidates.length; i++) {\n    var el = candidates[i];\n    var text = (el.textContent || '').trim().toLowerCase();\n    if (text.indexOf('click me') !== -1 || el.id === 'cta' || (el.classList && el.classList.contains('cta'))) {\n      el.addEventListener('click', function (e) { e.preventDefault(); window.location.href = targetUrl; });\n      bound = true;\n      break;\n    }\n  }\n  if (!bound) {\n    document.body.addEventListener('click', function (e) {\n      var t = e.target;\n      var btn = t && (t.closest ? t.closest('a, button, [role="button"], .cta, #cta') : null);\n      if (btn) { e.preventDefault(); window.location.href = targetUrl; }\n    }, { once: true });\n  }\n});`;
+      } else {
+        finalJs = '// No JavaScript needed';
+      }
+    }
+
     console.log('Successfully generated website code');
 
     return new Response(
-      JSON.stringify({ html, css, js }),
+      JSON.stringify({ html, css, js: finalJs }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
