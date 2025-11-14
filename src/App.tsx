@@ -21,8 +21,6 @@ import Owner from "./pages/Owner";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
-import WebGen from "./pages/WebGen";
-import PublishedWebsite from "./pages/PublishedWebsite";
 import { getCursorPreference } from "./lib/storage";
 import { useCursorEffects } from "./hooks/useCursorEffects";
 
@@ -53,8 +51,6 @@ const App = () => {
           <Route path="/image-gen" element={<ImageGen />} />
           <Route path="/mcq-gen" element={<MCQGen />} />
           <Route path="/flashcard-gen" element={<FlashcardGen />} />
-          <Route path="/web-gen" element={<WebGen />} />
-          <Route path="/web/:slug" element={<PublishedWebsite />} />
           <Route path="/youtube-explain" element={<YoutubeExplain />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/terms" element={<Terms />} />

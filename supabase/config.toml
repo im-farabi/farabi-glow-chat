@@ -3,9 +3,6 @@ project_id = "gjlxuvcfoqjhwzcmpaju"
 [functions.pollinations-chat]
 verify_jwt = false
 
-[functions.generate-website]
-verify_jwt = false
-
 [functions.pollinations-tts]
 verify_jwt = false
 
@@ -28,28 +25,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.image-upscale]
-verify_jwt = false
-
-[functions.check-slug]
-verify_jwt = false
-
-[functions.validate-website]
-verify_jwt = false
-
-[functions.publish-website]
-verify_jwt = false
-
-[functions.get-user-websites]
-verify_jwt = false
-
-[functions.serve-website]
-verify_jwt = false
-
-[functions.owner-websites]
-verify_jwt = false
-
-[functions.update-website]
-verify_jwt = false
-
-[functions.owner-update-website]
 verify_jwt = false
