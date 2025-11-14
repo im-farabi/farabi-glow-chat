@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ChevronRight, ChevronDown, Eye, Send, Trash2, ExternalLink, X, Copy } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronDown, Eye, Send, Trash2, ExternalLink, X, Copy, Sparkles, Code, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { checkSlugAvailability, validateWebsiteCode, publishWebsite, getUserWebsites, deleteWebsite, updateWebsite } from "@/lib/api";
 
@@ -30,6 +32,11 @@ export default function WebGen() {
     }
     return id;
   });
+
+  // Tabs
+  const [activeTab, setActiveTab] = useState<"ai" | "manual">("ai");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Code sections
   const [htmlOpen, setHtmlOpen] = useState(true);
@@ -80,6 +87,65 @@ export default function WebGen() {
       setUserWebsites(websites);
     } catch (error) {
       console.error("Error loading websites:", error);
+    }
+  };
+
+  const handleAIGenerate = async () => {
+    if (!aiPrompt.trim()) {
+      toast({
+        title: "Prompt Required",
+        description: "Please describe the website you want to create",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    try {
+      const response = await fetch(
+        `https://gjlxuvcfoqjhwzcmpaju.supabase.co/functions/v1/generate-website`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt: aiPrompt })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate website');
+      }
+
+      const { html: generatedHtml, css: generatedCss, js: generatedJs } = await response.json();
+
+      // Auto-fill the manual tab
+      setHtml(generatedHtml || "");
+      setCss(generatedCss || "");
+      setJs(generatedJs || "");
+
+      // Switch to manual tab
+      setActiveTab("manual");
+
+      // Clear validation state
+      setValidationErrors([]);
+      setValidationWarnings([]);
+
+      toast({
+        title: "✨ Website Generated!",
+        description: "Your code is ready! Now add a title and slug, then publish.",
+      });
+    } catch (error) {
+      console.error('Generation error:', error);
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to generate website",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -238,8 +304,10 @@ ${fullHtml}
         setJs("");
         setTitle("");
         setSlug("");
+        setAiPrompt("");
         setValidationErrors([]);
         setValidationWarnings([]);
+        setActiveTab("ai");
         
         // Reload websites
         await loadUserWebsites();
@@ -270,9 +338,12 @@ ${fullHtml}
       setJs(fullWebsite.js_content || '');
     }
     
+    // Switch to manual tab for editing
+    setActiveTab("manual");
+    
     toast({
       title: "Edit Mode",
-      description: "You are now editing this website. Click Publish to save changes.",
+      description: "You are now editing this website. Click Update to save changes.",
     });
   };
 
@@ -286,6 +357,12 @@ ${fullHtml}
     setValidationErrors([]);
     setValidationWarnings([]);
     setPublishedUrl(null);
+    setActiveTab("ai");
+    
+    toast({
+      title: "Edit Cancelled",
+      description: "Returned to AI Generate mode"
+    });
   };
 
   const handleDelete = async (websiteId: string) => {
@@ -334,175 +411,252 @@ ${fullHtml}
           <h1 className="text-3xl font-bold">🌐 Website Generator</h1>
         </div>
 
-        <Card className="p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">
-              {editingWebsiteId ? "Edit Your Website" : `Create Your Website (${userWebsites.length}/3 created)`}
-            </h2>
-            {editingWebsiteId && (
-              <Button onClick={handleCancelEdit} variant="outline" size="sm">
-                Cancel Edit
-              </Button>
-            )}
-          </div>
-          
-          <div className="space-y-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium mb-2">Website Title</label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="My Awesome Website"
-                maxLength={100}
-              />
-            </div>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "ai" | "manual")} className="mb-6">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="ai" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              AI Generate
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="flex items-center gap-2">
+              <Code className="w-4 h-4" />
+              Manual
+            </TabsTrigger>
+          </TabsList>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Your Website URL</label>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">farabi.me/web/</span>
-                <Input
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="my-website"
-                  className="flex-1"
-                  maxLength={50}
-                />
-                {getSlugBadge()}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Only lowercase letters, numbers, and hyphens (3-50 characters)
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Collapsible open={htmlOpen} onOpenChange={setHtmlOpen}>
-              <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted/50 rounded hover:bg-muted">
-                {htmlOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                <span className="font-medium">index.html [REQUIRED]</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Textarea
-                  value={html}
-                  onChange={(e) => setHtml(e.target.value)}
-                  placeholder="<!DOCTYPE html>&#10;<html>&#10;<head>&#10;  <title>My Website</title>&#10;</head>&#10;<body>&#10;  <h1>Hello World!</h1>&#10;</body>&#10;</html>"
-                  className="font-mono text-sm min-h-[300px]"
-                />
-              </CollapsibleContent>
-            </Collapsible>
-
-            <Collapsible open={cssOpen} onOpenChange={setCssOpen}>
-              <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted/50 rounded hover:bg-muted">
-                {cssOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                <span className="font-medium">styles.css [Optional]</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Textarea
-                  value={css}
-                  onChange={(e) => setCss(e.target.value)}
-                  placeholder="body {&#10;  font-family: Arial, sans-serif;&#10;  margin: 0;&#10;  padding: 20px;&#10;}"
-                  className="font-mono text-sm min-h-[200px]"
-                />
-              </CollapsibleContent>
-            </Collapsible>
-
-            <Collapsible open={jsOpen} onOpenChange={setJsOpen}>
-              <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted/50 rounded hover:bg-muted">
-                {jsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                <span className="font-medium">script.js [Optional]</span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Textarea
-                  value={js}
-                  onChange={(e) => setJs(e.target.value)}
-                  placeholder="console.log('Hello from my website!');&#10;&#10;document.addEventListener('DOMContentLoaded', () => {&#10;  // Your code here&#10;});"
-                  className="font-mono text-sm min-h-[200px]"
-                />
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
-
-          <div className="flex gap-2 mt-6 flex-wrap">
-            <Button onClick={handlePreview} variant="outline" disabled={!html.trim()}>
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
-            </Button>
-            <Button onClick={handleValidate} variant="outline" disabled={!html.trim() || isValidating}>
-              {isValidating ? "Validating..." : "Validate Code"}
-            </Button>
-            <Button 
-              onClick={handlePublish} 
-              disabled={!html.trim() || !title.trim() || (!editingWebsiteId && slugStatus !== "available") || isPublishing || (!editingWebsiteId && userWebsites.length >= 3)}
-            >
-              <Send className="h-4 w-4 mr-2" />
-              {isPublishing ? (editingWebsiteId ? "Updating..." : "Publishing...") : (editingWebsiteId ? "Update" : "Publish")}
-            </Button>
-            {editingWebsiteId && (
-              <Button onClick={handleCancelEdit} variant="ghost">
-                <X className="h-4 w-4 mr-2" />
-                Cancel Edit
-              </Button>
-            )}
-          </div>
-
-          {publishedUrl && (
-            <div className="mt-4 p-4 bg-primary/10 rounded-lg">
-              <h3 className="font-medium mb-2 text-primary">🎉 Website Live!</h3>
-              <div className="flex gap-2 items-center">
-                <Input 
-                  value={publishedUrl} 
-                  readOnly 
-                  className="font-mono text-sm"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    navigator.clipboard.writeText(publishedUrl);
-                    toast({ title: "Copied!", description: "URL copied to clipboard" });
-                  }}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  asChild
-                >
-                  <a href={publishedUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Open
-                  </a>
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                💡 Tip: You can also visit using the short link /{slug}
-              </p>
-            </div>
-          )}
-
-          {(validationErrors.length > 0 || validationWarnings.length > 0) && (
-            <div className="mt-4 p-4 bg-muted rounded">
-              <h3 className="font-medium mb-2">📝 Validation Results:</h3>
-              {validationErrors.length > 0 && (
-                <div className="mb-2">
-                  <p className="text-sm text-red-500 font-medium">Errors:</p>
-                  <ul className="list-disc list-inside text-sm text-red-500">
-                    {validationErrors.map((err, idx) => <li key={idx}>{err}</li>)}
-                  </ul>
+          <TabsContent value="ai">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-500" />
+                  AI Website Generator
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+                    ⚠️ This only makes simple websites. Do not ask for advanced websites.
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                    Perfect for: landing pages, portfolios, simple showcases
+                  </p>
                 </div>
-              )}
-              {validationWarnings.length > 0 && (
+
+                <div className="space-y-2">
+                  <Label htmlFor="ai-prompt">Describe your website</Label>
+                  <Textarea
+                    id="ai-prompt"
+                    placeholder="Example: 'Create a modern portfolio website with a hero section, about me section, and contact form. Use a dark theme with purple accents.'"
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    rows={6}
+                    className="resize-none"
+                    disabled={isGenerating}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Be specific! Include layout, sections, colors, and features you want.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleAIGenerate}
+                  disabled={isGenerating || !aiPrompt.trim()}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating Website...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate Website
+                    </>
+                  )}
+                </Button>
+
+                {isGenerating && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    This may take 15-30 seconds. Please wait...
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="manual">
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">
+                  {editingWebsiteId ? "Edit Your Website" : `Create Your Website (${userWebsites.length}/3 created)`}
+                </h2>
+                {editingWebsiteId && (
+                  <Button onClick={handleCancelEdit} variant="outline" size="sm">
+                    Cancel Edit
+                  </Button>
+                )}
+              </div>
+              
+              <div className="space-y-4 mb-6">
                 <div>
-                  <p className="text-sm text-yellow-500 font-medium">Warnings:</p>
-                  <ul className="list-disc list-inside text-sm text-yellow-500">
-                    {validationWarnings.map((warn, idx) => <li key={idx}>{warn}</li>)}
-                  </ul>
+                  <label className="block text-sm font-medium mb-2">Website Title</label>
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="My Awesome Website"
+                    maxLength={100}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Your Website URL</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">farabi.me/web/</span>
+                    <Input
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      placeholder="my-website"
+                      className="flex-1"
+                      maxLength={50}
+                    />
+                    {getSlugBadge()}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Only lowercase letters, numbers, and hyphens (3-50 characters)
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Collapsible open={htmlOpen} onOpenChange={setHtmlOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted/50 rounded hover:bg-muted">
+                    {htmlOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className="font-medium">index.html [REQUIRED]</span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2">
+                    <Textarea
+                      value={html}
+                      onChange={(e) => setHtml(e.target.value)}
+                      placeholder="<!DOCTYPE html>&#10;<html>&#10;<head>&#10;  <title>My Website</title>&#10;</head>&#10;<body>&#10;  <h1>Hello World!</h1>&#10;</body>&#10;</html>"
+                      className="font-mono text-sm min-h-[300px]"
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Collapsible open={cssOpen} onOpenChange={setCssOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted/50 rounded hover:bg-muted">
+                    {cssOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className="font-medium">styles.css [Optional]</span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2">
+                    <Textarea
+                      value={css}
+                      onChange={(e) => setCss(e.target.value)}
+                      placeholder="body {&#10;  font-family: Arial, sans-serif;&#10;  margin: 0;&#10;  padding: 20px;&#10;}"
+                      className="font-mono text-sm min-h-[200px]"
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Collapsible open={jsOpen} onOpenChange={setJsOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-muted/50 rounded hover:bg-muted">
+                    {jsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className="font-medium">script.js [Optional]</span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2">
+                    <Textarea
+                      value={js}
+                      onChange={(e) => setJs(e.target.value)}
+                      placeholder="console.log('Hello from my website!');&#10;&#10;document.addEventListener('DOMContentLoaded', () => {&#10;  // Your code here&#10;});"
+                      className="font-mono text-sm min-h-[200px]"
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+
+              <div className="flex gap-2 mt-6 flex-wrap">
+                <Button onClick={handlePreview} variant="outline" disabled={!html.trim()}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview
+                </Button>
+                <Button onClick={handleValidate} variant="outline" disabled={!html.trim() || isValidating}>
+                  {isValidating ? "Validating..." : "Validate Code"}
+                </Button>
+                <Button 
+                  onClick={handlePublish} 
+                  disabled={!html.trim() || !title.trim() || (!editingWebsiteId && slugStatus !== "available") || isPublishing || (!editingWebsiteId && userWebsites.length >= 3)}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {isPublishing ? (editingWebsiteId ? "Updating..." : "Publishing...") : (editingWebsiteId ? "Update" : "Publish")}
+                </Button>
+                {editingWebsiteId && (
+                  <Button onClick={handleCancelEdit} variant="ghost">
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel Edit
+                  </Button>
+                )}
+              </div>
+
+              {publishedUrl && (
+                <div className="mt-4 p-4 bg-primary/10 rounded-lg">
+                  <h3 className="font-medium mb-2 text-primary">🎉 Website Live!</h3>
+                  <div className="flex gap-2 items-center">
+                    <Input 
+                      value={publishedUrl} 
+                      readOnly 
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(publishedUrl);
+                        toast({ title: "Copied!", description: "URL copied to clipboard" });
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      asChild
+                    >
+                      <a href={publishedUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open
+                      </a>
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    💡 Tip: You can also visit using the short link /{slug}
+                  </p>
                 </div>
               )}
-            </div>
-          )}
-        </Card>
+
+              {(validationErrors.length > 0 || validationWarnings.length > 0) && (
+                <div className="mt-4 p-4 bg-muted rounded">
+                  <h3 className="font-medium mb-2">📝 Validation Results:</h3>
+                  {validationErrors.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-sm text-red-500 font-medium">Errors:</p>
+                      <ul className="list-disc list-inside text-sm text-red-500">
+                        {validationErrors.map((err, idx) => <li key={idx}>{err}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  {validationWarnings.length > 0 && (
+                    <div>
+                      <p className="text-sm text-yellow-500 font-medium">Warnings:</p>
+                      <ul className="list-disc list-inside text-sm text-yellow-500">
+                        {validationWarnings.map((warn, idx) => <li key={idx}>{warn}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {userWebsites.length > 0 && (
           <Card className="p-6">
