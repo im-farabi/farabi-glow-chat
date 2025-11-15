@@ -268,6 +268,11 @@ export default function NotesShare() {
             </Accordion>
 
             <div className="space-y-2">
+              {!isValid && (
+                <p className="text-sm text-muted-foreground">
+                  Fill in title (min {limits.title.min} chars) and description (min {limits.description.min} chars) to enable buttons
+                </p>
+              )}
               <div className="flex gap-3">
                 <Dialog>
                   <DialogTrigger asChild>
