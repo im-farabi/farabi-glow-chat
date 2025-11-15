@@ -447,9 +447,16 @@ export const getNote = async (slug: string, password?: string) => {
     body: { slug, password },
   });
 
-  // Return data regardless of error status - let the component handle passwordRequired
-  // This prevents 401 from showing as runtime error
-  return data || { error: error?.message || 'Unknown error' };
+  if (data) return data;
+
+  // Gracefully handle 401/password-required without throwing
+  const ctx: any = (error as any)?.context ?? {};
+  const body = typeof ctx === 'object' ? ctx : {};
+  return {
+    success: false,
+    passwordRequired: Boolean(body.passwordRequired || /password required/i.test(error?.message || '')),
+    error: body.error || error?.message || 'Unknown error'
+  };
 };
 
 export const checkNoteSlug = async (slug: string) => {
