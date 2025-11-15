@@ -130,14 +130,10 @@ const Sidebar = ({
         </Link>
 
         <Link to="/web-gen" className="block">
-          <Button variant="outline" className="w-full justify-start">
-            <Globe className="mr-2 h-4 w-4" />
-            Website Generator
-          </Button>
+          
         </Link>
 
-        <Link to="/voice-explain" className="block"
->
+        <Link to="/voice-explain" className="block">
           
         </Link>
 
