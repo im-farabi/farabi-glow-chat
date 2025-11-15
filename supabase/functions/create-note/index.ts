@@ -48,14 +48,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if slug already exists
-    const { data: existingNote } = await supabase
+    // Check if slug already exists using count
+    const { count, error: countError } = await supabase
       .from('shared_notes')
-      .select('id')
-      .eq('slug', slug)
-      .single();
+      .select('id', { count: 'exact', head: true })
+      .eq('slug', slug);
 
-    if (existingNote) {
+    if (countError) {
+      console.error('Error checking slug:', countError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify slug availability' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if ((count ?? 0) > 0) {
       return new Response(
         JSON.stringify({ error: 'This slug is already taken. Please choose another.' }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
