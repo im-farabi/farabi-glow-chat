@@ -447,7 +447,20 @@ export const getNote = async (slug: string, password?: string) => {
     body: { slug, password },
   });
 
-  if (error) throw error;
+  // If there's an error, check if it's a password requirement
+  if (error) {
+    // Try to parse the error response for passwordRequired flag
+    if (data?.passwordRequired) {
+      throw new Error('Password required');
+    }
+    throw error;
+  }
+  
+  // Also check the data object for passwordRequired (some edge function versions return it here)
+  if (data?.passwordRequired) {
+    throw new Error('Password required');
+  }
+  
   return data;
 };
 
