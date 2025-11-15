@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { getNote } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Flag } from 'lucide-react';
@@ -95,11 +95,11 @@ export default function ViewNote() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Password Protected</DialogTitle>
+              <DialogDescription>
+                This note is password protected. Please enter the password to view it.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                This note is password protected. Please enter the password to view it.
-              </p>
               <Input
                 type="password"
                 value={password}

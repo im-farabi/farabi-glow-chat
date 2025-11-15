@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { NotePreview } from '@/components/NotePreview';
 import { createNote, checkNoteSlug } from '@/lib/api';
@@ -279,6 +279,9 @@ export default function NotesShare() {
                   <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Preview</DialogTitle>
+                      <DialogDescription>
+                        Preview how your note will look when published
+                      </DialogDescription>
                     </DialogHeader>
                     <NotePreview
                       title={title}
@@ -299,6 +302,9 @@ export default function NotesShare() {
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Publish Note</DialogTitle>
+                      <DialogDescription>
+                        Choose a unique URL slug to publish your note
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>

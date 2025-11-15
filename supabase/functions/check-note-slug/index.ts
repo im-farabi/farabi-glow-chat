@@ -27,14 +27,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if slug exists
-    const { data, error } = await supabase
+    // Check if slug exists using count
+    const { count, error } = await supabase
       .from('shared_notes')
-      .select('id')
-      .eq('slug', slug)
-      .single();
+      .select('id', { count: 'exact', head: true })
+      .eq('slug', slug);
 
-    const available = !data && !error;
+    if (error) {
+      console.error('Error checking slug:', error);
+      return new Response(
+        JSON.stringify({ available: false, error: 'Database error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const available = (count ?? 0) === 0;
 
     console.log('Slug availability:', available);
 
