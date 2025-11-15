@@ -34,29 +34,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check password if protected
-    if (note.password) {
-      if (!password) {
-        return new Response(
-          JSON.stringify({ error: 'Password required', passwordRequired: true }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Hash provided password
-      const encoder = new TextEncoder();
-      const data = encoder.encode(password);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-      if (hashedPassword !== note.password) {
-        return new Response(
-          JSON.stringify({ error: 'Incorrect password', passwordRequired: true }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
 
     // Increment view count
     await supabase

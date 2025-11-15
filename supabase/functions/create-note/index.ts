@@ -69,22 +69,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Hash password if provided
-    let hashedPassword = null;
-    if (password) {
-      if (password.length < 4 || password.length > 50) {
-        return new Response(
-          JSON.stringify({ error: 'Password must be between 4 and 50 characters' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      const encoder = new TextEncoder();
-      const data = encoder.encode(password);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
+    // Password protection removed - always store null
+    const hashedPassword = null;
 
     // Insert note
     const { data: note, error } = await supabase
