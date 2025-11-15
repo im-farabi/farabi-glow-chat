@@ -10,9 +10,10 @@ import { NotePreview } from '@/components/NotePreview';
 import { createNote, checkNoteSlug } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, Send, Loader2, Copy, Check } from 'lucide-react';
-
 export default function NotesShare() {
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [title, setTitle] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
@@ -24,25 +25,32 @@ export default function NotesShare() {
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState('');
   const [copied, setCopied] = useState(false);
-
   const anonymousUserId = localStorage.getItem('anonymousUserId') || '';
 
   // Character limits
   const limits = {
-    title: { min: 3, max: 100 },
-    shortDescription: { min: 10, max: 200 },
-    description: { min: 20, max: 5000 },
-    slug: { min: 3, max: 50 },
+    title: {
+      min: 3,
+      max: 100
+    },
+    shortDescription: {
+      min: 10,
+      max: 200
+    },
+    description: {
+      min: 20,
+      max: 5000
+    },
+    slug: {
+      min: 3,
+      max: 50
+    }
   };
 
   // Auto-generate slug from title
   useEffect(() => {
     if (title && !slug) {
-      const autoSlug = title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .substring(0, 50);
+      const autoSlug = title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 50);
       setSlug(autoSlug);
     }
   }, [title]);
@@ -64,41 +72,52 @@ export default function NotesShare() {
         setIsSlugAvailable(null);
       }
     };
-
     const timer = setTimeout(checkSlug, 500);
     return () => clearTimeout(timer);
   }, [slug]);
-
   const handlePublish = async () => {
     // Validation
     if (title.length < limits.title.min || title.length > limits.title.max) {
-      toast({ title: 'Error', description: `Title must be ${limits.title.min}-${limits.title.max} characters`, variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: `Title must be ${limits.title.min}-${limits.title.max} characters`,
+        variant: 'destructive'
+      });
       return;
     }
-
     if (description.length < limits.description.min || description.length > limits.description.max) {
-      toast({ title: 'Error', description: `Description must be ${limits.description.min}-${limits.description.max} characters`, variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: `Description must be ${limits.description.min}-${limits.description.max} characters`,
+        variant: 'destructive'
+      });
       return;
     }
-
     if (shortDescription && (shortDescription.length < limits.shortDescription.min || shortDescription.length > limits.shortDescription.max)) {
-      toast({ title: 'Error', description: `Short description must be ${limits.shortDescription.min}-${limits.shortDescription.max} characters`, variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: `Short description must be ${limits.shortDescription.min}-${limits.shortDescription.max} characters`,
+        variant: 'destructive'
+      });
       return;
     }
-
-
     if (!slug || slug.length < limits.slug.min || slug.length > limits.slug.max || !/^[a-z0-9-]+$/.test(slug)) {
-      toast({ title: 'Error', description: 'Please enter a valid slug (3-50 characters, lowercase, alphanumeric and hyphens)', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid slug (3-50 characters, lowercase, alphanumeric and hyphens)',
+        variant: 'destructive'
+      });
       return;
     }
-
     if (isSlugAvailable === false) {
-      toast({ title: 'Error', description: 'This slug is already taken. Please choose another.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'This slug is already taken. Please choose another.',
+        variant: 'destructive'
+      });
       return;
     }
-
     setIsPublishing(true);
-
     try {
       const result = await createNote({
         title,
@@ -106,14 +125,16 @@ export default function NotesShare() {
         description,
         colorTheme,
         anonymousUserId,
-        slug,
+        slug
       });
-
       if (result.success) {
         const fullUrl = `${window.location.origin}${result.url}`;
         setPublishedUrl(fullUrl);
-        toast({ title: 'Success!', description: 'Your note has been published.' });
-        
+        toast({
+          title: 'Success!',
+          description: 'Your note has been published.'
+        });
+
         // Reset form
         setTitle('');
         setShortDescription('');
@@ -122,23 +143,26 @@ export default function NotesShare() {
         setPublishDialogOpen(false);
       }
     } catch (error: any) {
-      toast({ title: 'Error', description: error.message || 'Failed to publish note', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to publish note',
+        variant: 'destructive'
+      });
     } finally {
       setIsPublishing(false);
     }
   };
-
   const copyToClipboard = () => {
     navigator.clipboard.writeText(publishedUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast({ title: 'Copied!', description: 'Link copied to clipboard' });
+    toast({
+      title: 'Copied!',
+      description: 'Link copied to clipboard'
+    });
   };
-
   const isValid = title.length >= limits.title.min && description.length >= limits.description.min;
-
-  return (
-    <div className="min-h-screen bg-background p-6">
+  return <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
           Notes Share
@@ -150,14 +174,7 @@ export default function NotesShare() {
           <div className="space-y-6">
             <div>
               <Label htmlFor="title">Title *</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter note title"
-                maxLength={limits.title.max}
-                className="mt-2"
-              />
+              <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Enter note title" maxLength={limits.title.max} className="mt-2" />
               <p className="text-xs text-muted-foreground mt-1">
                 {title.length}/{limits.title.max} characters
               </p>
@@ -165,15 +182,7 @@ export default function NotesShare() {
 
             <div>
               <Label htmlFor="description">Description *</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter your note content"
-                maxLength={limits.description.max}
-                rows={8}
-                className="mt-2"
-              />
+              <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Enter your note content" maxLength={limits.description.max} rows={8} className="mt-2" />
               <p className="text-xs text-muted-foreground mt-1">
                 {description.length}/{limits.description.max} characters
               </p>
@@ -186,14 +195,7 @@ export default function NotesShare() {
                   {/* Short Description */}
                   <div>
                     <Label htmlFor="shortDesc">Short Description</Label>
-                    <Input
-                      id="shortDesc"
-                      value={shortDescription}
-                      onChange={(e) => setShortDescription(e.target.value)}
-                      placeholder="Brief summary (optional)"
-                      maxLength={limits.shortDescription.max}
-                      className="mt-2"
-                    />
+                    <Input id="shortDesc" value={shortDescription} onChange={e => setShortDescription(e.target.value)} placeholder="Brief summary (optional)" maxLength={limits.shortDescription.max} className="mt-2" />
                     <p className="text-xs text-muted-foreground mt-1">
                       {shortDescription.length}/{limits.shortDescription.max} characters
                     </p>
@@ -232,11 +234,9 @@ export default function NotesShare() {
             </Accordion>
 
             <div className="space-y-2">
-              {!isValid && (
-                <p className="text-sm text-muted-foreground">
+              {!isValid && <p className="text-sm text-muted-foreground">
                   Fill in title (min {limits.title.min} chars) and description (min {limits.description.min} chars) to enable buttons
-                </p>
-              )}
+                </p>}
               <div className="flex gap-3">
                 <Dialog>
                   <DialogTrigger asChild>
@@ -252,12 +252,7 @@ export default function NotesShare() {
                         Preview how your note will look when published
                       </DialogDescription>
                     </DialogHeader>
-                    <NotePreview
-                      title={title}
-                      shortDescription={shortDescription}
-                      description={description}
-                      colorTheme={colorTheme}
-                    />
+                    <NotePreview title={title} shortDescription={shortDescription} description={description} colorTheme={colorTheme} />
                   </DialogContent>
                 </Dialog>
 
@@ -278,26 +273,13 @@ export default function NotesShare() {
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="slug">URL Slug *</Label>
-                        <Input
-                        id="slug"
-                        value={slug}
-                        onChange={(e) => setSlug(e.target.value.toLowerCase())}
-                        placeholder="my-awesome-note"
-                        maxLength={limits.slug.max}
-                        className="mt-2"
-                      />
+                        <Input id="slug" value={slug} onChange={e => setSlug(e.target.value.toLowerCase())} placeholder="my-awesome-note" maxLength={limits.slug.max} className="mt-2" />
                       <p className="text-xs text-muted-foreground mt-1">
                         Your note will be available at: /notes/{slug || 'your-slug'}
                       </p>
-                      {isCheckingSlug && (
-                        <p className="text-xs text-blue-500 mt-1">Checking availability...</p>
-                      )}
-                      {isSlugAvailable === true && (
-                        <p className="text-xs text-green-500 mt-1">✓ This slug is available</p>
-                      )}
-                      {isSlugAvailable === false && (
-                        <p className="text-xs text-red-500 mt-1">✗ This slug is already taken</p>
-                      )}
+                      {isCheckingSlug && <p className="text-xs text-blue-500 mt-1">Checking availability...</p>}
+                      {isSlugAvailable === true && <p className="text-xs text-green-500 mt-1">✓ This slug is available</p>}
+                      {isSlugAvailable === false && <p className="text-xs text-red-500 mt-1">✗ This slug is already taken</p>}
                     </div>
                   </div>
                   <DialogFooter>
@@ -310,15 +292,10 @@ export default function NotesShare() {
               </Dialog>
             </div>
             
-            {!isValid && (
-              <p className="text-xs text-muted-foreground">
-                Fill in all required fields (Title: min 3 chars, Description: min 20 chars) to enable publishing
-              </p>
-            )}
+            {!isValid}
           </div>
 
-            {publishedUrl && (
-              <div className="border rounded-lg p-4 bg-muted/50">
+            {publishedUrl && <div className="border rounded-lg p-4 bg-muted/50">
                 <Label className="text-sm font-semibold mb-2 block">Published Successfully! 🎉</Label>
                 <div className="flex gap-2">
                   <Input value={publishedUrl} readOnly className="flex-1" />
@@ -326,23 +303,15 @@ export default function NotesShare() {
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
-              </div>
-            )}
+              </div>}
           </div>
 
           {/* Live Preview Section */}
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Live Preview</h2>
-            <NotePreview
-              title={title}
-              shortDescription={shortDescription}
-              description={description}
-              colorTheme={colorTheme}
-              className="min-h-[400px]"
-            />
+            <NotePreview title={title} shortDescription={shortDescription} description={description} colorTheme={colorTheme} className="min-h-[400px]" />
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
