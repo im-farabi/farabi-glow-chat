@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -17,8 +16,6 @@ export default function NotesShare() {
   const [title, setTitle] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
-  const [passwordEnabled, setPasswordEnabled] = useState(false);
-  const [password, setPassword] = useState('');
   const [colorTheme, setColorTheme] = useState<'black-purple' | 'black-white' | 'black-orange'>('black-purple');
   const [slug, setSlug] = useState('');
   const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
@@ -35,7 +32,6 @@ export default function NotesShare() {
     title: { min: 3, max: 100 },
     shortDescription: { min: 10, max: 200 },
     description: { min: 20, max: 5000 },
-    password: { min: 4, max: 50 },
     slug: { min: 3, max: 50 },
   };
 
@@ -90,10 +86,6 @@ export default function NotesShare() {
       return;
     }
 
-    if (passwordEnabled && (password.length < limits.password.min || password.length > limits.password.max)) {
-      toast({ title: 'Error', description: `Password must be ${limits.password.min}-${limits.password.max} characters`, variant: 'destructive' });
-      return;
-    }
 
     if (!slug || slug.length < limits.slug.min || slug.length > limits.slug.max || !/^[a-z0-9-]+$/.test(slug)) {
       toast({ title: 'Error', description: 'Please enter a valid slug (3-50 characters, lowercase, alphanumeric and hyphens)', variant: 'destructive' });
@@ -112,7 +104,6 @@ export default function NotesShare() {
         title,
         shortDescription: shortDescription || undefined,
         description,
-        password: passwordEnabled ? password : undefined,
         colorTheme,
         anonymousUserId,
         slug,
@@ -127,8 +118,6 @@ export default function NotesShare() {
         setTitle('');
         setShortDescription('');
         setDescription('');
-        setPassword('');
-        setPasswordEnabled(false);
         setSlug('');
         setPublishDialogOpen(false);
       }
@@ -154,7 +143,7 @@ export default function NotesShare() {
         <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
           Notes Share
         </h1>
-        <p className="text-muted-foreground mb-8">Create and share beautiful notes with custom themes and password protection</p>
+        <p className="text-muted-foreground mb-8">Create and share beautiful notes with custom themes</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form Section */}
@@ -210,31 +199,6 @@ export default function NotesShare() {
                     </p>
                   </div>
 
-                  {/* Password Protection */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password-toggle">Password Protection</Label>
-                      <Switch
-                        id="password-toggle"
-                        checked={passwordEnabled}
-                        onCheckedChange={setPasswordEnabled}
-                      />
-                    </div>
-                    {passwordEnabled && (
-                      <div>
-                        <Input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Enter password"
-                          maxLength={limits.password.max}
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {password.length}/{limits.password.max} characters
-                        </p>
-                      </div>
-                    )}
-                  </div>
 
                   {/* Color Theme */}
                   <div>

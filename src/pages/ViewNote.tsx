@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { getNote } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Flag } from 'lucide-react';
@@ -36,34 +34,24 @@ export default function ViewNote() {
   const { toast } = useToast();
   const [note, setNote] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [passwordRequired, setPasswordRequired] = useState(false);
-  const [password, setPassword] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
 
-  const fetchNote = async (pwd?: string) => {
+  const fetchNote = async () => {
     if (!slug) return;
 
     setLoading(true);
     try {
-      const result = await getNote(slug, pwd);
-      
-      // Check if password is required
-      if (result.passwordRequired) {
-        setPasswordRequired(true);
-        if (pwd) {
-          toast({ title: 'Error', description: 'Incorrect password', variant: 'destructive' });
-        }
-      } else if (result.success) {
+      const result = await getNote(slug);
+      if (result?.success) {
         setNote(result.note);
-        setPasswordRequired(false);
-      } else if (result.error) {
+      } else if (result?.note) {
+        setNote(result.note);
+      } else if (result?.error) {
         toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
     } catch (error: any) {
       toast({ title: 'Error', description: error.message || 'An error occurred', variant: 'destructive' });
     } finally {
       setLoading(false);
-      setIsVerifying(false);
     }
   };
 
@@ -71,14 +59,6 @@ export default function ViewNote() {
     fetchNote();
   }, [slug]);
 
-  const handlePasswordSubmit = async () => {
-    if (!password) {
-      toast({ title: 'Error', description: 'Please enter a password', variant: 'destructive' });
-      return;
-    }
-    setIsVerifying(true);
-    await fetchNote(password);
-  };
 
   if (loading) {
     return (
@@ -88,52 +68,6 @@ export default function ViewNote() {
     );
   }
 
-  if (passwordRequired) {
-    const theme = themeClasses['black-purple']; // Default theme for password screen
-    
-    return (
-      <div className="min-h-screen bg-background">
-        {/* Header Section */}
-        <header className="bg-gradient-to-r from-primary to-purple-600 py-8 px-6 shadow-lg">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">FARABI.me</h1>
-            <p className="text-white/90 text-lg">Best Tool for Students!</p>
-          </div>
-        </header>
-
-        {/* Content Section */}
-        <div className="max-w-4xl mx-auto px-6 py-12">
-          <div className={`${theme.background} ${theme.border} border-2 rounded-2xl p-8 md:p-12 shadow-2xl`}>
-            <h2 className={`${theme.title} text-4xl md:text-5xl font-bold mb-8 text-center`}>
-              🔒 Password Protected Note
-            </h2>
-            
-            <div className="max-w-md mx-auto space-y-4">
-              <p className={`${theme.text} text-center mb-6 text-lg`}>
-                This note is password protected. Enter the password to view the content.
-              </p>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                className="bg-background/50 border-border"
-                onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
-              />
-              <Button 
-                onClick={handlePasswordSubmit} 
-                disabled={isVerifying}
-                className="w-full"
-              >
-                {isVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Unlock Note
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (!note) {
     return (
