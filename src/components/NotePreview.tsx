@@ -42,18 +42,18 @@ export const NotePreview: React.FC<NotePreviewProps> = ({
   const theme = themeClasses[colorTheme];
 
   return (
-    <div className={`${theme.background} ${theme.border} border rounded-lg p-6 ${className}`}>
-      <h1 className={`${theme.title} text-3xl font-bold mb-3`}>
+    <div className={`${theme.background} ${theme.border} border-2 rounded-2xl p-8 md:p-12 shadow-2xl ${className}`}>
+      <h1 className={`${theme.title} text-4xl md:text-5xl font-bold mb-4`}>
         {title || 'Untitled Note'}
       </h1>
       
       {shortDescription && (
-        <p className={`${theme.shortDesc} text-sm mb-4 italic`}>
+        <p className={`${theme.shortDesc} text-lg md:text-xl mb-6 italic`}>
           {shortDescription}
         </p>
       )}
       
-      <div className={`${theme.text} whitespace-pre-wrap break-words`}>
+      <div className={`${theme.text} text-base md:text-lg whitespace-pre-wrap break-words leading-relaxed`}>
         {description || 'No description provided.'}
       </div>
     </div>

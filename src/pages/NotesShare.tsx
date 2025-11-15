@@ -267,42 +267,43 @@ export default function NotesShare() {
               </AccordionItem>
             </Accordion>
 
-            <div className="flex gap-3">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="flex-1" disabled={!isValid}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Preview
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Preview</DialogTitle>
-                  </DialogHeader>
-                  <NotePreview
-                    title={title}
-                    shortDescription={shortDescription}
-                    description={description}
-                    colorTheme={colorTheme}
-                  />
-                </DialogContent>
-              </Dialog>
+            <div className="space-y-2">
+              <div className="flex gap-3">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex-1" disabled={!isValid}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Preview
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Preview</DialogTitle>
+                    </DialogHeader>
+                    <NotePreview
+                      title={title}
+                      shortDescription={shortDescription}
+                      description={description}
+                      colorTheme={colorTheme}
+                    />
+                  </DialogContent>
+                </Dialog>
 
-              <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="flex-1" disabled={!isValid}>
-                    <Send className="mr-2 h-4 w-4" />
-                    Publish
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Publish Note</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="slug">URL Slug *</Label>
-                      <Input
+                <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="flex-1" disabled={!isValid}>
+                      <Send className="mr-2 h-4 w-4" />
+                      Publish
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Publish Note</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="slug">URL Slug *</Label>
+                        <Input
                         id="slug"
                         value={slug}
                         onChange={(e) => setSlug(e.target.value.toLowerCase())}
@@ -311,7 +312,7 @@ export default function NotesShare() {
                         className="mt-2"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Your note will be available at: /note/{slug || 'your-slug'}
+                        Your note will be available at: /notes/{slug || 'your-slug'}
                       </p>
                       {isCheckingSlug && (
                         <p className="text-xs text-blue-500 mt-1">Checking availability...</p>
@@ -333,6 +334,13 @@ export default function NotesShare() {
                 </DialogContent>
               </Dialog>
             </div>
+            
+            {!isValid && (
+              <p className="text-xs text-muted-foreground">
+                Fill in all required fields (Title: min 3 chars, Description: min 20 chars) to enable publishing
+              </p>
+            )}
+          </div>
 
             {publishedUrl && (
               <div className="border rounded-lg p-4 bg-muted/50">
