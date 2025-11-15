@@ -16,7 +16,7 @@ import Support from "./pages/Support";
 import ImageGen from "./pages/ImageGen";
 import MCQGen from "./pages/MCQGen";
 import FlashcardGen from "./pages/FlashcardGen";
-import DesignEditor from "./pages/DesignEditor";
+
 import YoutubeExplain from "./pages/YoutubeExplain";
 import Owner from "./pages/Owner";
 import NotFound from "./pages/NotFound";
@@ -50,7 +50,7 @@ const App = () => {
           <Route path="/c/:chatId" element={<Index />} />
           <Route path="/about" element={<About />} />
           <Route path="/image-gen" element={<ImageGen />} />
-          <Route path="/design-editor" element={<DesignEditor />} />
+          
           <Route path="/mcq-gen" element={<MCQGen />} />
           <Route path="/flashcard-gen" element={<FlashcardGen />} />
           <Route path="/youtube-explain" element={<YoutubeExplain />} />
