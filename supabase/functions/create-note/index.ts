@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     console.log('Note created successfully:', note.id);
 
     return new Response(
-      JSON.stringify({ success: true, note, url: `/note/${slug}` }),
+      JSON.stringify({ success: true, note, url: `/notes/${slug}` }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

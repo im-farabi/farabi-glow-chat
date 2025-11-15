@@ -55,7 +55,7 @@ const App = () => {
           <Route path="/flashcard-gen" element={<FlashcardGen />} />
           <Route path="/youtube-explain" element={<YoutubeExplain />} />
           <Route path="/notes-share" element={<NotesShare />} />
-          <Route path="/note/:slug" element={<ViewNote />} />
+          <Route path="/notes/:slug" element={<ViewNote />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
