@@ -17,6 +17,8 @@ import ImageGen from "./pages/ImageGen";
 import MCQGen from "./pages/MCQGen";
 import FlashcardGen from "./pages/FlashcardGen";
 import YoutubeExplain from "./pages/YoutubeExplain";
+import NotesShare from "./pages/NotesShare";
+import ViewNote from "./pages/ViewNote";
 import Owner from "./pages/Owner";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
@@ -52,6 +54,8 @@ const App = () => {
           <Route path="/mcq-gen" element={<MCQGen />} />
           <Route path="/flashcard-gen" element={<FlashcardGen />} />
           <Route path="/youtube-explain" element={<YoutubeExplain />} />
+          <Route path="/notes-share" element={<NotesShare />} />
+          <Route path="/note/:slug" element={<ViewNote />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />

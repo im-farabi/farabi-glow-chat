@@ -423,3 +423,39 @@ if (typeof window !== 'undefined') {
     }
   };
 }
+
+// Notes Share API Functions
+export const createNote = async (noteData: {
+  title: string;
+  shortDescription?: string;
+  description: string;
+  password?: string;
+  colorTheme: string;
+  anonymousUserId: string;
+  slug: string;
+}) => {
+  const { data, error } = await supabase.functions.invoke('create-note', {
+    body: noteData,
+  });
+
+  if (error) throw error;
+  return data;
+};
+
+export const getNote = async (slug: string, password?: string) => {
+  const { data, error } = await supabase.functions.invoke('get-note', {
+    body: { slug, password },
+  });
+
+  if (error) throw error;
+  return data;
+};
+
+export const checkNoteSlug = async (slug: string) => {
+  const { data, error } = await supabase.functions.invoke('check-note-slug', {
+    body: { slug },
+  });
+
+  if (error) throw error;
+  return data;
+};
