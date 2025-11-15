@@ -1,20 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
-import { Loader2, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock, Wand2, Sparkles } from 'lucide-react';
+import { Loader2, Download, History, Trash2, Wand2, Sparkles, Type, Upload, Palette, Plus, Minus, Bold, Italic, MoveHorizontal, MoveVertical } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { sendNormal } from '@/lib/api';
-import { useNavigate } from 'react-router-dom';
-import { ImageEditor } from '@/components/ImageEditor';
 import { getImageHistory, saveImageToHistory, deleteImageFromHistory, ImageHistoryItem } from '@/lib/storage';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import { Canvas as FabricCanvas, FabricImage, FabricText } from 'fabric';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Slider } from '@/components/ui/slider';
+
+const FONTS = ['Montserrat', 'Poppins', 'Roboto', 'Open Sans', 'Lato', 'Inter'];
 
 const ImageGen = () => {
   useEffect(() => {
@@ -25,23 +27,68 @@ const ImageGen = () => {
       metaDescription.setAttribute('content', 'Generate AI images from text prompts for free. Create banners, logos, and custom images using advanced AI models. No signup required.');
     }
   }, []);
+
   const [prompt, setPrompt] = useState('');
-  const [image, setImage] = useState<string>('');
-  const [currentSeed, setCurrentSeed] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [status, setStatus] = useState('');
-  const [sizePreset, setSizePreset] = useState<'banner' | 'logo' | 'custom'>('banner');
-  const [customWidth, setCustomWidth] = useState('1024');
-  const [customHeight, setCustomHeight] = useState('1024');
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [history, setHistory] = useState<ImageHistoryItem[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const navigate = useNavigate();
+  
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
+  const [selectedObject, setSelectedObject] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'design' | 'text' | 'upload'>('design');
+  const [canvasSize, setCanvasSize] = useState({ width: 1024, height: 1024 });
+  const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
     setHistory(getImageHistory());
   }, []);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const canvas = new FabricCanvas(canvasRef.current, {
+      width: canvasSize.width,
+      height: canvasSize.height,
+      backgroundColor: '#ffffff',
+    });
+
+    setFabricCanvas(canvas);
+    canvas.on('selection:created', (e) => setSelectedObject(e.selected?.[0]));
+    canvas.on('selection:updated', (e) => setSelectedObject(e.selected?.[0]));
+    canvas.on('selection:cleared', () => setSelectedObject(null));
+
+    return () => {
+      canvas.dispose();
+    };
+  }, [canvasSize]);
+
+  useEffect(() => {
+    if (!fabricCanvas) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' && selectedObject) {
+        fabricCanvas.remove(selectedObject);
+        fabricCanvas.renderAll();
+      }
+      if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        if (selectedObject) {
+          selectedObject.clone((cloned: any) => {
+            cloned.set({ left: cloned.left + 20, top: cloned.top + 20 });
+            fabricCanvas.add(cloned);
+            fabricCanvas.setActiveObject(cloned);
+            fabricCanvas.renderAll();
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fabricCanvas, selectedObject]);
 
   const enhancePrompt = async () => {
     const trimmedPrompt = prompt.trim();
@@ -68,16 +115,14 @@ Input: "${trimmedPrompt}"
 Output ONLY the enhanced prompt text (no {image:...} tags):`
       );
       
-      // Clean up response: remove markdown, quotes, conversational fluff, and {image:...} tags
       let cleaned = enhanced
-        .replace(/\*\*/g, '') // Remove bold markdown
-        .replace(/^["']|["']$/g, '') // Remove surrounding quotes
-        .replace(/^.*?(?:prompt|version|here|output):\s*/im, '') // Remove prefixes
-        .replace(/[🤙💀😉👇📸✨]/g, '') // Remove emojis
-        .replace(/\{image:[^}]+\}/g, '') // Remove {image:...} tags
+        .replace(/\*\*/g, '')
+        .replace(/^["']|["']$/g, '')
+        .replace(/^.*?(?:prompt|version|here|output):\s*/im, '')
+        .replace(/[🤙💀😉👇📸✨]/g, '')
+        .replace(/\{image:[^}]+\}/g, '')
         .trim();
       
-      // Extract text between quotes if present
       const quotedMatch = cleaned.match(/"([^"]+)"/);
       if (quotedMatch) {
         cleaned = quotedMatch[1];
@@ -100,7 +145,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
     }
   };
 
-  const generateImage = async (useNewSeed = false) => {
+  const generateImage = async () => {
     const trimmedPrompt = prompt.trim();
     
     if (trimmedPrompt.length < 3) {
@@ -112,133 +157,139 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
       return;
     }
 
-    if (trimmedPrompt.length > 500) {
-      toast({
-        title: 'Error',
-        description: 'Prompt must be less than 500 characters',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    let width = 1280;
-    let height = 720;
-
-    if (sizePreset === 'banner') {
-      width = 1280;
-      height = 720;
-    } else if (sizePreset === 'logo') {
-      width = 500;
-      height = 500;
-    } else {
-      width = parseInt(customWidth) || 1024;
-      height = parseInt(customHeight) || 1024;
-    }
-
     setLoading(true);
     setStatus('Generating image...');
+    const seed = Math.floor(Math.random() * 1000000);
 
-    const fetchImageAsBlob = async (url: string): Promise<string> => {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch image');
-      const blob = await response.blob();
-      
-      // Revoke old blob URL if exists
-      if (image.startsWith('blob:')) {
-        URL.revokeObjectURL(image);
-      }
-      
-      return URL.createObjectURL(blob);
-    };
-    
     try {
-      const encoded = encodeURIComponent(trimmedPrompt);
-      const seed = useNewSeed ? Date.now() + Math.floor(Math.random() * 1000000) : currentSeed || Date.now();
-      
-      if (!useNewSeed && !currentSeed) {
-        setCurrentSeed(seed);
-      } else if (useNewSeed) {
-        setCurrentSeed(seed);
-      }
+      const { data, error } = await supabase.functions.invoke('pollinations-image', {
+        body: { 
+          prompt: trimmedPrompt,
+          width: canvasSize.width,
+          height: canvasSize.height,
+          seed,
+          nologo: true,
+          enhance: false
+        }
+      });
 
-      const url = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${seed}&enhance=false&nologo=true&key=plln_pk_DSf8DvxaLKn2LbP9QQAlA5hFpQGXePYiSY1AHZQn2CiKgtO7VBKQ1FNw1xCEpRYK`;
-      
-      const blobUrl = await fetchImageAsBlob(url);
-      setImage(blobUrl);
-      
-      // Save to history
-      saveImageToHistory({
-        prompt: trimmedPrompt,
-        imageUrl: blobUrl,
-        sizePreset: sizePreset === 'custom' ? `${width}x${height}` : sizePreset
-      });
-      setHistory(getImageHistory());
-      
-      toast({
-        title: 'Success!',
-        description: 'Image generated successfully',
-      });
-    } catch (error) {
-      // Try fallback without enhance and different seed
-      try {
-        const encoded = encodeURIComponent(trimmedPrompt);
-        const fallbackSeed = Date.now() + Math.floor(Math.random() * 9999999);
-        const fallbackUrl = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${fallbackSeed}&enhance=true&nologo=true`;
-        const blobUrl = await fetchImageAsBlob(fallbackUrl);
-        setImage(blobUrl);
+      if (error) throw error;
+
+      if (data?.imageUrl) {
+        addImageToCanvas(data.imageUrl);
+        
+        saveImageToHistory({
+          url: data.imageUrl,
+          prompt: trimmedPrompt,
+          width: canvasSize.width,
+          height: canvasSize.height,
+          seed
+        });
+        setHistory(getImageHistory());
         
         toast({
-          title: 'Success!',
-          description: 'Image generated successfully (fallback)',
-        });
-      } catch (fallbackError) {
-        toast({
-          title: 'Error',
-          description: 'Failed to generate. Try refreshing page and editing the prompt!',
-          variant: 'destructive'
+          title: 'Image Generated!',
+          description: 'Image added to canvas',
         });
       }
+    } catch (error) {
+      console.error('Generation error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate image',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
       setStatus('');
     }
   };
 
-  const downloadImage = () => {
-    if (!image) return;
-    
-    const link = document.createElement('a');
-    link.href = image;
-    link.download = `generated-image-${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({
-      title: 'Downloaded!',
-      description: 'Image saved to your downloads',
+  const addImageToCanvas = (imageUrl: string) => {
+    if (!fabricCanvas) return;
+
+    FabricImage.fromURL(imageUrl, {
+      crossOrigin: 'anonymous'
+    }).then((img) => {
+      const scale = Math.min(
+        canvasSize.width / (img.width || 1) * 0.8,
+        canvasSize.height / (img.height || 1) * 0.8
+      );
+      
+      img.scale(scale);
+      img.set({
+        left: (canvasSize.width - (img.width || 0) * scale) / 2,
+        top: (canvasSize.height - (img.height || 0) * scale) / 2,
+      });
+      
+      fabricCanvas.add(img);
+      fabricCanvas.setActiveObject(img);
+      fabricCanvas.renderAll();
     });
   };
 
-  const regenerateImage = () => {
-    generateImage(true);
+  const addText = () => {
+    if (!fabricCanvas) return;
+
+    const text = new FabricText('Add a text', {
+      left: 100,
+      top: 100,
+      fontSize: 40,
+      fontFamily: 'Montserrat',
+      fill: '#000000',
+    });
+
+    fabricCanvas.add(text);
+    fabricCanvas.setActiveObject(text);
+    fabricCanvas.renderAll();
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !fabricCanvas) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageUrl = event.target?.result as string;
+      addImageToCanvas(imageUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const updateObjectProperty = (property: string, value: any) => {
+    if (!selectedObject || !fabricCanvas) return;
+
+    selectedObject.set(property, value);
+    fabricCanvas.renderAll();
+  };
+
+  const downloadCanvas = () => {
+    if (!fabricCanvas) return;
+
+    const dataURL = fabricCanvas.toDataURL({
+      format: 'png',
+      quality: 1,
+      multiplier: 2,
+    });
+
+    const link = document.createElement('a');
+    link.download = `farabi-design-${Date.now()}.png`;
+    link.href = dataURL;
+    link.click();
+
+    toast({
+      title: 'Downloaded!',
+      description: 'Your design has been saved',
+    });
   };
 
   const loadFromHistory = (item: ImageHistoryItem) => {
+    addImageToCanvas(item.url);
     setPrompt(item.prompt);
-    setImage(item.imageUrl);
-    if (item.sizePreset.includes('x')) {
-      const [w, h] = item.sizePreset.split('x');
-      setSizePreset('custom');
-      setCustomWidth(w);
-      setCustomHeight(h);
-    } else {
-      setSizePreset(item.sizePreset as 'banner' | 'logo' | 'custom');
-    }
     setIsHistoryOpen(false);
     toast({
-      title: 'Loaded from history',
-      description: 'Image and settings restored'
+      title: 'Loaded!',
+      description: 'Image loaded from history',
     });
   };
 
@@ -246,307 +297,300 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
     deleteImageFromHistory(id);
     setHistory(getImageHistory());
     toast({
-      title: 'Deleted',
-      description: 'History item removed'
+      title: 'Deleted!',
+      description: 'History item removed',
     });
   };
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Breadcrumb Schema */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {
-              "@type": "ListItem",
-              "position": 1,
-              "name": "Home",
-              "item": "https://farabi.me/"
-            },
-            {
-              "@type": "ListItem",
-              "position": 2,
-              "name": "Image Generator",
-              "item": "https://farabi.me/image-gen"
-            }
-          ]
-        })}
-      </script>
-      
-      <Header />
-      
-      <main className="flex-1 overflow-auto p-6">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 justify-between">
-              <div className="flex items-center gap-3">
+    <TooltipProvider>
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        
+        <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+          <aside className="w-full lg:w-16 border-b lg:border-r border-border bg-card flex lg:flex-col items-center gap-2 p-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
-                  variant="ghost"
+                  variant={activeTab === 'design' ? 'default' : 'ghost'}
                   size="icon"
-                  onClick={() => navigate('/')}
-                  className="shrink-0"
+                  onClick={() => setActiveTab('design')}
+                  className="w-12 h-12"
                 >
-                  <ArrowLeft className="h-5 w-5" />
+                  <Palette className="h-5 w-5" />
                 </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Generate Design</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={activeTab === 'text' ? 'default' : 'ghost'}
+                  size="icon"
+                  onClick={() => setActiveTab('text')}
+                  className="w-12 h-12"
+                >
+                  <Type className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Text</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={activeTab === 'upload' ? 'default' : 'ghost'}
+                  size="icon"
+                  onClick={() => setActiveTab('upload')}
+                  className="w-12 h-12"
+                >
+                  <Upload className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Upload Image</TooltipContent>
+            </Tooltip>
+
+            <div className="flex-1" />
+
+            <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+              <SheetTrigger asChild>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="w-12 h-12">
+                      <History className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">History</TooltipContent>
+                </Tooltip>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Generation History</SheetTitle>
+                  <SheetDescription>Click any image to load it onto the canvas</SheetDescription>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-120px)] mt-4">
+                  <div className="space-y-4">
+                    {history.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-8">No history yet. Generate your first image!</p>
+                    ) : (
+                      history.map((item) => (
+                        <div key={item.id} className="group relative border border-border rounded-lg overflow-hidden">
+                          <img
+                            src={item.url}
+                            alt={item.prompt}
+                            className="w-full h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => loadFromHistory(item)}
+                          />
+                          <div className="p-3 space-y-2">
+                            <p className="text-sm font-medium line-clamp-2">{item.prompt}</p>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>{item.width}x{item.height}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteHistoryItem(item.id);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
+          </aside>
+
+          <aside className="w-full lg:w-80 border-b lg:border-r border-border bg-card p-4 space-y-4 overflow-y-auto">
+            {activeTab === 'design' && (
+              <div className="space-y-4">
                 <div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    Image Generator
-                  </h1>
-                  <p className="text-muted-foreground">
-                    Generate AI images from your prompts
-                  </p>
+                  <Label>Prompt</Label>
+                  <Textarea
+                    placeholder="Type prompt to generate image..."
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    className="min-h-[120px] mt-2"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Canvas Size</Label>
+                  <Select
+                    value={`${canvasSize.width}x${canvasSize.height}`}
+                    onValueChange={(value) => {
+                      const [w, h] = value.split('x').map(Number);
+                      setCanvasSize({ width: w, height: h });
+                    }}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1024x1024">Square (1024x1024)</SelectItem>
+                      <SelectItem value="1920x1080">Landscape (1920x1080)</SelectItem>
+                      <SelectItem value="1080x1920">Portrait (1080x1920)</SelectItem>
+                      <SelectItem value="1280x720">HD (1280x720)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button onClick={enhancePrompt} disabled={loading || !prompt.trim()} variant="outline" className="flex-1">
+                    {loading && status.includes('Enhancing') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                    Enhance
+                  </Button>
+                  <Button onClick={generateImage} disabled={loading || !prompt.trim()} className="flex-1">
+                    {loading && status.includes('Generating') ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                    Generate
+                  </Button>
+                </div>
+
+                {loading && status && <p className="text-sm text-muted-foreground text-center">{status}</p>}
+
+                <div className="pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground">💡 <strong>Tip:</strong> Generated images automatically appear on the canvas. Drag and drop to position them!</p>
                 </div>
               </div>
-              <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <History className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent className="w-[400px] sm:w-[540px]">
-                  <SheetHeader>
-                    <SheetTitle>Image History</SheetTitle>
-                    <SheetDescription>
-                      Your recent image generations
-                    </SheetDescription>
-                  </SheetHeader>
-                  <ScrollArea className="h-[calc(100vh-120px)] mt-6">
-                    <div className="space-y-4 pr-4">
-                      {history.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">No history yet</p>
-                      ) : (
-                        history.map((item) => (
-                          <Card key={item.id} className="p-4 space-y-3 hover:bg-accent/50 transition-colors">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 space-y-2">
-                                <p className="text-sm font-medium line-clamp-2">{item.prompt}</p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Clock className="h-3 w-3" />
-                                  {formatDate(item.timestamp)}
-                                </div>
-                                <p className="text-xs text-muted-foreground">Size: {item.sizePreset}</p>
-                              </div>
-                              <div className="flex gap-1 shrink-0">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => loadFromHistory(item)}
-                                >
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive"
-                                  onClick={() => deleteHistoryItem(item.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                            {item.imageUrl && (
-                              <img 
-                                src={item.imageUrl} 
-                                alt="Generated" 
-                                className="w-full h-32 object-cover rounded border"
-                              />
-                            )}
-                          </Card>
-                        ))
-                      )}
+            )}
+
+            {activeTab === 'text' && (
+              <div className="space-y-4">
+                <Button onClick={addText} className="w-full"><Plus className="mr-2 h-4 w-4" />Add a text</Button>
+
+                <div>
+                  <Label className="mb-2 block">Font Templates</Label>
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-2">
+                      {FONTS.map((font) => (
+                        <Button key={font} variant="outline" className="w-full justify-start" style={{ fontFamily: font }} onClick={() => {
+                          if (selectedObject && selectedObject.type === 'textbox') {
+                            updateObjectProperty('fontFamily', font);
+                          } else {
+                            addText();
+                          }
+                        }}>
+                          {font}
+                        </Button>
+                      ))}
                     </div>
                   </ScrollArea>
-                </SheetContent>
-              </Sheet>
-            </div>
-          </div>
-
-          <Card className="p-6 space-y-4 bg-card border-border">
-            <div className="space-y-2">
-              <Label htmlFor="prompt">Prompt (3-500 characters)</Label>
-              <Textarea
-                id="prompt"
-                placeholder="Describe the image you want to generate..."
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[120px] resize-none"
-                disabled={loading}
-                maxLength={500}
-              />
-              <p className="text-xs text-muted-foreground text-right">
-                {prompt.length}/500 characters
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="size">Image Size</Label>
-              <Select value={sizePreset} onValueChange={(value: 'banner' | 'logo' | 'custom') => setSizePreset(value)}>
-                <SelectTrigger id="size" className="bg-background">
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover z-50">
-                  <SelectItem value="banner">Banner (1280x720)</SelectItem>
-                  <SelectItem value="logo">Logo (500x500)</SelectItem>
-                  <SelectItem value="custom">Custom Size</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {sizePreset === 'custom' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="width">Width (px)</Label>
-                  <Input
-                    id="width"
-                    type="number"
-                    value={customWidth}
-                    onChange={(e) => setCustomWidth(e.target.value)}
-                    placeholder="1024"
-                    min="256"
-                    max="2048"
-                    disabled={loading}
-                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="height">Height (px)</Label>
-                  <Input
-                    id="height"
-                    type="number"
-                    value={customHeight}
-                    onChange={(e) => setCustomHeight(e.target.value)}
-                    placeholder="1024"
-                    min="256"
-                    max="2048"
-                    disabled={loading}
-                  />
+
+                <div className="pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground">💡 <strong>Tip:</strong> Add text to your canvas, then select it to customize font, size, and colors in the top toolbar!</p>
                 </div>
               </div>
             )}
-            
-            <div className="flex gap-2">
-              <Button
-                onClick={enhancePrompt}
-                disabled={loading}
-                variant="outline"
-                className="flex-1"
-              >
-                {loading && status.includes('Enhancing') ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enhancing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Enhance Prompt
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => generateImage(false)}
-                disabled={loading}
-                className="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
-              >
-                {loading && !status.includes('Enhancing') ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Image
-                  </>
-                )}
-              </Button>
-            </div>
-            {status && (
-              <p className="mt-2 text-sm text-muted-foreground text-center">{status}</p>
+
+            {activeTab === 'upload' && (
+              <div className="space-y-4">
+                <Label>Upload Image</Label>
+                <Input type="file" accept="image/*" onChange={handleImageUpload} className="cursor-pointer" />
+                <p className="text-sm text-muted-foreground">Upload your own images to add to the canvas. Supports JPG, PNG, WEBP, and more.</p>
+              </div>
             )}
-          </Card>
+          </aside>
 
-          {image && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2 overflow-hidden bg-card border-border">
-                <div className="aspect-video relative">
-                  <img
-                    src={image}
-                    alt={prompt ? `AI generated image: ${prompt.slice(0, 100)}` : "AI generated image"}
-                    className="w-full h-full object-contain bg-muted"
-                    loading="lazy"
-                  />
-                </div>
-              </Card>
-              
-              <Card className="p-6 bg-card border-border flex flex-col gap-4">
-                <h3 className="text-lg font-semibold">Actions</h3>
-                <Button
-                  onClick={downloadImage}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
-                </Button>
-                <Button
-                  onClick={() => setIsEditorOpen(true)}
-                  variant="outline"
-                  className="w-full bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20"
-                  style={{
-                    textShadow: '0 0 10px rgba(236, 72, 153, 0.3)',
-                  }}
-                >
-                  <Edit className="mr-2 h-4 w-4 text-pink-500" />
-                  <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">
-                    Edit
-                  </span>
-                </Button>
-                <Button
-                  onClick={regenerateImage}
-                  disabled={loading}
-                  variant="outline"
-                  className="w-full"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Regenerating...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Regen
-                    </>
-                  )}
-                </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Use Regen to generate a new variation with a different seed
-                </p>
-              </Card>
+          <div className="flex-1 flex flex-col bg-muted/30">
+            {selectedObject && (
+              <div className="border-b border-border bg-card p-3">
+                <ScrollArea className="w-full">
+                  <div className="flex items-center gap-2 min-w-max">
+                    {selectedObject.type === 'textbox' && (
+                      <>
+                        <Select value={selectedObject.fontFamily} onValueChange={(value) => updateObjectProperty('fontFamily', value)}>
+                          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {FONTS.map((font) => (
+                              <SelectItem key={font} value={font} style={{ fontFamily: font }}>{font}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <div className="flex items-center gap-1 border border-input rounded-md">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateObjectProperty('fontSize', Math.max(8, (selectedObject.fontSize || 20) - 2))}>
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <Input type="number" value={Math.round(selectedObject.fontSize || 20)} onChange={(e) => updateObjectProperty('fontSize', Number(e.target.value))} className="w-16 h-8 text-center border-0 focus-visible:ring-0" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateObjectProperty('fontSize', (selectedObject.fontSize || 20) + 2)}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+
+                        <Input type="color" value={selectedObject.fill || '#000000'} onChange={(e) => updateObjectProperty('fill', e.target.value)} className="w-12 h-8 p-1 cursor-pointer" />
+
+                        <Button variant={selectedObject.fontWeight === 'bold' ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => updateObjectProperty('fontWeight', selectedObject.fontWeight === 'bold' ? 'normal' : 'bold')}>
+                          <Bold className="h-4 w-4" />
+                        </Button>
+
+                        <Button variant={selectedObject.fontStyle === 'italic' ? 'default' : 'outline'} size="icon" className="h-8 w-8" onClick={() => updateObjectProperty('fontStyle', selectedObject.fontStyle === 'italic' ? 'normal' : 'italic')}>
+                          <Italic className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+
+                    <div className="h-6 w-px bg-border mx-1" />
+
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs">Opacity:</Label>
+                      <Slider value={[(selectedObject.opacity || 1) * 100]} onValueChange={([value]) => updateObjectProperty('opacity', value / 100)} max={100} step={1} className="w-24" />
+                      <span className="text-xs w-8 text-right">{Math.round((selectedObject.opacity || 1) * 100)}%</span>
+                    </div>
+
+                    <div className="h-6 w-px bg-border mx-1" />
+
+                    <div className="flex items-center gap-1">
+                      <MoveHorizontal className="h-3 w-3 text-muted-foreground" />
+                      <Input type="number" value={Math.round(selectedObject.left || 0)} onChange={(e) => updateObjectProperty('left', Number(e.target.value))} className="w-16 h-8 text-sm" />
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <MoveVertical className="h-3 w-3 text-muted-foreground" />
+                      <Input type="number" value={Math.round(selectedObject.top || 0)} onChange={(e) => updateObjectProperty('top', Number(e.target.value))} className="w-16 h-8 text-sm" />
+                    </div>
+
+                    <div className="h-6 w-px bg-border mx-1" />
+
+                    <Button variant="destructive" size="sm" onClick={() => {
+                      if (fabricCanvas && selectedObject) {
+                        fabricCanvas.remove(selectedObject);
+                        fabricCanvas.renderAll();
+                      }
+                    }}>
+                      <Trash2 className="h-4 w-4 mr-1" />Delete
+                    </Button>
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            <div className="flex-1 p-4 overflow-auto flex items-center justify-center">
+              <div className="relative" style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}>
+                <canvas ref={canvasRef} className="border border-border shadow-lg" />
+              </div>
             </div>
-          )}
-        </div>
-      </main>
 
-      {image && (
-        <ImageEditor 
-          image={image}
-          isOpen={isEditorOpen}
-          onClose={() => setIsEditorOpen(false)}
-          onSave={(editedImage) => {
-            setImage(editedImage);
-          }}
-        />
-      )}
-    </div>
+            <div className="border-t border-border bg-card p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}><Minus className="h-4 w-4" /></Button>
+                <span className="text-sm min-w-[60px] text-center">{Math.round(zoom * 100)}%</span>
+                <Button variant="outline" size="sm" onClick={() => setZoom(Math.min(2, zoom + 0.25))}><Plus className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" onClick={() => setZoom(1)}>Reset</Button>
+              </div>
+
+              <Button onClick={downloadCanvas}><Download className="mr-2 h-4 w-4" />Download Design</Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    </TooltipProvider>
   );
 };
 

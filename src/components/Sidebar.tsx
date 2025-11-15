@@ -129,12 +129,6 @@ const Sidebar = ({
           </Button>
         </Link>
 
-        <Link to="/design-editor" className="block">
-          <Button variant="outline" className="w-full justify-start">
-            <Paintbrush className="mr-2 h-4 w-4" />
-            Design Editor
-          </Button>
-        </Link>
 
         <Link to="/voice-explain" className="block">
           
