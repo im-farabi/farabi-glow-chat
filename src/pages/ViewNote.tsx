@@ -46,21 +46,21 @@ export default function ViewNote() {
     setLoading(true);
     try {
       const result = await getNote(slug, pwd);
-      if (result.success) {
-        setNote(result.note);
-        setPasswordRequired(false);
-      }
-    } catch (error: any) {
-      if (error.message.includes('Password required') || error.message.includes('Incorrect password')) {
+      
+      // Check if password is required
+      if (result.passwordRequired) {
         setPasswordRequired(true);
         if (pwd) {
           toast({ title: 'Error', description: 'Incorrect password', variant: 'destructive' });
         }
-      } else if (error.message.includes('not found')) {
-        toast({ title: 'Error', description: 'Note not found', variant: 'destructive' });
-      } else {
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else if (result.success) {
+        setNote(result.note);
+        setPasswordRequired(false);
+      } else if (result.error) {
+        toast({ title: 'Error', description: result.error, variant: 'destructive' });
       }
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'An error occurred', variant: 'destructive' });
     } finally {
       setLoading(false);
       setIsVerifying(false);
@@ -89,33 +89,48 @@ export default function ViewNote() {
   }
 
   if (passwordRequired) {
+    const theme = themeClasses['black-purple']; // Default theme for password screen
+    
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <Dialog open={true}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Password Protected</DialogTitle>
-              <DialogDescription>
-                This note is password protected. Please enter the password to view it.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
+      <div className="min-h-screen bg-background">
+        {/* Header Section */}
+        <header className="bg-gradient-to-r from-primary to-purple-600 py-8 px-6 shadow-lg">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">FARABI.me</h1>
+            <p className="text-white/90 text-lg">Best Tool for Students!</p>
+          </div>
+        </header>
+
+        {/* Content Section */}
+        <div className="max-w-4xl mx-auto px-6 py-12">
+          <div className={`${theme.background} ${theme.border} border-2 rounded-2xl p-8 md:p-12 shadow-2xl`}>
+            <h2 className={`${theme.title} text-4xl md:text-5xl font-bold mb-8 text-center`}>
+              🔒 Password Protected Note
+            </h2>
+            
+            <div className="max-w-md mx-auto space-y-4">
+              <p className={`${theme.text} text-center mb-6 text-lg`}>
+                This note is password protected. Enter the password to view the content.
+              </p>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
+                className="bg-background/50 border-border"
                 onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
               />
-            </div>
-            <DialogFooter>
-              <Button onClick={handlePasswordSubmit} disabled={isVerifying}>
+              <Button 
+                onClick={handlePasswordSubmit} 
+                disabled={isVerifying}
+                className="w-full"
+              >
                 {isVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Unlock
+                Unlock Note
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -447,21 +447,9 @@ export const getNote = async (slug: string, password?: string) => {
     body: { slug, password },
   });
 
-  // If there's an error, check if it's a password requirement
-  if (error) {
-    // Try to parse the error response for passwordRequired flag
-    if (data?.passwordRequired) {
-      throw new Error('Password required');
-    }
-    throw error;
-  }
-  
-  // Also check the data object for passwordRequired (some edge function versions return it here)
-  if (data?.passwordRequired) {
-    throw new Error('Password required');
-  }
-  
-  return data;
+  // Return data regardless of error status - let the component handle passwordRequired
+  // This prevents 401 from showing as runtime error
+  return data || { error: error?.message || 'Unknown error' };
 };
 
 export const checkNoteSlug = async (slug: string) => {
