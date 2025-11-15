@@ -104,6 +104,48 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_notes: {
+        Row: {
+          anonymous_user_id: string
+          color_theme: string
+          created_at: string
+          description: string
+          id: string
+          password: string | null
+          short_description: string | null
+          slug: string
+          title: string
+          updated_at: string
+          views_count: number | null
+        }
+        Insert: {
+          anonymous_user_id: string
+          color_theme?: string
+          created_at?: string
+          description: string
+          id?: string
+          password?: string | null
+          short_description?: string | null
+          slug: string
+          title: string
+          updated_at?: string
+          views_count?: number | null
+        }
+        Update: {
+          anonymous_user_id?: string
+          color_theme?: string
+          created_at?: string
+          description?: string
+          id?: string
+          password?: string | null
+          short_description?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string
+          views_count?: number | null
+        }
+        Relationships: []
+      }
       user_sessions: {
         Row: {
           anonymous_user_id: string
