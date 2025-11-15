@@ -408,8 +408,10 @@ const IMAGE_HISTORY_KEY = 'farabi_image_history';
 export interface ImageHistoryItem {
   id: string;
   prompt: string;
-  imageUrl: string;
-  sizePreset: string;
+  url: string;
+  width: number;
+  height: number;
+  seed: number;
   timestamp: number;
 }
 
