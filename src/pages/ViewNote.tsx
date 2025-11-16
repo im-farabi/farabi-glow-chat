@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { getNote } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Flag, Home, ArrowUp } from 'lucide-react';
@@ -127,18 +126,33 @@ export default function ViewNote() {
   const theme = themeClasses[note.color_theme as keyof typeof themeClasses] || themeClasses['black-purple'];
   const currentUrl = window.location.href;
 
+  // Update meta tags dynamically
+  useEffect(() => {
+    document.title = "A user sent you a note. Click the link to view";
+    
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!');
+    }
+
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) {
+      ogTitle.setAttribute('content', 'A user sent you a note. Click the link to view');
+    }
+
+    const ogDescription = document.querySelector('meta[property="og:description"]');
+    if (ogDescription) {
+      ogDescription.setAttribute('content', 'This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!');
+    }
+
+    const ogUrl = document.querySelector('meta[property="og:url"]');
+    if (ogUrl) {
+      ogUrl.setAttribute('content', currentUrl);
+    }
+  }, [currentUrl]);
+
   return (
     <div className="min-h-screen bg-black relative">
-      <Helmet>
-        <title>A user sent you a note. Click the link to view</title>
-        <meta name="description" content="This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!" />
-        <meta property="og:title" content="A user sent you a note. Click the link to view" />
-        <meta property="og:description" content="This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!" />
-        <meta property="og:url" content={currentUrl} />
-        <meta property="twitter:title" content="A user sent you a note. Click the link to view" />
-        <meta property="twitter:description" content="This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!" />
-      </Helmet>
-      
       <AnimatedBackground theme={theme.accent} />
       
       {/* Header Section */}
