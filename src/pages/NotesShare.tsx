@@ -356,9 +356,8 @@ export default function NotesShare() {
             <NotePreview title={title} shortDescription={shortDescription} description={description} colorTheme={colorTheme} className="min-h-[400px]" />
           </div>
         </div>
-      </div>
 
-      {/* Dashboard Section */}
+        {/* Dashboard Section */}
       <div className="space-y-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>
         <div className="text-center space-y-2">
           <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
