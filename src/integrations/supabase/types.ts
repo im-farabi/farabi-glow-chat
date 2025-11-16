@@ -104,6 +104,38 @@ export type Database = {
         }
         Relationships: []
       }
+      note_views: {
+        Row: {
+          device_type: string | null
+          id: string
+          note_id: string
+          user_agent: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          device_type?: string | null
+          id?: string
+          note_id: string
+          user_agent?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          device_type?: string | null
+          id?: string
+          note_id?: string
+          user_agent?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_views_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "shared_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shared_notes: {
         Row: {
           anonymous_user_id: string

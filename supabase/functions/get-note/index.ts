@@ -34,6 +34,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Parse User-Agent and determine device type
+    const userAgent = req.headers.get('user-agent') || '';
+    let deviceType = 'unknown';
+    
+    if (/iPhone|iPad|iPod|iOS/i.test(userAgent)) {
+      deviceType = 'ios';
+    } else if (/Android|Mobi/i.test(userAgent)) {
+      deviceType = 'mobile';
+    } else if (/Windows|Macintosh|Linux/i.test(userAgent)) {
+      deviceType = 'desktop';
+    }
+
+    // Log view with device type
+    await supabase
+      .from('note_views')
+      .insert({
+        note_id: note.id,
+        user_agent: userAgent,
+        device_type: deviceType,
+      });
 
     // Increment view count
     await supabase

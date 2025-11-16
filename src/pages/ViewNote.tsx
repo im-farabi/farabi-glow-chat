@@ -110,8 +110,7 @@ export default function ViewNote() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <AnimatedBackground theme="purple" />
+      <div className="min-h-screen bg-gradient-to-br from-purple-950 to-black flex items-center justify-center">
         <div className="max-w-4xl mx-auto px-6 w-full space-y-8 animate-fade-in">
           <div className="glass-card border-purple-400/40 border-2 backdrop-blur-3xl bg-white/10 p-8 md:p-12 shadow-2xl">
             <Skeleton className="h-12 w-3/4 mb-4 bg-purple-400/30 animate-pulse" />
