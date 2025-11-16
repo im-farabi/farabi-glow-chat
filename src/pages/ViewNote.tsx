@@ -78,6 +78,31 @@ export default function ViewNote() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Update meta tags dynamically once on mount
+  useEffect(() => {
+    document.title = "A user sent you a note. Click the link to view";
+    
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!');
+    }
+
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) {
+      ogTitle.setAttribute('content', 'A user sent you a note. Click the link to view');
+    }
+
+    const ogDescription = document.querySelector('meta[property="og:description"]');
+    if (ogDescription) {
+      ogDescription.setAttribute('content', 'This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!');
+    }
+
+    const ogUrl = document.querySelector('meta[property="og:url"]');
+    if (ogUrl) {
+      ogUrl.setAttribute('content', window.location.href);
+    }
+  }, []);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -125,31 +150,6 @@ export default function ViewNote() {
 
   const theme = themeClasses[note.color_theme as keyof typeof themeClasses] || themeClasses['black-purple'];
   const currentUrl = window.location.href;
-
-  // Update meta tags dynamically once on mount
-  useEffect(() => {
-    document.title = "A user sent you a note. Click the link to view";
-    
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute('content', 'This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!');
-    }
-
-    const ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) {
-      ogTitle.setAttribute('content', 'A user sent you a note. Click the link to view');
-    }
-
-    const ogDescription = document.querySelector('meta[property="og:description"]');
-    if (ogDescription) {
-      ogDescription.setAttribute('content', 'This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!');
-    }
-
-    const ogUrl = document.querySelector('meta[property="og:url"]');
-    if (ogUrl) {
-      ogUrl.setAttribute('content', window.location.href);
-    }
-  }, []); // Run only once on mount
 
   return (
     <div className="min-h-screen bg-black relative">
