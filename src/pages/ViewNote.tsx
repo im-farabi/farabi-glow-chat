@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { getNote } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Flag, Home, ArrowUp } from 'lucide-react';
@@ -13,27 +14,27 @@ const themeClasses = {
     background: 'glass-card',
     title: 'bg-gradient-to-r from-purple-400 via-violet-400 to-purple-500 bg-clip-text text-transparent',
     text: 'text-purple-50',
-    border: 'border-purple-500/20',
+    border: 'border-purple-400/40',
     shortDesc: 'text-purple-200',
-    glow: 'shadow-[0_0_50px_rgba(168,85,247,0.3)]',
+    glow: 'shadow-[0_0_60px_rgba(168,85,247,0.5),0_0_30px_rgba(168,85,247,0.3)]',
     accent: 'purple' as const,
   },
   'black-white': {
     background: 'glass-card',
     title: 'bg-gradient-to-r from-gray-100 via-white to-gray-200 bg-clip-text text-transparent',
     text: 'text-gray-100',
-    border: 'border-gray-400/20',
+    border: 'border-gray-300/40',
     shortDesc: 'text-gray-200',
-    glow: 'shadow-[0_0_50px_rgba(255,255,255,0.2)]',
+    glow: 'shadow-[0_0_60px_rgba(255,255,255,0.3),0_0_30px_rgba(255,255,255,0.2)]',
     accent: 'white' as const,
   },
   'black-orange': {
     background: 'glass-card',
     title: 'bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent',
     text: 'text-orange-50',
-    border: 'border-orange-500/20',
+    border: 'border-orange-400/40',
     shortDesc: 'text-orange-200',
-    glow: 'shadow-[0_0_50px_rgba(249,115,22,0.3)]',
+    glow: 'shadow-[0_0_60px_rgba(249,115,22,0.5),0_0_30px_rgba(249,115,22,0.3)]',
     accent: 'orange' as const,
   },
 };
@@ -128,11 +129,21 @@ export default function ViewNote() {
 
   return (
     <div className="min-h-screen bg-black relative">
+      <Helmet>
+        <title>A user sent you a note. Click the link to view</title>
+        <meta name="description" content="This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!" />
+        <meta property="og:title" content="A user sent you a note. Click the link to view" />
+        <meta property="og:description" content="This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!" />
+        <meta property="og:url" content={currentUrl} />
+        <meta property="twitter:title" content="A user sent you a note. Click the link to view" />
+        <meta property="twitter:description" content="This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!" />
+      </Helmet>
+      
       <AnimatedBackground theme={theme.accent} />
       
       {/* Header Section */}
       <header 
-        className="relative bg-gradient-to-r from-primary/90 to-purple-600/90 backdrop-blur-sm py-8 px-6 shadow-2xl border-b border-primary/20 animate-fade-in"
+        className="relative backdrop-blur-xl bg-white/5 py-8 px-6 shadow-lg border-b border-white/10 animate-fade-in"
         style={{ animationDelay: '0.1s' }}
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -156,7 +167,7 @@ export default function ViewNote() {
       {/* Content Section */}
       <div className="max-w-4xl mx-auto px-6 py-12 relative z-10">
         <div 
-          className={`${theme.background} ${theme.border} ${theme.glow} border-2 rounded-2xl p-8 md:p-12 backdrop-blur-xl bg-black/40 hover:scale-[1.01] transition-all duration-500 animate-scale-in`}
+          className={`${theme.background} ${theme.border} ${theme.glow} border-[3px] rounded-2xl p-8 md:p-12 backdrop-blur-3xl bg-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1)] hover:scale-[1.01] transition-all duration-500 animate-scale-in`}
           style={{ animationDelay: '0.3s' }}
         >
           {/* Title with gradient animation */}
