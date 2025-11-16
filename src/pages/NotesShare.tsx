@@ -28,7 +28,7 @@ export default function NotesShare() {
   const [publishedUrl, setPublishedUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const anonymousUserId = localStorage.getItem('anonymousUserId') || '';
-  
+
   // Dashboard state
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -86,7 +86,6 @@ export default function NotesShare() {
   useEffect(() => {
     const fetchDashboard = async () => {
       if (!anonymousUserId) return;
-      
       setDashboardLoading(true);
       try {
         const data = await getNotesDashboard(anonymousUserId);
@@ -97,7 +96,6 @@ export default function NotesShare() {
         setDashboardLoading(false);
       }
     };
-
     fetchDashboard();
   }, [anonymousUserId]);
   const handlePublish = async () => {
@@ -187,29 +185,15 @@ export default function NotesShare() {
     });
   };
   const isValid = title.length >= limits.title.min && description.length >= limits.description.min;
-  
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-950 via-black to-black py-12 px-4">
+  return <div className="min-h-screen bg-gradient-to-br from-purple-950 via-black to-black py-12 px-4">
       <div className="max-w-7xl mx-auto space-y-16">
         {/* Hero Section */}
         <div className="text-center space-y-4 animate-fade-in">
           <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
-            Share Your Notes
+            NOTEZ.FUN    
           </h1>
-          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
-            Create beautiful, shareable notes with custom themes. No signup required!
-          </p>
-          <div className="flex flex-wrap justify-center gap-3 pt-4">
-            <Badge variant="secondary" className="px-4 py-2 text-sm bg-white/10 hover:bg-white/20">
-              ✨ No Sign-Up
-            </Badge>
-            <Badge variant="secondary" className="px-4 py-2 text-sm bg-white/10 hover:bg-white/20">
-              🎨 Custom Themes
-            </Badge>
-            <Badge variant="secondary" className="px-4 py-2 text-sm bg-white/10 hover:bg-white/20">
-              🚀 Free Forever
-            </Badge>
-          </div>
+          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">Share yo    </p>
+          
         </div>
 
         {/* Form & Preview Section */}
@@ -358,40 +342,31 @@ export default function NotesShare() {
         </div>
 
         {/* Dashboard Section */}
-      <div className="space-y-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+      <div className="space-y-8 animate-fade-in" style={{
+        animationDelay: '0.3s'
+      }}>
         <div className="text-center space-y-2">
           <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
             Your Notes Dashboard
           </h2>
           <p className="text-gray-400">
-            {dashboardData?.totalNotes > 0 
-              ? `You've created ${dashboardData.totalNotes} note${dashboardData.totalNotes === 1 ? '' : 's'} (showing max 10)` 
-              : 'Create your first note to see it here!'}
+            {dashboardData?.totalNotes > 0 ? `You've created ${dashboardData.totalNotes} note${dashboardData.totalNotes === 1 ? '' : 's'} (showing max 10)` : 'Create your first note to see it here!'}
           </p>
         </div>
 
-        {dashboardLoading ? (
-          <div className="flex justify-center py-12">
+        {dashboardLoading ? <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
-          </div>
-        ) : dashboardData?.notes && dashboardData.notes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {dashboardData.notes.map((note: any) => (
-              <Card 
-                key={note.id} 
-                className="glass-card border-purple-400/20 hover:border-purple-400/40 transition-all duration-300 hover:scale-[1.02] bg-white/5 backdrop-blur-xl"
-              >
+          </div> : dashboardData?.notes && dashboardData.notes.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {dashboardData.notes.map((note: any) => <Card key={note.id} className="glass-card border-purple-400/20 hover:border-purple-400/40 transition-all duration-300 hover:scale-[1.02] bg-white/5 backdrop-blur-xl">
                 <div className="p-6 space-y-4">
                   {/* Note Header */}
                   <div className="space-y-2">
                     <h3 className="text-xl font-bold text-foreground truncate">
                       {note.title}
                     </h3>
-                    {note.short_description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
+                    {note.short_description && <p className="text-sm text-muted-foreground line-clamp-2">
                         {note.short_description}
-                      </p>
-                    )}
+                      </p>}
                   </div>
 
                   {/* Views & Link */}
@@ -403,12 +378,7 @@ export default function NotesShare() {
                       </span>
                       <span className="text-sm text-muted-foreground">views</span>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      asChild
-                      className="hover:text-purple-400"
-                    >
+                    <Button variant="ghost" size="sm" asChild className="hover:text-purple-400">
                       <a href={`/notes/${note.slug}`} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="h-4 w-4 mr-1" />
                         View
@@ -422,33 +392,23 @@ export default function NotesShare() {
                       Device Breakdown
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {note.devices.mobile > 0 && (
-                        <Badge variant="secondary" className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border-blue-500/30">
+                      {note.devices.mobile > 0 && <Badge variant="secondary" className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border-blue-500/30">
                           <Smartphone className="h-3 w-3 mr-1" />
                           Mobile: {note.devices.mobile}
-                        </Badge>
-                      )}
-                      {note.devices.desktop > 0 && (
-                        <Badge variant="secondary" className="bg-green-500/20 hover:bg-green-500/30 text-green-300 border-green-500/30">
+                        </Badge>}
+                      {note.devices.desktop > 0 && <Badge variant="secondary" className="bg-green-500/20 hover:bg-green-500/30 text-green-300 border-green-500/30">
                           <Monitor className="h-3 w-3 mr-1" />
                           Desktop: {note.devices.desktop}
-                        </Badge>
-                      )}
-                      {note.devices.ios > 0 && (
-                        <Badge variant="secondary" className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border-purple-500/30">
+                        </Badge>}
+                      {note.devices.ios > 0 && <Badge variant="secondary" className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border-purple-500/30">
                           <Apple className="h-3 w-3 mr-1" />
                           iOS: {note.devices.ios}
-                        </Badge>
-                      )}
-                      {note.devices.unknown > 0 && (
-                        <Badge variant="secondary" className="bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 border-gray-500/30">
+                        </Badge>}
+                      {note.devices.unknown > 0 && <Badge variant="secondary" className="bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 border-gray-500/30">
                           <HelpCircle className="h-3 w-3 mr-1" />
                           Unknown: {note.devices.unknown}
-                        </Badge>
-                      )}
-                      {note.devices.mobile === 0 && note.devices.desktop === 0 && note.devices.ios === 0 && note.devices.unknown === 0 && (
-                        <p className="text-xs text-muted-foreground">No device data yet</p>
-                      )}
+                        </Badge>}
+                      {note.devices.mobile === 0 && note.devices.desktop === 0 && note.devices.ios === 0 && note.devices.unknown === 0 && <p className="text-xs text-muted-foreground">No device data yet</p>}
                     </div>
                   </div>
 
@@ -458,11 +418,8 @@ export default function NotesShare() {
                     <span>{new Date(note.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="glass-card border-purple-400/20 bg-white/5 backdrop-blur-xl">
+              </Card>)}
+          </div> : <Card className="glass-card border-purple-400/20 bg-white/5 backdrop-blur-xl">
             <div className="p-12 text-center space-y-4">
               <FileText className="h-16 w-16 mx-auto text-purple-400/50" />
               <div className="space-y-2">
@@ -472,10 +429,8 @@ export default function NotesShare() {
                 </p>
               </div>
             </div>
-          </Card>
-        )}
+          </Card>}
       </div>
     </div>
-  </div>
-  );
+  </div>;
 }
