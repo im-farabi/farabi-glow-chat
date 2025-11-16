@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getNote } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Flag, Home, ArrowUp } from 'lucide-react';
+import { Loader2, Eye, Home, ArrowUp } from 'lucide-react';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { ShareButton } from '@/components/ShareButton';
 import { Button } from '@/components/ui/button';
@@ -113,13 +113,13 @@ export default function ViewNote() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <AnimatedBackground theme="purple" />
         <div className="max-w-4xl mx-auto px-6 w-full space-y-8 animate-fade-in">
-          <div className="glass-card p-8 md:p-12">
-            <Skeleton className="h-12 w-3/4 mb-4 bg-purple-500/20" />
-            <Skeleton className="h-6 w-full mb-2 bg-purple-500/10" />
-            <Skeleton className="h-6 w-5/6 mb-6 bg-purple-500/10" />
+          <div className="glass-card border-purple-400/40 border-2 backdrop-blur-3xl bg-white/10 p-8 md:p-12 shadow-2xl">
+            <Skeleton className="h-12 w-3/4 mb-4 bg-purple-400/30 animate-pulse" />
+            <Skeleton className="h-6 w-full mb-2 bg-purple-400/20 animate-pulse" />
+            <Skeleton className="h-6 w-5/6 mb-6 bg-purple-400/20 animate-pulse" />
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-4 w-full bg-purple-500/10" />
+                <Skeleton key={i} className="h-4 w-full bg-purple-400/15 animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />
               ))}
             </div>
           </div>
@@ -181,7 +181,7 @@ export default function ViewNote() {
       {/* Content Section */}
       <div className="max-w-4xl mx-auto px-6 py-12 relative z-10">
         <div 
-          className={`${theme.background} ${theme.border} ${theme.glow} border-[3px] rounded-2xl p-8 md:p-12 backdrop-blur-3xl bg-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1)] hover:scale-[1.01] transition-all duration-500 animate-scale-in`}
+          className={`${theme.background} ${theme.border} ${theme.glow} border-[3px] rounded-2xl p-8 md:p-12 backdrop-blur-[40px] bg-white/12 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.15)] hover:scale-[1.01] transition-all duration-500 animate-scale-in`}
           style={{ animationDelay: '0.3s' }}
         >
           {/* Title with gradient animation */}
@@ -210,36 +210,25 @@ export default function ViewNote() {
             {note.description}
           </div>
 
+          {/* Views Counter */}
+          {note.views_count && (
+            <div 
+              className="flex items-center justify-center gap-2 py-4 mb-6 border-t border-b border-border/20 animate-fade-in"
+              style={{ animationDelay: '0.8s' }}
+            >
+              <Eye className={`h-5 w-5 ${theme.text}`} />
+              <span className={`${theme.text} text-lg font-medium`}>
+                {note.views_count.toLocaleString()} {note.views_count === 1 ? 'view' : 'views'}
+              </span>
+            </div>
+          )}
+
           {/* Share Buttons */}
           <div className="border-t border-border/20 pt-6 mt-6">
             <ShareButton url={currentUrl} title={note.title} />
           </div>
         </div>
-
-        {/* Stats */}
-        <div 
-          className="mt-6 text-center text-sm text-muted-foreground animate-fade-in"
-          style={{ animationDelay: '0.9s' }}
-        >
-          {note.views_count && (
-            <p>👁️ {note.views_count} views</p>
-          )}
-        </div>
       </div>
-
-      {/* Footer Section */}
-      <footer className="py-12 flex justify-center relative z-10 animate-fade-in" style={{ animationDelay: '1s' }}>
-        <button
-          className="flex items-center gap-2 text-muted-foreground hover:text-destructive transition-all duration-300 group glass-card px-6 py-3 rounded-full hover:scale-105"
-          onClick={() => toast({ 
-            title: 'Report Feature', 
-            description: 'Reporting system coming soon!',
-          })}
-        >
-          <Flag className="h-5 w-5 group-hover:scale-110 transition-transform" />
-          <span className="text-sm font-medium">Report Note</span>
-        </button>
-      </footer>
 
       {/* Scroll to Top Button */}
       {showScrollTop && (
