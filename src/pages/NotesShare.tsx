@@ -323,13 +323,43 @@ export default function NotesShare() {
             {!isValid}
           </div>
 
-            {publishedUrl && <div className="border rounded-lg p-4 bg-muted/50">
+            {publishedUrl && <div className="border rounded-lg p-4 bg-muted/50 space-y-3">
                 <Label className="text-sm font-semibold mb-2 block">Published Successfully! 🎉</Label>
-                <div className="flex gap-2">
-                  <Input value={publishedUrl} readOnly className="flex-1" />
-                  <Button onClick={copyToClipboard} size="icon" variant="outline">
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
+                
+                {/* Primary URL */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Primary URL:</p>
+                  <div className="flex gap-2">
+                    <Input value={publishedUrl} readOnly className="flex-1" />
+                    <Button onClick={copyToClipboard} size="icon" variant="outline">
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Short URL */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                    <ExternalLink className="h-3 w-3" />
+                    Also available at (redirects to primary):
+                  </p>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={`https://notez.fun/${publishedUrl.split('/notes/')[1]}`} 
+                      readOnly 
+                      className="flex-1" 
+                    />
+                    <Button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://notez.fun/${publishedUrl.split('/notes/')[1]}`);
+                        toast({ title: 'Copied!', description: 'Short link copied to clipboard' });
+                      }} 
+                      size="icon" 
+                      variant="outline"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>}
           </div>
