@@ -102,10 +102,13 @@ All colors MUST be HSL.
   /* Float animation */
   @keyframes float {
     0%, 100% {
-      transform: translateY(0px);
+      transform: translateY(0px) translateX(0px);
     }
-    50% {
-      transform: translateY(-10px);
+    33% {
+      transform: translateY(-20px) translateX(10px);
+    }
+    66% {
+      transform: translateY(-10px) translateX(-10px);
     }
   }
 
@@ -156,7 +159,7 @@ All colors MUST be HSL.
   }
 
   .glass-card {
-    @apply backdrop-blur-xl bg-card/40 border border-white/10 shadow-2xl;
+    @apply bg-background/10 backdrop-blur-xl border border-border/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)];
   }
 
   .gradient-text {
