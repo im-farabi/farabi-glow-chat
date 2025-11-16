@@ -467,3 +467,12 @@ export const checkNoteSlug = async (slug: string) => {
   if (error) throw error;
   return data;
 };
+
+export const getNotesDashboard = async (anonymousUserId: string) => {
+  const { data, error } = await supabase.functions.invoke('notes-dashboard', {
+    body: { anonymousUserId },
+  });
+
+  if (error) throw error;
+  return data;
+};

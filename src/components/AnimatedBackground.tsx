@@ -6,21 +6,30 @@ interface AnimatedBackgroundProps {
 
 export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({ theme }) => {
   const gradients = {
-    purple: 'from-purple-950 via-violet-900 to-black',
-    white: 'from-gray-900 via-slate-800 to-black',
-    orange: 'from-orange-950 via-amber-900 to-black'
+    purple: 'from-purple-900 via-violet-800 to-black/95',
+    white: 'from-zinc-800 via-slate-700 to-black/95',
+    orange: 'from-orange-900 via-amber-800 to-black/95'
+  };
+
+  const overlays = {
+    purple: 'bg-purple-500/8',
+    white: 'bg-white/8',
+    orange: 'bg-orange-500/8'
   };
 
   const particles = {
-    purple: 'bg-purple-500/10',
-    white: 'bg-gray-300/10',
-    orange: 'bg-orange-500/10'
+    purple: 'bg-purple-500/8',
+    white: 'bg-gray-300/8',
+    orange: 'bg-orange-500/8'
   };
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
       {/* Animated gradient background */}
       <div className={`absolute inset-0 bg-gradient-to-br ${gradients[theme]} animate-gradient`} />
+      
+      {/* Theme tinted overlay */}
+      <div className={`absolute inset-0 ${overlays[theme]}`} />
       
       {/* Floating particles */}
       <div className="absolute inset-0">

@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.check-note-slug]
 verify_jwt = false
+
+[functions.notes-dashboard]
+verify_jwt = false
