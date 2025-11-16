@@ -126,7 +126,7 @@ export default function ViewNote() {
   const theme = themeClasses[note.color_theme as keyof typeof themeClasses] || themeClasses['black-purple'];
   const currentUrl = window.location.href;
 
-  // Update meta tags dynamically
+  // Update meta tags dynamically once on mount
   useEffect(() => {
     document.title = "A user sent you a note. Click the link to view";
     
@@ -147,9 +147,9 @@ export default function ViewNote() {
 
     const ogUrl = document.querySelector('meta[property="og:url"]');
     if (ogUrl) {
-      ogUrl.setAttribute('content', currentUrl);
+      ogUrl.setAttribute('content', window.location.href);
     }
-  }, [currentUrl]);
+  }, []); // Run only once on mount
 
   return (
     <div className="min-h-screen bg-black relative">
