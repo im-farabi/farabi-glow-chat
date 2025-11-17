@@ -2,7 +2,7 @@ import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Send, Bolt, Circle, Zap, X, Code2, Eye, Image as ImageIcon, Brain } from 'lucide-react';
+import { Send, Bolt, Circle, Zap, X, Code2, Eye, Image as ImageIcon, Brain, Wrench } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { recommendedQuestions } from '@/data/recommendedQuestions';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -159,30 +159,36 @@ const ChatInput = ({
             <ImageIcon className="h-5 w-5 md:h-6 md:w-6" />
           </Button>
 
-          {/* Toolbar: Coder & Think */}
-          <div className="flex gap-1">
-            <Button 
-              type="button"
-              variant="outline" 
-              size="icon" 
-              onClick={() => setActiveMode(activeMode === 'coder' ? 'normal' : 'coder')}
-              className={`h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0 ${activeMode === 'coder' ? 'bg-accent border-blue-500' : ''}`}
-              title="Coder Mode"
-            >
-              <Code2 className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
-            </Button>
-            
-            <Button 
-              type="button"
-              variant="outline" 
-              size="icon" 
-              onClick={() => setActiveMode(activeMode === 'think' ? 'normal' : 'think')}
-              className={`h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0 ${activeMode === 'think' ? 'bg-accent border-purple-500' : ''}`}
-              title="Think Mode - Deep Reasoning"
-            >
-              <Brain className="h-5 w-5 md:h-6 md:w-6 text-purple-500" />
-            </Button>
-          </div>
+          {/* Tool Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                type="button"
+                variant="outline" 
+                size="icon" 
+                className={`h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0 ${(activeMode === 'coder' || activeMode === 'think') ? 'bg-accent' : ''}`}
+                title="Tools"
+              >
+                <Wrench className="h-5 w-5 md:h-6 md:w-6" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-popover border-border z-50">
+              <DropdownMenuItem 
+                onClick={() => setActiveMode(activeMode === 'coder' ? 'normal' : 'coder')}
+                className={`cursor-pointer ${activeMode === 'coder' ? 'bg-accent' : ''}`}
+              >
+                <Code2 className="h-4 w-4 mr-2 text-blue-500" />
+                <span>Coder Mode</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setActiveMode(activeMode === 'think' ? 'normal' : 'think')}
+                className={`cursor-pointer ${activeMode === 'think' ? 'bg-accent' : ''}`}
+              >
+                <Brain className="h-4 w-4 mr-2 text-purple-500" />
+                <span>Think Mode</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <div className="relative flex-1">
             <Textarea ref={textareaRef} value={message} onChange={e => {
