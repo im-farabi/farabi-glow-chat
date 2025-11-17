@@ -318,6 +318,41 @@ async function imageToBase64(file: File): Promise<string> {
 }
 
 /**
+ * Analyze image using OpenAI vision, return text description
+ */
+async function analyzeImageWithOpenAI(image: File): Promise<string> {
+  try {
+    const fullBase64 = await imageToBase64(image);
+    const imageBase64 = fullBase64.split(',')[1];
+    
+    console.log('🔍 Analyzing image with OpenAI vision...');
+    
+    const { data, error } = await supabase.functions.invoke('pollinations-chat', {
+      body: {
+        prompt: 'Describe this image in detail. Include: what you see, colors, objects, text (if any), mood/atmosphere, and any other relevant details. Be comprehensive and specific.',
+        model: 'openai', // Use OpenAI for vision
+        seed: Math.random(),
+        image: imageBase64,
+        useFallback: true
+      }
+    });
+    
+    if (error) {
+      console.error('Image analysis failed:', error);
+      throw new Error('Failed to analyze image');
+    }
+    
+    const description = data?.text || 'Image uploaded but could not be analyzed';
+    console.log('✅ Image analysis complete:', description.substring(0, 100) + '...');
+    return description;
+    
+  } catch (error) {
+    console.error('Image analysis error:', error);
+    return 'Image uploaded but analysis unavailable';
+  }
+}
+
+/**
  * Send request to API via Edge Function
  */
 async function sendRequest(
@@ -327,6 +362,14 @@ async function sendRequest(
   messages: Message[] = [],
   image?: File
 ): Promise<string> {
+  // If image is provided, analyze it first with OpenAI
+  let imageDescription = '';
+  if (image) {
+    imageDescription = await analyzeImageWithOpenAI(image);
+    // Prepend image description to the prompt
+    prompt = `[Image Description: ${imageDescription}]\n\nUser Question: ${prompt}`;
+  }
+  
   // Define fallback models
   const modelConfigs = [
     { model: baseModel, label: `Primary: ${baseModel}`, useFallbackKey: false },
@@ -352,21 +395,13 @@ async function sendRequest(
       
       const randomSeed = Math.random();
       
-      // Handle image conversion
-      let imageBase64 = null;
-      if (image) {
-        const fullBase64 = await imageToBase64(image);
-        // Remove the data URL prefix (data:image/jpeg;base64,) to get clean base64
-        imageBase64 = fullBase64.split(',')[1];
-      }
-      
-      // Call edge function
+      // Call edge function WITHOUT image (we already analyzed it)
       const { data, error } = await supabase.functions.invoke('pollinations-chat', {
         body: {
           prompt: fullPrompt,
           model: config.model,
           seed: randomSeed,
-          image: imageBase64,
+          image: null, // Don't send image to gemini-search
           useFallback: config.useFallbackKey
         }
       });
