@@ -1,13 +1,14 @@
 import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Bolt, Circle, Zap, X, Code2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Send, Bolt, Circle, Zap, X, Code2, Eye } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { recommendedQuestions } from '@/data/recommendedQuestions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 interface ChatInputProps {
-  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder', image?: File) => void;
+  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'openai', image?: File) => void;
   disabled?: boolean;
 }
 const ChatInput = ({
@@ -15,7 +16,7 @@ const ChatInput = ({
   disabled
 }: ChatInputProps) => {
   const [message, setMessage] = useState('');
-  const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder'>('normal');
+  const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'openai'>('normal');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showRecommended, setShowRecommended] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -36,6 +37,11 @@ const ChatInput = ({
   }, []);
   const handleSend = () => {
     if (!message.trim() && !selectedImage) return;
+    
+    if (selectedImage) {
+      console.log('🖼️ Sending message with image - AI will analyze it in', activeMode, 'mode');
+    }
+    
     onSendMessage(message, activeMode, selectedImage || undefined);
     setMessage('');
     setActiveMode('normal');
@@ -124,11 +130,21 @@ const ChatInput = ({
             <Code2 className="h-3 w-3 md:h-4 md:w-4 md:mr-1 text-blue-500" />
             <span className="hidden sm:inline">Coder</span>
           </Button>
+
+          <Button variant="outline" size="sm" onClick={() => setActiveMode(activeMode === 'openai' ? 'normal' : 'openai')} className={`text-xs md:text-sm ${activeMode === 'openai' ? 'bg-accent' : ''}`} title="OpenAI Vision Test Mode">
+            <Eye className="h-3 w-3 md:h-4 md:w-4 md:mr-1 text-purple-500" />
+            <span className="hidden sm:inline">OpenAI</span>
+          </Button>
         </div>
 
         {/* Image Preview */}
         {selectedImage && imagePreview && <div className="relative inline-block mb-2">
-            <img src={imagePreview} alt="Preview" className="h-20 rounded-lg border-2 border-border object-cover" />
+            <div className="relative">
+              <img src={imagePreview} alt="Preview" className="h-20 rounded-lg border-2 border-border object-cover" />
+              <Badge className="absolute top-1 left-1 text-[10px] bg-purple-500/90 text-white">
+                Vision Mode
+              </Badge>
+            </div>
             <button onClick={clearImage} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:opacity-90 transition-opacity" type="button">
               <X className="h-4 w-4" />
             </button>
