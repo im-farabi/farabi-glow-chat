@@ -1,5 +1,5 @@
 import { User, MoreVertical, Copy, Volume2, ChevronDown, ChevronUp, ListChecks, SquareStack, Download } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
@@ -51,6 +51,17 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
   const isUser = role === 'user';
   const { toast } = useToast();
   const [explainClicked, setExplainClicked] = useState(false);
+  const [thinkingTime, setThinkingTime] = useState(0);
+
+  useEffect(() => {
+    if (isLoading) {
+      setThinkingTime(0);
+      const interval = setInterval(() => {
+        setThinkingTime(prev => prev + 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isLoading]);
 
   const handleDownload = () => {
     if (imageBlob && image) {
@@ -156,7 +167,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
               <span className="h-2 w-2 rounded-full bg-primary animate-typing" style={{ animationDelay: '0.2s' }} />
               <span className="h-2 w-2 rounded-full bg-primary animate-typing" style={{ animationDelay: '0.4s' }} />
             </div>
-            <span className="text-sm">{loadingText || 'Thinking...'}</span>
+            <span className="text-sm">Thinking... Thought for {thinkingTime} second{thinkingTime !== 1 ? 's' : ''}...</span>
           </div>
         ) : (
           <div className="max-w-full overflow-x-auto break-words">
