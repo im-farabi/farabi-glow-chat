@@ -9,7 +9,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { NotePreview } from '@/components/NotePreview';
 import { createNote, checkNoteSlug, getNotesDashboard } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, Send, Loader2, Copy, Check, FileText, Smartphone, Monitor, Apple, HelpCircle, ExternalLink } from 'lucide-react';
+import { Eye, Send, Loader2, Copy, Check, FileText, Smartphone, Monitor, Apple, HelpCircle, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 export default function NotesShare() {
@@ -187,6 +188,12 @@ export default function NotesShare() {
   const isValid = title.length >= limits.title.min && description.length >= limits.description.min;
   return <div className="min-h-screen bg-gradient-to-br from-purple-950 via-black to-black py-12 px-4">
       <div className="max-w-7xl mx-auto space-y-16">
+        {/* Back Button */}
+        <Link to="/" className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+          <span>Back to Chat</span>
+        </Link>
+
         {/* Hero Section */}
         <div className="text-center space-y-4 animate-fade-in">
           <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
