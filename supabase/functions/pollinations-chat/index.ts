@@ -21,40 +21,55 @@ serve(async (req) => {
       throw new Error('API key not configured');
     }
 
-    console.log('Generating with model:', model, 'seed:', seed, 'useFallback:', useFallback);
+    console.log('Generating with model:', model, 'seed:', seed, 'has image:', !!image, 'useFallback:', useFallback);
 
-    let response: Response;
-
+    // Build messages in OpenAI format
+    let messageContent;
+    
     if (image) {
-      // POST request with FormData for images
-      const formData = new FormData();
-      formData.append('model', model);
-      formData.append('image', image);
-      formData.append('prompt', prompt);
-      
-      response = await fetch('https://text.pollinations.ai/api/generate', {
-        method: 'POST',
-        body: formData
-      });
-    } else {
-      // GET request with prompt in URL for text-only
-      const textUrl = `https://text.pollinations.ai/${encodeURIComponent(prompt)}?model=${model}&seed=${seed}`;
-      response = await fetch(textUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
+      // For images: use array format with text + image_url
+      messageContent = [
+        { type: "text", text: prompt },
+        { 
+          type: "image_url", 
+          image_url: { url: `data:image/jpeg;base64,${image}` } 
         }
-      });
+      ];
+      console.log('Vision mode enabled - sending image with prompt');
+    } else {
+      // For text-only: simple string
+      messageContent = prompt;
     }
+
+    const payload = {
+      model: model,
+      messages: [
+        {
+          role: "user",
+          content: messageContent
+        }
+      ],
+      seed: seed
+    };
+
+    // Use OpenAI-compatible endpoint
+    const response = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Pollinations API error:', response.status, errorText);
-      throw new Error(`API Error: ${response.status}`);
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
     }
 
-    const text = await response.text();
+    const data = await response.json();
+    const text = data.choices[0].message.content;
 
     return new Response(JSON.stringify({ text }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
