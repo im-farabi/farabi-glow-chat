@@ -6,7 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
-import { sendFast, sendNormal, sendSuper, sendCoder, generateImage } from '@/lib/api';
+import { sendFast, sendNormal, sendSuper, sendCoder, sendOpenAI, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 
@@ -181,7 +181,7 @@ const Index = () => {
 
   const handleSendMessage = async (
     message: string, 
-    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder',
+    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'openai',
     image?: File
   ) => {
     if (!message.trim() && !image) return;
@@ -234,13 +234,15 @@ const Index = () => {
     
     // Update loading text dynamically for non-imageGen modes
     let updateInterval: NodeJS.Timeout | null = null;
-    if (mode !== 'imageGen' && (mode === 'fast' || mode === 'normal' || mode === 'super' || mode === 'coder')) {
+    if (mode !== 'imageGen' && (mode === 'fast' || mode === 'normal' || mode === 'super' || mode === 'coder' || mode === 'openai')) {
       const stages = mode === 'fast' 
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Reading Instructions...' }, { time: 1500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }]
         : mode === 'normal'
         ? [{ time: 500, text: 'Sending...' }, { time: 1500, text: 'Reading Instructions...' }, { time: 2000, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }]
         : mode === 'coder'
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Reading Instructions...' }, { time: 1500, text: 'Analyzing Code Requirements...' }, { time: Infinity, text: 'Generating Code...' }]
+        : mode === 'openai'
+        ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Processing with OpenAI...' }, { time: Infinity, text: image ? 'Analyzing image...' : 'Thinking...' }]
         : [{ time: 500, text: 'Sending...' }, { time: 2000, text: 'Reading Instructions...' }, { time: 2500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }];
       
       const startTime = Date.now();
@@ -277,6 +279,9 @@ const Index = () => {
           break;
         case 'coder':
           response = await sendCoder(message, messages, image);
+          break;
+        case 'openai':
+          response = await sendOpenAI(message, messages, image);
           break;
       case 'imageGen':
         const { imageUrl, imageBlob } = await generateImage(message, (status) => {

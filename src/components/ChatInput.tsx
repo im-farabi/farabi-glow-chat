@@ -2,7 +2,7 @@ import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Send, Bolt, Circle, Zap, X, Code2, Eye } from 'lucide-react';
+import { Send, Bolt, Circle, Zap, X, Code2, Eye, Image as ImageIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { recommendedQuestions } from '@/data/recommendedQuestions';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -156,6 +156,18 @@ const ChatInput = ({
         {/* Input row */}
         <div className="flex gap-2">
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+
+          {/* Image Upload Button */}
+          <Button 
+            type="button"
+            variant="outline" 
+            size="icon" 
+            onClick={() => fileInputRef.current?.click()}
+            className="h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0"
+            title="Upload Image"
+          >
+            <ImageIcon className="h-5 w-5 md:h-6 md:w-6" />
+          </Button>
 
           <div className="relative flex-1">
             <Textarea ref={textareaRef} value={message} onChange={e => {
