@@ -2,13 +2,13 @@ import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Send, Bolt, Circle, Zap, X, Code2, Eye, Image as ImageIcon } from 'lucide-react';
+import { Send, Bolt, Circle, Zap, X, Code2, Eye, Image as ImageIcon, Brain } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { recommendedQuestions } from '@/data/recommendedQuestions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 interface ChatInputProps {
-  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'openai', image?: File) => void;
+  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think', image?: File) => void;
   disabled?: boolean;
 }
 const ChatInput = ({
@@ -16,7 +16,7 @@ const ChatInput = ({
   disabled
 }: ChatInputProps) => {
   const [message, setMessage] = useState('');
-  const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'openai'>('normal');
+  const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think'>('normal');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showRecommended, setShowRecommended] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -44,7 +44,7 @@ const ChatInput = ({
     
     onSendMessage(message, activeMode, selectedImage || undefined);
     setMessage('');
-    setActiveMode('normal');
+    // DON'T reset activeMode - keep it persistent!
     setSelectedImage(null);
     setImagePreview(null);
 
@@ -125,16 +125,6 @@ const ChatInput = ({
             <Zap className="h-3 w-3 md:h-4 md:w-4 md:mr-1 font-bold text-green-500" strokeWidth={2.5} />
             <span className="hidden sm:inline">Super</span>
           </Button>
-
-          <Button variant="outline" size="sm" onClick={() => setActiveMode(activeMode === 'coder' ? 'normal' : 'coder')} className={`text-xs md:text-sm ${activeMode === 'coder' ? 'bg-accent' : ''}`} title="Coding Assistant">
-            <Code2 className="h-3 w-3 md:h-4 md:w-4 md:mr-1 text-blue-500" />
-            <span className="hidden sm:inline">Coder</span>
-          </Button>
-
-          <Button variant="outline" size="sm" onClick={() => setActiveMode(activeMode === 'openai' ? 'normal' : 'openai')} className={`text-xs md:text-sm ${activeMode === 'openai' ? 'bg-accent' : ''}`} title="OpenAI Vision Test Mode">
-            <Eye className="h-3 w-3 md:h-4 md:w-4 md:mr-1 text-purple-500" />
-            <span className="hidden sm:inline">OpenAI</span>
-          </Button>
         </div>
 
         {/* Image Preview */}
@@ -168,6 +158,31 @@ const ChatInput = ({
           >
             <ImageIcon className="h-5 w-5 md:h-6 md:w-6" />
           </Button>
+
+          {/* Toolbar: Coder & Think */}
+          <div className="flex gap-1">
+            <Button 
+              type="button"
+              variant="outline" 
+              size="icon" 
+              onClick={() => setActiveMode(activeMode === 'coder' ? 'normal' : 'coder')}
+              className={`h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0 ${activeMode === 'coder' ? 'bg-accent border-blue-500' : ''}`}
+              title="Coder Mode"
+            >
+              <Code2 className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
+            </Button>
+            
+            <Button 
+              type="button"
+              variant="outline" 
+              size="icon" 
+              onClick={() => setActiveMode(activeMode === 'think' ? 'normal' : 'think')}
+              className={`h-[40px] w-[40px] md:h-[50px] md:w-[50px] shrink-0 ${activeMode === 'think' ? 'bg-accent border-purple-500' : ''}`}
+              title="Think Mode - Deep Reasoning"
+            >
+              <Brain className="h-5 w-5 md:h-6 md:w-6 text-purple-500" />
+            </Button>
+          </div>
 
           <div className="relative flex-1">
             <Textarea ref={textareaRef} value={message} onChange={e => {
@@ -220,6 +235,9 @@ const ChatInput = ({
             </> : activeMode === 'coder' ? <>
               <Code2 className="h-3 w-3 text-blue-500" />
               <span>Coder mode active</span>
+            </> : activeMode === 'think' ? <>
+              <Brain className="h-3 w-3 text-purple-500" />
+              <span>Think mode active - Deep reasoning enabled</span>
             </> : <>
               <span>Image Generation mode active</span>
             </>}
