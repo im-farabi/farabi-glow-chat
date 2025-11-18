@@ -15,7 +15,7 @@ const RecommendedQuestions = ({ onQuestionClick }: { onQuestionClick: (question:
           const event = new CustomEvent('fillChatInput', { detail: question });
           window.dispatchEvent(event);
         }}
-        className="p-4 text-left rounded-lg bg-card border border-border hover:border-primary/50 hover:bg-accent transition-all text-sm"
+        className="p-4 text-left rounded-xl bg-card/50 border border-border/50 hover:border-primary hover:bg-card/80 transition-all text-sm backdrop-blur-sm hover:scale-105 hover:shadow-lg"
       >
         {question}
       </button>
@@ -57,13 +57,16 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
   }, [messages]);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex flex-1 flex-col overflow-hidden relative">
+      {/* Background effects */}
+      <div className="absolute inset-0 mesh-gradient pointer-events-none" />
+      
       {isMobile ? (
         <div ref={scrollAreaRef} className="flex-1 mobile-scroll relative pb-4">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8">
-              <div className="text-center space-y-6 max-w-2xl mx-auto">
-                <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary p-2">
+              <div className="text-center space-y-8 max-w-3xl mx-auto animate-fade-in">
+                <div className="inline-flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary p-3 shadow-[0_0_40px_rgba(6,182,212,0.4)]">
                   <img 
                     src="/bot-logo.ico" 
                     alt="FARABI.me" 
@@ -71,12 +74,11 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, showAdBanner, on
                   />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">
-                    <span className="text-white">Welcome to </span>
-                    <span className="text-white">FARABI</span>
-                    <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">.me</span>
+                  <h2 className="text-4xl md:text-5xl font-bold mb-4">
+                    <span className="text-foreground">Where ideas meet </span>
+                    <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">intelligence</span>
                   </h2>
-                  <p className="text-lg text-muted-foreground mb-6">
+                  <p className="text-lg text-muted-foreground">
                     Start a conversation with FARABI
                   </p>
                 </div>
