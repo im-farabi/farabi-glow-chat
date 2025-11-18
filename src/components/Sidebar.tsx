@@ -83,12 +83,12 @@ const Sidebar = ({
   };
   return <>
       {/* Mobile backdrop */}
-      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={onClose} />}
+      {isOpen && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden" onClick={onClose} />}
 
       <aside className={`
-        flex flex-col border-r border-border bg-card
+        flex flex-col border-r border-border/50 bg-card/80 backdrop-blur-xl
         fixed md:relative inset-y-0 left-0 z-50
-        w-80 transform transition-transform duration-300 ease-in-out
+        w-80 transform transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         {/* Mobile close button */}
