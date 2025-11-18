@@ -163,11 +163,17 @@ All colors MUST be HSL.
   }
 
   .glass-card {
-    @apply bg-card/10 backdrop-blur-[40px] border border-border shadow-[0_8px_32px_0_rgba(0,0,0,0.6)];
+    background-color: hsl(var(--card) / 0.1);
+    backdrop-filter: blur(40px);
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-primary via-purple-500 to-secondary bg-clip-text text-transparent;
+    background: linear-gradient(to right, hsl(var(--primary)), hsl(271 81% 60%), hsl(var(--secondary)));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
   .mesh-gradient {
@@ -176,11 +182,24 @@ All colors MUST be HSL.
   }
 
   .floating-input {
-    @apply glass-card rounded-[24px] p-6 shadow-float;
+    background-color: hsl(var(--card) / 0.1);
+    backdrop-filter: blur(40px);
+    border: 1px solid hsl(var(--border));
+    border-radius: 24px;
+    padding: 1.5rem;
+    box-shadow: 0 20px 60px hsla(0, 0%, 0%, 0.7);
   }
 
   .message-card {
-    @apply max-w-[800px] mx-auto bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-8 shadow-card;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    background-color: hsl(var(--card) / 0.5);
+    backdrop-filter: blur(4px);
+    border: 1px solid hsl(var(--border) / 0.5);
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.6);
   }
 
   .glow-cyan {
