@@ -14,15 +14,14 @@ serve(async (req) => {
   try {
     const { aiResponse } = await req.json();
     
-    const response = await fetch('https://text.pollinations.ai/openai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'mistral',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a smart suggestion generator. Based on the AI's response, generate exactly 2 relevant follow-up questions that a curious student might ask next.
+    const apiKey = Deno.env.get('POLLINATIONS_API_KEY');
+    const fallbackApiKey = Deno.env.get('POLLINATIONS_FALLBACK_API_KEY');
+
+    if (!apiKey) {
+      throw new Error('POLLINATIONS_API_KEY not configured');
+    }
+
+    const systemPrompt = `You are a smart suggestion generator. Based on the AI's response, generate exactly 2 relevant follow-up questions that a curious student might ask next.
 
 Rules:
 - Generate EXACTLY 2 questions
@@ -30,28 +29,82 @@ Rules:
 - Questions should dig deeper into the topic or explore related concepts
 - Questions should be natural and conversational
 - Return ONLY a JSON array of 2 strings, nothing else
-- Example format: ["What are the main features?", "How does it compare to alternatives?"]`
-          },
-          {
-            role: 'user',
-            content: `AI Response: "${aiResponse}"\n\nGenerate 2 follow-up questions:`
-          }
-        ],
+- Example format: ["What are the main features?", "How does it compare to alternatives?"]`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `AI Response: "${aiResponse}"\n\nGenerate 2 follow-up questions:` }
+    ];
+
+    // Try primary model (openai)
+    console.log('Attempting suggestion generation with openai model...');
+    let response = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'openai',
+        messages,
         temperature: 0.8,
         max_tokens: 100
       }),
     });
 
+    // Fallback to openai-large if primary fails
+    if (!response.ok) {
+      console.log(`Primary model failed (${response.status}), trying fallback openai-large...`);
+      
+      if (!fallbackApiKey) {
+        throw new Error('POLLINATIONS_FALLBACK_API_KEY not configured for fallback');
+      }
+
+      response = await fetch('https://text.pollinations.ai/openai', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${fallbackApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'openai-large',
+          messages,
+          temperature: 0.8,
+          max_tokens: 100
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Fallback model also failed:', response.status, errorText);
+        throw new Error(`Both models failed. Status: ${response.status}`);
+      }
+      
+      console.log('Fallback model succeeded');
+    } else {
+      console.log('Primary model succeeded');
+    }
+
     const data = await response.json();
     const suggestionsText = data.choices[0].message.content.trim();
     
+    console.log('Raw suggestions response:', suggestionsText);
+    
     // Parse JSON from response
-    const suggestions = JSON.parse(suggestionsText);
+    let suggestions;
+    try {
+      suggestions = JSON.parse(suggestionsText);
+    } catch (parseError) {
+      console.error('Failed to parse suggestions JSON:', parseError);
+      throw new Error('Invalid JSON response from AI');
+    }
     
     // Ensure we have exactly 2 suggestions
-    const finalSuggestions = Array.isArray(suggestions) 
+    const finalSuggestions = Array.isArray(suggestions) && suggestions.length > 0
       ? suggestions.slice(0, 2) 
       : ["Tell me more", "What else?"];
+
+    console.log('Final suggestions:', finalSuggestions);
 
     return new Response(
       JSON.stringify({ suggestions: finalSuggestions }),
