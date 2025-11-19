@@ -1,4 +1,4 @@
-import { User, MoreVertical, Copy, Volume2, ChevronDown, ChevronUp, ListChecks, SquareStack, Download } from 'lucide-react';
+import { User, MoreVertical, Copy, Volume2, ChevronDown, ChevronUp, ListChecks, SquareStack, Download, Sparkles } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -24,6 +24,8 @@ interface ChatMessageProps {
   flashcardData?: { question: string; answer: string }[];
   audioUrl?: string;
   audioBlob?: Blob;
+  suggestedQuestions?: string[];
+  onSuggestionClick?: (suggestion: string) => void;
 }
 
 function addGlowToExclamations(text: string): React.ReactNode[] {
@@ -44,7 +46,7 @@ function addGlowToExclamations(text: string): React.ReactNode[] {
   });
 }
 
-const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, loadingText, responseTime, onRead, onExplain, mcqData, flashcardData, audioUrl, audioBlob }: ChatMessageProps) => {
+const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, loadingText, responseTime, onRead, onExplain, mcqData, flashcardData, audioUrl, audioBlob, suggestedQuestions, onSuggestionClick }: ChatMessageProps) => {
   const isUser = role === 'user';
   const { toast } = useToast();
   const [explainClicked, setExplainClicked] = useState(false);
@@ -247,17 +249,23 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
               </div>
             )}
 
-            {role === 'assistant' && onExplain && !isLoading && !explainClicked && (
-              <div className="flex gap-2 mt-3">
-                <Button variant="outline" size="sm" onClick={() => { setExplainClicked(true); onExplain('shorter'); }} className="text-xs">
-                  <ChevronDown className="h-3 w-3 mr-1" />Explain in shorter
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => { setExplainClicked(true); onExplain('easy'); }} className="text-xs">
-                  Explain in easy
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => { setExplainClicked(true); onExplain('longer'); }} className="text-xs">
-                  <ChevronUp className="h-3 w-3 mr-1" />Explain more longer
-                </Button>
+            {role === 'assistant' && !isLoading && suggestedQuestions && suggestedQuestions.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-border/30">
+                <div className="text-xs text-muted-foreground mb-1 w-full flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  You might want to ask:
+                </div>
+                {suggestedQuestions.map((suggestion, idx) => (
+                  <Button
+                    key={idx}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSuggestionClick?.(suggestion)}
+                    className="text-xs px-3 py-1.5 rounded-full bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/30 hover:from-primary/20 hover:to-secondary/20 hover:border-primary/50 hover:scale-105 transition-all shadow-sm hover:shadow-md"
+                  >
+                    {suggestion}
+                  </Button>
+                ))}
               </div>
             )}
           </div>
@@ -273,7 +281,8 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
     prevProps.responseTime === nextProps.responseTime &&
     prevProps.mcqData === nextProps.mcqData &&
     prevProps.flashcardData === nextProps.flashcardData &&
-    prevProps.audioUrl === nextProps.audioUrl
+    prevProps.audioUrl === nextProps.audioUrl &&
+    prevProps.suggestedQuestions === nextProps.suggestedQuestions
   );
 });
 
