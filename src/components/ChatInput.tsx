@@ -111,7 +111,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
                     <Code2 className="h-4 w-4 mr-2" />Coder Mode
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setActiveMode('think')} className={activeMode === 'think' ? 'bg-accent' : ''}>
-                    <Brain className="h-4 w-4 mr-2" />Deep Think
+                    <Brain className="h-4 w-4 mr-2" />Deep Thinker
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
