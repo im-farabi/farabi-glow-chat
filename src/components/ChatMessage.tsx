@@ -94,7 +94,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
             )}
           </div>
 
-          <div className="flex-1 space-y-3 max-w-full overflow-hidden">
+          <div className="flex-1 space-y-3 max-w-full break-words overflow-x-auto">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 {isUser ? (
