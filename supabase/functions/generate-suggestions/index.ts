@@ -36,8 +36,8 @@ Rules:
       { role: 'user', content: `AI Response: "${aiResponse}"\n\nGenerate 2 follow-up questions:` }
     ];
 
-    // Try primary model (openai)
-    console.log('Attempting suggestion generation with openai model...');
+    // Try primary model (gemini-search)
+    console.log('Attempting suggestion generation with gemini-search model...');
     let response = await fetch('https://text.pollinations.ai/openai', {
       method: 'POST',
       headers: {
@@ -45,21 +45,23 @@ Rules:
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'openai',
+        model: 'gemini-search',
         messages,
         temperature: 0.8,
         max_tokens: 100
       }),
     });
 
-    // Fallback to openai-large if primary fails
+    // Fallback with same model but different API key
     if (!response.ok) {
-      console.log(`Primary model failed (${response.status}), trying fallback openai-large...`);
+      const errorText = await response.text();
+      console.error(`Primary gemini-search failed (${response.status}):`, errorText);
       
       if (!fallbackApiKey) {
         throw new Error('POLLINATIONS_FALLBACK_API_KEY not configured for fallback');
       }
 
+      console.log('Retrying with fallback API key...');
       response = await fetch('https://text.pollinations.ai/openai', {
         method: 'POST',
         headers: {
@@ -67,7 +69,7 @@ Rules:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'openai-large',
+          model: 'gemini-search',
           messages,
           temperature: 0.8,
           max_tokens: 100
@@ -76,11 +78,11 @@ Rules:
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Fallback model also failed:', response.status, errorText);
-        throw new Error(`Both models failed. Status: ${response.status}`);
+        console.error('Fallback gemini-search also failed:', response.status, errorText);
+        throw new Error(`Both API keys failed. Status: ${response.status}`);
       }
       
-      console.log('Fallback model succeeded');
+      console.log('Fallback API key succeeded');
     } else {
       console.log('Primary model succeeded');
     }
