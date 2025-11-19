@@ -93,8 +93,13 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
             <div className="flex-1 relative">
               <Textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="Message FARABI..." className="resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base min-h-[80px] max-h-[200px] px-4 py-3" disabled={disabled} rows={isMobile ? 2 : 1} />
             </div>
-            <Button onClick={handleSend} disabled={disabled || (!message.trim() && !selectedImage)} className="h-12 w-12 rounded-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 hover:scale-105 transition-all shrink-0 shadow-lg" size="icon">
-              <Send className="h-5 w-5" />
+            <Button 
+              onClick={handleSend} 
+              disabled={disabled || (!message.trim() && !selectedImage)} 
+              className="h-14 w-14 rounded-full bg-gradient-to-br from-primary via-secondary to-purple-600 hover:shadow-2xl hover:shadow-primary/50 hover:scale-110 transition-all font-bold border-2 border-white/20 active:scale-95 active:rotate-12 active:shadow-[0_0_30px_rgba(236,72,153,0.8)] shrink-0" 
+              size="icon"
+            >
+              <Send className="h-6 w-6 drop-shadow-lg" />
             </Button>
           </div>
           <div className="flex items-center justify-between gap-4 pt-2">
