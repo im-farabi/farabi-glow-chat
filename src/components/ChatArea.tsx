@@ -38,9 +38,11 @@ interface ChatAreaProps {
   isLoading: boolean;
   onRead?: (text: string, advanced?: boolean) => void;
   onExplain?: (messageContent: string, type: 'shorter' | 'easy' | 'longer') => void;
+  messageSuggestions?: Map<number, string[]>;
+  onSuggestionClick?: (suggestion: string) => void;
 }
 
-const ChatArea = ({ messages, onSendMessage, isLoading, onRead, onExplain }: ChatAreaProps) => {
+const ChatArea = ({ messages, onSendMessage, isLoading, onRead, onExplain, messageSuggestions, onSuggestionClick }: ChatAreaProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useMediaQuery('(max-width: 1024px)');
@@ -105,6 +107,8 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, onExplain }: Cha
                       }
                     : undefined
                   }
+                  suggestedQuestions={messageSuggestions?.get(index)}
+                  onSuggestionClick={onSuggestionClick}
                 />
               ))}
               <div ref={messagesEndRef} />
@@ -160,6 +164,8 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, onExplain }: Cha
                       }
                     : undefined
                   }
+                  suggestedQuestions={messageSuggestions?.get(index)}
+                  onSuggestionClick={onSuggestionClick}
                 />
               ))}
               <div ref={messagesEndRef} />

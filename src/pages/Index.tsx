@@ -46,6 +46,7 @@ const Index = () => {
   const [isAdvancedTTS, setIsAdvancedTTS] = useState(false);
   const [aiMessageCount, setAiMessageCount] = useState(0);
   const [isTemporaryChat, setIsTemporaryChat] = useState(false);
+  const [messageSuggestions, setMessageSuggestions] = useState<Map<number, string[]>>(new Map());
   
   // Track time for cost deduction
   useTimeTracking();
@@ -174,6 +175,31 @@ const Index = () => {
       ? ' Explain in easy way'
       : ' Explain more longer';
     handleSendMessage(messageContent + suffix, currentMode);
+  };
+
+  const generateSuggestions = async (messageIndex: number, aiResponse: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-suggestions', {
+        body: { aiResponse }
+      });
+
+      if (error) throw error;
+
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setMessageSuggestions(prev => {
+          const updated = new Map(prev);
+          updated.set(messageIndex, data.suggestions);
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error('Error generating suggestions:', error);
+      // Silently fail - suggestions are optional
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    handleSendMessage(suggestion, currentMode);
   };
 
   const handleSendMessage = async (
@@ -492,6 +518,10 @@ Format: [{"question":"...","answer":"..."}]`;
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
 
+      // Generate suggestions for this assistant message
+      const messageIndex = finalMessages.length - 1;
+      generateSuggestions(messageIndex, response);
+
       // Log AI response to database
       supabase.functions.invoke('log-message', {
         body: {
@@ -592,6 +622,8 @@ Check out other services and try again later. If still issue persists. Contact s
             isLoading={isLoading}
             onRead={handleRead}
             onExplain={handleExplain}
+            messageSuggestions={messageSuggestions}
+            onSuggestionClick={handleSuggestionClick}
           />
         </div>
       </div>
