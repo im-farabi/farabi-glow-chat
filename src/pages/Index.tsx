@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
+import PremiumBackground from '@/components/PremiumBackground';
 import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage } from '@/lib/api';
 import { 
   createNewChat, 
@@ -559,12 +560,11 @@ Format: [{"question":"...","answer":"..."}]`;
   };
 
   return (
-    <div className="flex h-screen flex-col bg-background relative">
-      {/* Animated Gradient Background */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-br from-background via-muted/10 to-accent/5 animate-gradient" />
-      
-      {/* Content Overlay */}
-      <div className="relative z-10 flex h-screen flex-col">
+    <>
+      <PremiumBackground />
+      <div className="flex h-screen flex-col bg-transparent relative">
+        {/* Content Overlay */}
+        <div className="relative z-10 flex h-screen flex-col">
         {ttsText && (
         isAdvancedTTS ? (
           <AdvancedTTSPlayer 
@@ -610,7 +610,8 @@ Format: [{"question":"...","answer":"..."}]`;
         </div>
       </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
