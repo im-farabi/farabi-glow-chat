@@ -54,12 +54,12 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, onExplain }: Cha
   }, [messages]);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden relative">
+    <div className="flex flex-1 flex-col overflow-hidden relative h-full">
       {/* Background effects */}
       <div className="absolute inset-0 mesh-gradient pointer-events-none" />
       
       {isMobile ? (
-        <div ref={scrollAreaRef} className="flex-1 mobile-scroll relative pb-4">
+        <div ref={scrollAreaRef} className="flex-1 mobile-scroll relative pb-4 h-0 min-h-0">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-8">
               <div className="text-center space-y-8 max-w-3xl mx-auto animate-fade-in">
@@ -169,7 +169,7 @@ const ChatArea = ({ messages, onSendMessage, isLoading, onRead, onExplain }: Cha
         </ScrollArea>
       )}
 
-      <ChatInput onSendMessage={onSendMessage} disabled={isLoading} />
+      <ChatInput onSendMessage={onSendMessage} disabled={isLoading} className="mobile-safe-bottom" />
     </div>
   );
 };

@@ -9,9 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 interface ChatInputProps {
   onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think', image?: File) => void;
   disabled?: boolean;
+  className?: string;
 }
 
-const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
   const [message, setMessage] = useState('');
   const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think'>('normal');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -69,7 +70,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
   };
 
   return (
-    <div className="p-4 md:p-6">
+    <div className={`p-4 md:p-6 ${className || ''}`}>
       <div className="max-w-[900px] mx-auto">
         <div className="floating-input space-y-4">
           {imagePreview && (
