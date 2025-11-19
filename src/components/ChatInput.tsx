@@ -117,7 +117,7 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="flex flex-wrap items-center gap-2 justify-end">
+            <div className="flex items-center gap-2 justify-end overflow-x-auto no-scrollbar">
               <Button variant={activeMode === 'fast' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('fast')} className={`h-9 px-2 md:px-4 shrink-0 ${activeMode === 'fast' ? 'bg-primary text-primary-foreground glow-pink shadow-lg' : 'hover:bg-accent/50'}`}>
                 <Rocket className="h-4 w-4 mr-1.5" /><span className="text-sm font-semibold hidden sm:inline">Quick</span>
               </Button>
