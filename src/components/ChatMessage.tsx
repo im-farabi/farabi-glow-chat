@@ -85,7 +85,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
   return (
     <div className={`py-8 md:py-12 ${!isUser && !isLoading ? 'animate-fade-in' : ''}`}>
       <div className="max-w-[900px] mx-auto px-4 md:px-6">
-        <div className={`flex gap-4 ${isUser ? '' : 'message-card'}`}>
+        <div className={`flex gap-4 message-card`}>
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isUser ? 'bg-muted border border-border' : 'bg-gradient-to-br from-primary to-secondary shadow-[0_0_20px_rgba(6,182,212,0.3)]'}`}>
             {isUser ? (
               <User className="h-5 w-5 text-foreground" />
