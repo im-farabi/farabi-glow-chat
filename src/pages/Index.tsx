@@ -553,9 +553,9 @@ Format: [{"question":"...","answer":"..."}]`;
   return (
     <>
       <PremiumBackground />
-      <div className="flex h-screen flex-col bg-transparent relative" style={{ height: '100dvh' }}>
+      <div className="chat-page bg-transparent relative">
         {/* Content Overlay */}
-        <div className="relative z-10 flex h-full flex-col">
+        <div className="relative z-10 flex flex-col flex-1">
         {ttsText && (
         isAdvancedTTS ? (
           <AdvancedTTSPlayer 
