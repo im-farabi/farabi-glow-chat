@@ -530,15 +530,12 @@ Format: [{"question":"...","answer":"..."}]`;
       console.error('Error sending message:', error);
       
       // Show specific error message
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      if (errorMessage.includes('Content filtered')) {
-        toast.error('Message was filtered by content policy. Please rephrase and try again.');
-      } else if (errorMessage.includes('All AI models')) {
-        toast.error('All AI models are currently unavailable. Please try again later.');
-      } else {
-        toast.error('Failed to send message. Please try again.');
-      }
+      toast.error(`Failed to send message. Possible reasons can be either one from them:
+1. Server / API is Down,
+2. Prompt is Inappropiate,
+Check out other services and try again later. If still issue persists. Contact support@farabi.me`, {
+        duration: 8000,
+      });
       
       // Remove loading message on error
       setMessages(newMessages);
