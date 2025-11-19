@@ -97,7 +97,13 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
           <div className="flex-1 space-y-3 max-w-full overflow-hidden">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="font-semibold">{isUser ? 'You' : 'FARABI'}</span>
+                {isUser ? (
+                  <div className="px-3 py-1 rounded-lg bg-card/50 backdrop-blur-sm border border-border/50">
+                    <span className="font-semibold text-sm">You</span>
+                  </div>
+                ) : (
+                  <span className="font-semibold">FARABI</span>
+                )}
                 {!isUser && responseTime && (
                   <span className="text-xs text-muted-foreground">{responseTime.toFixed(2)}s</span>
                 )}
@@ -139,7 +145,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
                   <span className="h-2 w-2 rounded-full bg-primary animate-typing" style={{ animationDelay: '0.2s' }} />
                   <span className="h-2 w-2 rounded-full bg-primary animate-typing" style={{ animationDelay: '0.4s' }} />
                 </div>
-                <span className="text-sm">Thinking... Thought for {thinkingTime} second{thinkingTime !== 1 ? 's' : ''}...</span>
+                <span className="text-sm">{thinkingTime < 2 ? 'Sending...' : `Thought for ${thinkingTime} second${thinkingTime !== 1 ? 's' : ''}...`}</span>
               </div>
             ) : (
               <div className="max-w-full overflow-x-auto break-words">

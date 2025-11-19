@@ -90,7 +90,7 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           )}
           <div className="flex gap-3 items-end">
             <div className="flex-1 relative">
-              <Textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="Message FARABI..." className="resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base min-h-[80px] max-h-[200px] p-0" disabled={disabled} rows={isMobile ? 2 : 1} />
+              <Textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyDown} placeholder="Message FARABI..." className="resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base min-h-[80px] max-h-[200px] px-4 py-3" disabled={disabled} rows={isMobile ? 2 : 1} />
             </div>
             <Button onClick={handleSend} disabled={disabled || (!message.trim() && !selectedImage)} className="h-12 w-12 rounded-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 hover:scale-105 transition-all shrink-0 shadow-lg" size="icon">
               <Send className="h-5 w-5" />
@@ -108,10 +108,10 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-40">
                   <DropdownMenuItem onClick={() => setActiveMode('coder')} className={activeMode === 'coder' ? 'bg-accent' : ''}>
-                    <Code2 className="h-4 w-4 mr-2" />Coder
+                    <Code2 className="h-4 w-4 mr-2" />Coder Mode
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setActiveMode('think')} className={activeMode === 'think' ? 'bg-accent' : ''}>
-                    <Brain className="h-4 w-4 mr-2" />Think
+                    <Brain className="h-4 w-4 mr-2" />Deep Think
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
