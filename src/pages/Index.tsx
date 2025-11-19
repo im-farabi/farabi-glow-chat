@@ -45,7 +45,6 @@ const Index = () => {
   const [ttsText, setTtsText] = useState<string | null>(null);
   const [isAdvancedTTS, setIsAdvancedTTS] = useState(false);
   const [aiMessageCount, setAiMessageCount] = useState(0);
-  const [showAdBanner, setShowAdBanner] = useState(false);
   const [isTemporaryChat, setIsTemporaryChat] = useState(false);
   
   // Track time for cost deduction
@@ -96,7 +95,6 @@ const Index = () => {
         setMessages(chat.messages);
         const aiMsgs = chat.messages.filter(m => m.role === 'assistant').length;
         setAiMessageCount(aiMsgs);
-        setShowAdBanner(aiMsgs > 0 && aiMsgs % 2 === 0);
       } else {
         // Invalid chat ID, redirect to home
         navigate('/', { replace: true });
@@ -145,7 +143,6 @@ const Index = () => {
     setCurrentChat(newChat);
     setMessages([]);
     setAiMessageCount(0);
-    setShowAdBanner(false);
     navigate(`/c/${newChat.id}`);
     
     if (!isTemporaryChat) {
@@ -160,7 +157,6 @@ const Index = () => {
       setMessages(chat.messages);
       const aiMsgs = chat.messages.filter(m => m.role === 'assistant').length;
       setAiMessageCount(aiMsgs);
-      setShowAdBanner(aiMsgs > 0 && aiMsgs % 2 === 0);
       navigate(`/c/${selectedChatId}`);
     }
   };
@@ -508,14 +504,9 @@ Format: [{"question":"...","answer":"..."}]`;
         }
       }).catch(err => console.error('Message logging error:', err));
 
-      // Update AI message count and show banner: first at 3 messages, then every 2 messages
+      // Update AI message count
       const newAiCount = aiMessageCount + 1;
-      console.log('🎯 AI Response Count:', newAiCount);
       setAiMessageCount(newAiCount);
-      if (newAiCount === 3 || (newAiCount > 3 && (newAiCount - 3) % 2 === 0)) {
-        console.log('✅ Banner should now appear!');
-        setShowAdBanner(true);
-      }
 
       // Update chat title if this is the first message
       if (currentChat.messages.length === 0 && message.trim()) {
@@ -603,8 +594,6 @@ Format: [{"question":"...","answer":"..."}]`;
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
             onRead={handleRead}
-            showAdBanner={showAdBanner}
-            onCloseAdBanner={() => setShowAdBanner(false)}
             onExplain={handleExplain}
           />
         </div>
