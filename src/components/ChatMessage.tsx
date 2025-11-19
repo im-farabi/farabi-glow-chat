@@ -94,7 +94,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
             )}
           </div>
 
-          <div className="flex-1 space-y-3 max-w-full break-words overflow-x-auto">
+          <div className="flex-1 space-y-3 max-w-full break-words overflow-visible">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 {isUser ? (
@@ -148,7 +148,7 @@ const ChatMessage = React.memo(({ role, content, image, imageBlob, isLoading, lo
                 <span className="text-sm">{thinkingTime < 2 ? 'Sending...' : `Thought for ${thinkingTime} second${thinkingTime !== 1 ? 's' : ''}...`}</span>
               </div>
             ) : (
-              <div className="max-w-full overflow-x-auto break-words">
+              <div className="max-w-full break-words">
                 {isDownloadMessage ? (
                   <p className="whitespace-pre-wrap text-foreground text-lg">
                     {content.split('Click here to download')[0]}
