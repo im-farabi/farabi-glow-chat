@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 @keyframes text-reveal {
   from {
     opacity: 0;
@@ -206,6 +211,30 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+  /* Chat page layout */
+  .chat-page {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Main scrollable chat area */
+  .chat-wrapper {
+    height: calc(100vh - 180px);
+    overflow-y: auto;
+    padding: 0.75rem 0 1rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Sticky input container */
+  .chat-input-container {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    background: transparent;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
 .mobile-scroll {
   overflow-y: auto;
   overflow-x: hidden;
