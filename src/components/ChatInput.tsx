@@ -1,7 +1,7 @@
 import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Bolt, Circle, Zap, X, Code2, Eye, Image as ImageIcon, Brain, Wrench } from 'lucide-react';
+import { Send, Rocket, Scale, Sparkles, X, Code2, Eye, Image as ImageIcon, Brain, Wrench } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
@@ -117,14 +117,14 @@ const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
               </DropdownMenu>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant={activeMode === 'fast' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('fast')} className={`h-8 px-3 ${activeMode === 'fast' ? 'bg-primary text-primary-foreground glow-cyan' : 'hover:bg-accent/50'}`}>
-                <Bolt className="h-3 w-3 mr-1" /><span className="text-xs">Fast</span>
+              <Button variant={activeMode === 'fast' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('fast')} className={`h-9 px-4 ${activeMode === 'fast' ? 'bg-primary text-primary-foreground glow-pink shadow-lg' : 'hover:bg-accent/50'}`}>
+                <Rocket className="h-4 w-4 mr-1.5" /><span className="text-sm font-semibold">Quick</span>
               </Button>
-              <Button variant={activeMode === 'normal' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('normal')} className={`h-8 px-3 ${activeMode === 'normal' ? 'bg-primary text-primary-foreground glow-cyan' : 'hover:bg-accent/50'}`}>
-                <Circle className="h-3 w-3 mr-1" /><span className="text-xs">Normal</span>
+              <Button variant={activeMode === 'normal' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('normal')} className={`h-9 px-4 ${activeMode === 'normal' ? 'bg-primary text-primary-foreground glow-pink shadow-lg' : 'hover:bg-accent/50'}`}>
+                <Scale className="h-4 w-4 mr-1.5" /><span className="text-sm font-semibold">Balanced</span>
               </Button>
-              <Button variant={activeMode === 'super' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('super')} className={`h-8 px-3 ${activeMode === 'super' ? 'bg-secondary text-secondary-foreground glow-purple' : 'hover:bg-accent/50'}`}>
-                <Zap className="h-3 w-3 mr-1" /><span className="text-xs">Super</span>
+              <Button variant={activeMode === 'super' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('super')} className={`h-9 px-4 ${activeMode === 'super' ? 'bg-gradient-to-r from-primary to-secondary text-white glow-pink shadow-xl' : 'hover:bg-accent/50'}`}>
+                <Sparkles className="h-4 w-4 mr-1.5" /><span className="text-sm font-semibold">Deep</span>
               </Button>
             </div>
           </div>
