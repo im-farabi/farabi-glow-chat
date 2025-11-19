@@ -224,15 +224,6 @@ All colors MUST be HSL.
   padding-top: env(safe-area-inset-top);
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;     /* Firefox */
-}
-
   .animate-gradient-shift {
     background-size: 200% 200%;
     animation: gradient-shift 3s ease infinite;
