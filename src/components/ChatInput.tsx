@@ -118,14 +118,14 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
               </DropdownMenu>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant={activeMode === 'fast' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('fast')} className={`h-9 px-4 ${activeMode === 'fast' ? 'bg-primary text-primary-foreground glow-pink shadow-lg' : 'hover:bg-accent/50'}`}>
-                <Rocket className="h-4 w-4 mr-1.5" /><span className="text-sm font-semibold">Quick</span>
+              <Button variant={activeMode === 'fast' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('fast')} className={`h-9 px-2 md:px-4 ${activeMode === 'fast' ? 'bg-primary text-primary-foreground glow-pink shadow-lg' : 'hover:bg-accent/50'}`}>
+                <Rocket className="h-4 w-4 mr-1.5" /><span className="text-sm font-semibold hidden sm:inline">Quick</span>
               </Button>
-              <Button variant={activeMode === 'normal' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('normal')} className={`h-9 px-4 ${activeMode === 'normal' ? 'bg-primary text-primary-foreground glow-pink shadow-lg' : 'hover:bg-accent/50'}`}>
-                <Scale className="h-4 w-4 mr-1.5" /><span className="text-sm font-semibold">Balanced</span>
+              <Button variant={activeMode === 'normal' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('normal')} className={`h-9 px-2 md:px-4 ${activeMode === 'normal' ? 'bg-primary text-primary-foreground glow-pink shadow-lg' : 'hover:bg-accent/50'}`}>
+                <Scale className="h-4 w-4 mr-1.5" /><span className="text-sm font-semibold hidden sm:inline">Balanced</span>
               </Button>
-              <Button variant={activeMode === 'super' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('super')} className={`h-9 px-4 ${activeMode === 'super' ? 'bg-gradient-to-r from-primary to-secondary text-white glow-pink shadow-xl' : 'hover:bg-accent/50'}`}>
-                <Sparkles className="h-4 w-4 mr-1.5" /><span className="text-sm font-semibold">Deep</span>
+              <Button variant={activeMode === 'super' ? 'default' : 'ghost'} size="sm" onClick={() => setActiveMode('super')} className={`h-9 px-2 md:px-4 ${activeMode === 'super' ? 'bg-gradient-to-r from-primary to-secondary text-white glow-pink shadow-xl' : 'hover:bg-accent/50'}`}>
+                <Sparkles className="h-4 w-4 mr-1.5" /><span className="text-sm font-semibold hidden sm:inline">Deep</span>
               </Button>
             </div>
           </div>
