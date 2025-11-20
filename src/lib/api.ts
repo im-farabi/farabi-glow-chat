@@ -593,3 +593,53 @@ export const getNotesDashboard = async (anonymousUserId: string) => {
   if (error) throw error;
   return data;
 };
+
+// AI Maker API Functions
+export const createAI = async (data: {
+  name: string;
+  shortDescription: string;
+  fullInstructions: string;
+  anonymousUserId: string;
+}) => {
+  const { data: result, error } = await supabase.functions.invoke('create-ai', {
+    body: data
+  });
+  if (error) throw error;
+  return result;
+};
+
+export const checkAIId = async (randomId: string) => {
+  const { data, error } = await supabase.functions.invoke('check-ai-id', {
+    body: { randomId }
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const getAI = async (randomId: string) => {
+  const { data, error } = await supabase.functions.invoke('get-ai', {
+    body: { randomId }
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const chatWithAI = async (aiId: string, prompt: string) => {
+  const { data, error } = await supabase.functions.invoke('ai-chat', {
+    body: { aiId, prompt }
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const getAIDashboard = async (anonymousUserId: string) => {
+  const { data, error } = await supabase
+    .from('custom_ais')
+    .select('*')
+    .eq('anonymous_user_id', anonymousUserId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  
+  if (error) throw error;
+  return data;
+};

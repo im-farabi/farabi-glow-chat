@@ -19,6 +19,8 @@ import FlashcardGen from "./pages/FlashcardGen";
 import YoutubeExplain from "./pages/YoutubeExplain";
 import NotesShare from "./pages/NotesShare";
 import ViewNote from "./pages/ViewNote";
+import AIMaker from "./pages/AIMaker";
+import AIEndpoint from "./pages/AIEndpoint";
 import Owner from "./pages/Owner";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
@@ -56,6 +58,8 @@ const App = () => {
           <Route path="/youtube-explain" element={<YoutubeExplain />} />
           <Route path="/notes-share" element={<NotesShare />} />
           <Route path="/notes/:slug" element={<ViewNote />} />
+          <Route path="/ai-maker" element={<AIMaker />} />
+          <Route path="/ai/:id/prompt/:prompt" element={<AIEndpoint />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />

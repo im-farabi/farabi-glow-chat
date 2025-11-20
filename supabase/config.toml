@@ -41,3 +41,15 @@ verify_jwt = false
 
 [functions.generate-suggestions]
 verify_jwt = false
+
+[functions.create-ai]
+verify_jwt = false
+
+[functions.check-ai-id]
+verify_jwt = false
+
+[functions.get-ai]
+verify_jwt = false
+
+[functions.ai-chat]
+verify_jwt = false
