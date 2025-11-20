@@ -10,6 +10,7 @@ import { NotePreview } from '@/components/NotePreview';
 import { createNote, checkNoteSlug, getNotesDashboard } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, Send, Loader2, Copy, Check, FileText, Smartphone, Monitor, Apple, HelpCircle, ExternalLink, ArrowLeft, Sparkles } from 'lucide-react';
+import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -205,9 +206,8 @@ export default function NotesShare() {
           
         </div>
 
-        {/* Form & Preview Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          {/* Form Section */}
+        {/* Form Section */}
+        <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
           <Card className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-2xl border-2 border-pink-500/40 shadow-[0_8px_32px_rgba(236,72,153,0.25),0_0_60px_rgba(168,85,247,0.15)] hover:shadow-[0_12px_48px_rgba(236,72,153,0.35),0_0_80px_rgba(168,85,247,0.25)] hover:border-pink-500/60 transition-all duration-500 p-8 space-y-6">
             <div>
               <Label htmlFor="title" className="text-sm font-semibold text-foreground">Title *</Label>
@@ -430,11 +430,46 @@ export default function NotesShare() {
               </Card>}
           </Card>
 
-          {/* Live Preview Section */}
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">Live Preview</h2>
-            <div className="animate-fade-in">
-              <NotePreview title={title} shortDescription={shortDescription} description={description} colorTheme={colorTheme} className="min-h-[400px] shadow-[0_8px_32px_rgba(236,72,153,0.15)] hover:shadow-[0_8px_40px_rgba(236,72,153,0.25)] transition-all duration-300" />
+        </div>
+
+        {/* Live Preview Section */}
+        <div className="space-y-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <div className="flex items-center gap-3">
+            <Eye className="w-7 h-7 text-purple-400" />
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Live Preview</h2>
+          </div>
+          
+          <div className="relative rounded-2xl overflow-hidden border-2 border-purple-500/40 shadow-[0_8px_32px_rgba(168,85,247,0.25),0_0_60px_rgba(236,72,153,0.15)] min-h-[500px]">
+            <AnimatedBackground theme={colorTheme === 'black-purple' ? 'purple' : colorTheme === 'black-orange' ? 'orange' : 'white'} />
+            
+            <div className="relative z-10 p-8 md:p-12 min-h-[500px] flex flex-col">
+              <div className="space-y-6 animate-fade-in">
+                <h1 className={`text-4xl md:text-5xl font-bold ${
+                  colorTheme === 'black-purple' ? 'text-purple-300' :
+                  colorTheme === 'black-orange' ? 'text-orange-300' :
+                  'text-white'
+                }`}>
+                  {title || 'Untitled Note'}
+                </h1>
+                
+                {shortDescription && (
+                  <p className={`text-lg md:text-xl italic ${
+                    colorTheme === 'black-purple' ? 'text-purple-200/80' :
+                    colorTheme === 'black-orange' ? 'text-orange-200/80' :
+                    'text-gray-300/80'
+                  }`}>
+                    {shortDescription}
+                  </p>
+                )}
+                
+                <div className={`text-base md:text-lg whitespace-pre-wrap break-words leading-relaxed ${
+                  colorTheme === 'black-purple' ? 'text-purple-100' :
+                  colorTheme === 'black-orange' ? 'text-orange-100' :
+                  'text-gray-200'
+                }`}>
+                  {description || 'No description provided.'}
+                </div>
+              </div>
             </div>
           </div>
         </div>
