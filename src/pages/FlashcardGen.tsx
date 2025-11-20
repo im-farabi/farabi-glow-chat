@@ -14,6 +14,7 @@ import FlashcardItem from '@/components/FlashcardItem';
 import { getFlashcardHistory, saveFlashcardToHistory, deleteFlashcardFromHistory, FlashcardHistoryItem } from '@/lib/storage';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import PremiumBackground from '@/components/PremiumBackground';
 
 const useFlashcardPageSEO = () => {
   useEffect(() => {

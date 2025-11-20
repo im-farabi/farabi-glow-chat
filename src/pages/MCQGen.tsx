@@ -14,6 +14,7 @@ import Header from '@/components/Header';
 import { getMCQHistory, saveMCQToHistory, deleteMCQFromHistory, MCQHistoryItem } from '@/lib/storage';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import PremiumBackground from '@/components/PremiumBackground';
 
 // Set page-specific SEO
 const useMCQPageSEO = () => {
