@@ -120,7 +120,7 @@ export default function AIMaker() {
 
       const randomId = data.ai.random_id;
       setPublishedRandomId(randomId);
-      setPublishedUrl(`https://farabi.me/api/ai/${randomId}/YOUR_PROMPT_HERE`);
+      setPublishedUrl(`https://farabi.me/ai/${randomId}/prompt/YOUR_PROMPT_HERE`);
       setPublishDialogOpen(true);
 
       setName("");
@@ -364,16 +364,19 @@ export default function AIMaker() {
                           <Label className="text-sm font-medium">API Endpoint (Plain Text)</Label>
                           <div className="flex gap-2">
                             <code className="flex-1 p-2 bg-background/50 rounded text-xs break-all">
-                              /api/ai/{ai.random_id}/YOUR_PROMPT
+                              https://gjlxuvcfoqjhwzcmpaju.supabase.co/functions/v1/ai-endpoint/{ai.random_id}/YOUR_PROMPT
                             </code>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => copyToClipboard(`https://farabi.me/api/ai/${ai.random_id}/hello`)}
+                              onClick={() => copyToClipboard(`https://gjlxuvcfoqjhwzcmpaju.supabase.co/functions/v1/ai-endpoint/${ai.random_id}/hello`)}
                             >
                               <Copy className="h-4 w-4" />
                             </Button>
                           </div>
+                          <p className="text-xs text-muted-foreground">
+                            Returns plain text. Your instructions are automatically prepended on the backend.
+                          </p>
                         </div>
 
                         <div className="space-y-2">
@@ -447,18 +450,18 @@ export default function AIMaker() {
               <Label className="text-sm font-semibold">API Endpoint (Plain Text Response)</Label>
               <div className="flex gap-2">
                 <code className="flex-1 p-3 bg-muted rounded text-sm break-all">
-                  https://farabi.me/api/ai/{publishedRandomId}/YOUR_PROMPT_HERE
+                  https://gjlxuvcfoqjhwzcmpaju.supabase.co/functions/v1/ai-endpoint/{publishedRandomId}/YOUR_PROMPT_HERE
                 </code>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => copyToClipboard(`https://farabi.me/api/ai/${publishedRandomId}/hello`)}
+                  onClick={() => copyToClipboard(`https://gjlxuvcfoqjhwzcmpaju.supabase.co/functions/v1/ai-endpoint/${publishedRandomId}/hello`)}
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Use this URL in your applications - returns plain text response like Pollinations AI
+                Returns plain text from Pollinations (gemini-search). Your custom instructions are automatically added on the backend.
               </p>
             </div>
 
@@ -485,7 +488,7 @@ export default function AIMaker() {
               <p className="text-sm font-semibold mb-2">Example Usage:</p>
               <code className="text-xs block whitespace-pre-wrap">
 {`// JavaScript/TypeScript
-const response = await fetch('https://farabi.me/api/ai/${publishedRandomId}/hello');
+const response = await fetch('https://gjlxuvcfoqjhwzcmpaju.supabase.co/functions/v1/ai-endpoint/${publishedRandomId}/hello');
 const text = await response.text();
 console.log(text); // Plain text response`}
               </code>

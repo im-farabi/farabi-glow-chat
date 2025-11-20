@@ -60,7 +60,6 @@ const App = () => {
           <Route path="/notes-share" element={<NotesShare />} />
           <Route path="/notes/:slug" element={<ViewNote />} />
             <Route path="/ai-maker" element={<AIMaker />} />
-            <Route path="/api/ai/:id/:prompt" element={<APIEndpoint />} />
             <Route path="/ai/:id/prompt/:prompt" element={<AIEndpoint />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/terms" element={<Terms />} />
