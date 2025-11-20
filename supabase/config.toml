@@ -53,3 +53,12 @@ verify_jwt = false
 
 [functions.ai-chat]
 verify_jwt = false
+
+[functions.ai-endpoint]
+verify_jwt = false
+
+[functions.delete-ai]
+verify_jwt = false
+
+[functions.update-ai]
+verify_jwt = false

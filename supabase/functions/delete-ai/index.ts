@@ -12,40 +12,53 @@ serve(async (req) => {
   }
 
   try {
-    const { randomId } = await req.json();
+    const { aiId, anonymousUserId } = await req.json();
 
-    if (!randomId) {
+    if (!aiId || !anonymousUserId) {
       return new Response(
-        JSON.stringify({ error: 'Random ID is required' }),
+        JSON.stringify({ error: 'AI ID and user ID are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { data: ai, error } = await supabase
+    const { data: ai, error: fetchError } = await supabase
       .from('custom_ais')
       .select('*')
-      .eq('random_id', randomId)
-      .eq('is_published', true)
+      .eq('id', aiId)
+      .eq('anonymous_user_id', anonymousUserId)
       .single();
 
-    if (error || !ai) {
+    if (fetchError || !ai) {
       return new Response(
-        JSON.stringify({ error: 'AI not found' }),
+        JSON.stringify({ error: 'AI not found or you do not have permission to delete it' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const { error: deleteError } = await supabase
+      .from('custom_ais')
+      .delete()
+      .eq('id', aiId);
+
+    if (deleteError) {
+      console.error('Delete error:', deleteError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to delete AI' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ ai }),
+      JSON.stringify({ success: true, message: 'AI deleted successfully' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error in get-ai function:', error);
+    console.error('Error in delete-ai function:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

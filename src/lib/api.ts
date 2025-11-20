@@ -643,3 +643,25 @@ export const getAIDashboard = async (anonymousUserId: string) => {
   if (error) throw error;
   return data;
 };
+
+export const deleteAI = async (aiId: string, anonymousUserId: string) => {
+  const { data, error } = await supabase.functions.invoke('delete-ai', {
+    body: { aiId, anonymousUserId }
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const updateAI = async (data: {
+  aiId: string;
+  anonymousUserId: string;
+  name: string;
+  shortDescription: string;
+  fullInstructions: string;
+}) => {
+  const { data: result, error } = await supabase.functions.invoke('update-ai', {
+    body: data
+  });
+  if (error) throw error;
+  return result;
+};
