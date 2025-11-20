@@ -6,45 +6,13 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { NotePreview } from '@/components/NotePreview';
 import { createNote, checkNoteSlug, getNotesDashboard } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, Send, Loader2, Copy, Check, FileText, Smartphone, Monitor, Apple, HelpCircle, ExternalLink, ArrowLeft, Sparkles } from 'lucide-react';
-import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import PremiumBackground from '@/components/PremiumBackground';
-
-const themeClasses = {
-  'black-purple': {
-    background: 'glass-card',
-    title: 'bg-gradient-to-r from-purple-400 via-violet-400 to-purple-500 bg-clip-text text-transparent',
-    text: 'text-purple-50',
-    border: 'border-purple-400/40',
-    shortDesc: 'text-purple-200',
-    glow: 'shadow-[0_0_60px_rgba(168,85,247,0.5),0_0_30px_rgba(168,85,247,0.3)]',
-    accent: 'purple' as const,
-  },
-  'black-white': {
-    background: 'glass-card',
-    title: 'bg-gradient-to-r from-gray-100 via-white to-gray-200 bg-clip-text text-transparent',
-    text: 'text-gray-100',
-    border: 'border-gray-300/40',
-    shortDesc: 'text-gray-200',
-    glow: 'shadow-[0_0_60px_rgba(255,255,255,0.3),0_0_30px_rgba(255,255,255,0.2)]',
-    accent: 'white' as const,
-  },
-  'black-orange': {
-    background: 'glass-card',
-    title: 'bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent',
-    text: 'text-orange-50',
-    border: 'border-orange-400/40',
-    shortDesc: 'text-orange-200',
-    glow: 'shadow-[0_0_60px_rgba(249,115,22,0.5),0_0_30px_rgba(249,115,22,0.3)]',
-    accent: 'orange' as const,
-  },
-};
 
 export default function NotesShare() {
   const {
@@ -329,35 +297,11 @@ export default function NotesShare() {
               {!isValid && <p className="text-sm text-muted-foreground bg-muted/30 backdrop-blur-sm border border-border/30 rounded-lg p-3">
                   Fill in title (min {limits.title.min} chars) and description (min {limits.description.min} chars) to enable buttons
                 </p>}
-              <div className="flex gap-3">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className="flex-1 border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:text-pink-400 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] transition-all" 
-                      disabled={!isValid}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      Preview
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-card/95 backdrop-blur-xl border-pink-500/20">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-bold">Preview</DialogTitle>
-                      <DialogDescription>
-                        Preview how your note will look when published
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="animate-scale-in">
-                      <NotePreview title={title} shortDescription={shortDescription} description={description} colorTheme={colorTheme} />
-                    </div>
-                  </DialogContent>
-                </Dialog>
-
+              <div>
                 <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
                   <DialogTrigger asChild>
                     <Button 
-                      className="flex-1 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] transition-all animate-pulse" 
+                      className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] transition-all animate-pulse" 
                       disabled={!isValid}
                     >
                       <Send className="mr-2 h-4 w-4" />
@@ -461,51 +405,6 @@ export default function NotesShare() {
               </Card>}
           </Card>
 
-        </div>
-
-        {/* Live Preview Section */}
-        <div className="space-y-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          <div className="flex items-center gap-3">
-            <Eye className="w-7 h-7 text-purple-400" />
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Live Preview</h2>
-          </div>
-          
-          <div className="relative min-h-screen bg-black rounded-2xl overflow-hidden">
-            <AnimatedBackground theme={themeClasses[colorTheme as keyof typeof themeClasses].accent} />
-            
-            <div className="max-w-4xl mx-auto px-6 py-12 relative z-10">
-              <div 
-                className={`${themeClasses[colorTheme as keyof typeof themeClasses].background} ${themeClasses[colorTheme as keyof typeof themeClasses].border} ${themeClasses[colorTheme as keyof typeof themeClasses].glow} border-[3px] rounded-2xl p-8 md:p-12 backdrop-blur-[40px] bg-white/12 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.15)] hover:scale-[1.01] transition-all duration-500 animate-scale-in`}
-                style={{ animationDelay: '0.3s' }}
-              >
-                {/* Title with gradient animation */}
-                <h2 
-                  className={`${themeClasses[colorTheme as keyof typeof themeClasses].title} text-4xl md:text-6xl font-bold mb-6 animate-fade-in`}
-                  style={{ animationDelay: '0.5s' }}
-                >
-                  {title || 'Untitled Note'}
-                </h2>
-                
-                {/* Short Description */}
-                {shortDescription && (
-                  <p 
-                    className={`${themeClasses[colorTheme as keyof typeof themeClasses].shortDesc} text-lg md:text-xl mb-8 italic border-l-4 ${themeClasses[colorTheme as keyof typeof themeClasses].border} pl-4 animate-fade-in`}
-                    style={{ animationDelay: '0.6s' }}
-                  >
-                    {shortDescription}
-                  </p>
-                )}
-                
-                {/* Main Content */}
-                <div 
-                  className={`${themeClasses[colorTheme as keyof typeof themeClasses].text} text-base md:text-lg whitespace-pre-wrap break-words leading-relaxed animate-fade-in`}
-                  style={{ animationDelay: '0.7s' }}
-                >
-                  {description || 'No description provided.'}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Dashboard Section */}
