@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock, Wand2, Sparkles } from 'lucide-react';
+import { Loader2, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock, Wand2, Sparkles, Image as ImageIcon } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +15,7 @@ import { getImageHistory, saveImageToHistory, deleteImageFromHistory, ImageHisto
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import PremiumBackground from '@/components/PremiumBackground';
 
 const ImageGen = () => {
   useEffect(() => {
@@ -306,38 +307,49 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
               </div>
               <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    className="border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] transition-all"
+                  >
                     <History className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent className="w-[400px] sm:w-[540px]">
+                <SheetContent className="w-[400px] sm:w-[540px] bg-black/95 backdrop-blur-xl border-pink-500/20">
                   <SheetHeader>
-                    <SheetTitle>Image History</SheetTitle>
-                    <SheetDescription>
+                    <SheetTitle className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">Image History</SheetTitle>
+                    <SheetDescription className="text-muted-foreground">
                       Your recent image generations
                     </SheetDescription>
                   </SheetHeader>
                   <ScrollArea className="h-[calc(100vh-120px)] mt-6">
                     <div className="space-y-4 pr-4">
                       {history.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">No history yet</p>
+                        <Card className="bg-card/50 backdrop-blur-xl border-pink-500/20 p-8 text-center">
+                          <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3 opacity-50" />
+                          <p className="text-muted-foreground">No history yet</p>
+                        </Card>
                       ) : (
-                        history.map((item) => (
-                          <Card key={item.id} className="p-4 space-y-3 hover:bg-accent/50 transition-colors">
+                        history.map((item, index) => (
+                          <Card 
+                            key={item.id} 
+                            className="bg-card/60 backdrop-blur-xl border-pink-500/20 hover:border-pink-500/40 shadow-[0_4px_16px_rgba(236,72,153,0.1)] hover:shadow-[0_4px_24px_rgba(236,72,153,0.2)] p-4 space-y-3 transition-all duration-300 hover:scale-[1.02] animate-fade-in"
+                            style={{ animationDelay: `${index * 0.05}s` }}
+                          >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 space-y-2">
-                                <p className="text-sm font-medium line-clamp-2">{item.prompt}</p>
+                                <p className="text-sm font-semibold line-clamp-2 text-foreground">{item.prompt}</p>
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Clock className="h-3 w-3" />
+                                  <Clock className="h-3 w-3 text-pink-400" />
                                   {formatDate(item.timestamp)}
                                 </div>
-                                <p className="text-xs text-muted-foreground">Size: {item.sizePreset}</p>
+                                <p className="text-xs text-muted-foreground bg-muted/30 px-2 py-1 rounded inline-block">Size: {item.sizePreset}</p>
                               </div>
                               <div className="flex gap-1 shrink-0">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8"
+                                  className="h-8 w-8 hover:bg-pink-500/10 hover:text-pink-400 transition-colors"
                                   onClick={() => loadFromHistory(item)}
                                 >
                                   <Download className="h-4 w-4" />
@@ -345,7 +357,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-destructive"
+                                  className="h-8 w-8 text-destructive hover:bg-destructive/10 transition-colors"
                                   onClick={() => deleteHistoryItem(item.id)}
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -356,7 +368,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                               <img 
                                 src={item.imageUrl} 
                                 alt="Generated" 
-                                className="w-full h-32 object-cover rounded border"
+                                className="w-full h-32 object-cover rounded-lg border-2 border-pink-500/20"
                               />
                             )}
                           </Card>
@@ -369,33 +381,40 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
             </div>
           </div>
 
-          <Card className="p-6 space-y-4 bg-card border-border">
-            <div className="space-y-2">
-              <Label htmlFor="prompt">Prompt (3-500 characters)</Label>
+          <Card className="bg-card/50 backdrop-blur-xl border-pink-500/20 shadow-[0_8px_32px_rgba(236,72,153,0.15)] hover:shadow-[0_8px_40px_rgba(236,72,153,0.25)] transition-all duration-300 p-6 space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <div className="space-y-3">
+              <Label htmlFor="prompt" className="text-sm font-semibold text-foreground">Prompt (3-500 characters)</Label>
               <Textarea
                 id="prompt"
                 placeholder="Describe the image you want to generate..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[120px] resize-none"
+                className="min-h-[120px] resize-none bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all"
                 disabled={loading}
                 maxLength={500}
               />
-              <p className="text-xs text-muted-foreground text-right">
-                {prompt.length}/500 characters
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {prompt.length}/500 characters
+                </p>
+                {prompt.length > 0 && (
+                  <p className={`text-xs font-medium ${prompt.length >= 3 ? 'text-green-400' : 'text-yellow-400'}`}>
+                    {prompt.length >= 3 ? '✓ Ready' : 'Too short'}
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="size">Image Size</Label>
+            <div className="space-y-3">
+              <Label htmlFor="size" className="text-sm font-semibold text-foreground">Image Size</Label>
               <Select value={sizePreset} onValueChange={(value: 'banner' | 'logo' | 'custom') => setSizePreset(value)}>
-                <SelectTrigger id="size" className="bg-background">
+                <SelectTrigger id="size" className="bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20">
                   <SelectValue placeholder="Select size" />
                 </SelectTrigger>
-                <SelectContent className="bg-popover z-50">
-                  <SelectItem value="banner">Banner (1280x720)</SelectItem>
-                  <SelectItem value="logo">Logo (500x500)</SelectItem>
-                  <SelectItem value="custom">Custom Size</SelectItem>
+                <SelectContent className="bg-popover/95 backdrop-blur-xl border-pink-500/20 z-50">
+                  <SelectItem value="banner" className="focus:bg-pink-500/10">Banner (1280x720)</SelectItem>
+                  <SelectItem value="logo" className="focus:bg-pink-500/10">Logo (500x500)</SelectItem>
+                  <SelectItem value="custom" className="focus:bg-pink-500/10">Custom Size</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -403,7 +422,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
             {sizePreset === 'custom' && (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="width">Width (px)</Label>
+                  <Label htmlFor="width" className="text-sm font-semibold text-foreground">Width (px)</Label>
                   <Input
                     id="width"
                     type="number"
@@ -413,10 +432,11 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                     min="256"
                     max="2048"
                     disabled={loading}
+                    className="bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="height">Height (px)</Label>
+                  <Label htmlFor="height" className="text-sm font-semibold text-foreground">Height (px)</Label>
                   <Input
                     id="height"
                     type="number"
@@ -426,17 +446,18 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                     min="256"
                     max="2048"
                     disabled={loading}
+                    className="bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20"
                   />
                 </div>
               </div>
             )}
             
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Button
                 onClick={enhancePrompt}
                 disabled={loading}
                 variant="outline"
-                className="flex-1"
+                className="flex-1 border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:text-pink-400 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] transition-all"
               >
                 {loading && status.includes('Enhancing') ? (
                   <>
@@ -445,7 +466,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                   </>
                 ) : (
                   <>
-                    <Sparkles className="mr-2 h-4 w-4" />
+                    <Wand2 className="mr-2 h-4 w-4" />
                     Enhance Prompt
                   </>
                 )}
@@ -453,7 +474,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
               <Button
                 onClick={() => generateImage(false)}
                 disabled={loading}
-                className="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+                className="flex-1 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] transition-all"
               >
                 {loading && !status.includes('Enhancing') ? (
                   <>
@@ -469,40 +490,40 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
               </Button>
             </div>
             {status && (
-              <p className="mt-2 text-sm text-muted-foreground text-center">{status}</p>
+              <div className="flex items-center justify-center gap-2 bg-pink-500/10 backdrop-blur-sm border border-pink-500/20 rounded-lg p-3">
+                <Loader2 className="h-4 w-4 animate-spin text-pink-400" />
+                <p className="text-sm font-medium text-pink-400">{status}</p>
+              </div>
             )}
           </Card>
 
           {image && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2 overflow-hidden bg-card border-border">
-                <div className="aspect-video relative">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+              <Card className="lg:col-span-2 overflow-hidden bg-card/60 backdrop-blur-xl border-pink-500/20 shadow-[0_8px_32px_rgba(236,72,153,0.15)] hover:shadow-[0_8px_48px_rgba(236,72,153,0.25)] transition-all duration-300">
+                <div className="aspect-video relative group">
                   <img
                     src={image}
                     alt={prompt ? `AI generated image: ${prompt.slice(0, 100)}` : "AI generated image"}
-                    className="w-full h-full object-contain bg-muted"
+                    className="w-full h-full object-contain bg-black/50 transition-transform duration-300 group-hover:scale-[1.02]"
                     loading="lazy"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
               </Card>
               
-              <Card className="p-6 bg-card border-border flex flex-col gap-4">
-                <h3 className="text-lg font-semibold">Actions</h3>
+              <Card className="p-6 bg-card/50 backdrop-blur-xl border-pink-500/20 shadow-[0_8px_32px_rgba(236,72,153,0.15)] flex flex-col gap-4">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">Actions</h3>
                 <Button
                   onClick={downloadImage}
                   variant="outline"
-                  className="w-full"
+                  className="w-full border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:shadow-[0_0_10px_rgba(236,72,153,0.2)] transition-all"
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Download
                 </Button>
                 <Button
                   onClick={() => setIsEditorOpen(true)}
-                  variant="outline"
-                  className="w-full bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20"
-                  style={{
-                    textShadow: '0 0 10px rgba(236, 72, 153, 0.3)',
-                  }}
+                  className="w-full bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20 border border-pink-500/30 hover:border-pink-500/50 shadow-[0_0_20px_rgba(236,72,153,0.2)] hover:shadow-[0_0_30px_rgba(236,72,153,0.4)] transition-all"
                 >
                   <Edit className="mr-2 h-4 w-4 text-pink-500" />
                   <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">
@@ -513,7 +534,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                   onClick={regenerateImage}
                   disabled={loading}
                   variant="outline"
-                  className="w-full"
+                  className="w-full border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 hover:shadow-[0_0_10px_rgba(168,85,247,0.2)] transition-all"
                 >
                   {loading ? (
                     <>
@@ -527,7 +548,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                     </>
                   )}
                 </Button>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-muted-foreground bg-muted/30 backdrop-blur-sm border border-border/30 rounded-lg p-3 leading-relaxed">
                   Use Regen to generate a new variation with a different seed
                 </p>
               </Card>
@@ -535,6 +556,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
           )}
         </div>
       </main>
+      </div>
 
       {image && (
         <ImageEditor 
