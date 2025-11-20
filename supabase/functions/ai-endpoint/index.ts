@@ -50,20 +50,14 @@ serve(async (req) => {
       });
     }
 
-    const aiResponse = await fetch('https://text.pollinations.ai/', {
-      method: 'POST',
+    const fullPrompt = `${ai.full_instructions}\n\nUser: ${prompt}`;
+    const encodedPrompt = encodeURIComponent(fullPrompt);
+    
+    const aiResponse = await fetch(`https://text.pollinations.ai/${encodedPrompt}?model=gemini-search`, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${pollinationsKey}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: ai.full_instructions },
-          { role: 'user', content: prompt }
-        ],
-        model: 'gemini-search',
-        seed: 42,
-      }),
     });
 
     if (!aiResponse.ok) {
@@ -74,8 +68,7 @@ serve(async (req) => {
       });
     }
 
-    const aiData = await aiResponse.json();
-    const generatedText = aiData.choices?.[0]?.message?.content || 'No response generated';
+    const generatedText = await aiResponse.text();
 
     await supabase
       .from('custom_ais')
