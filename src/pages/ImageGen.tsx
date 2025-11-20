@@ -291,20 +291,20 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
               <div className="space-y-4">
                 <button
                   onClick={() => navigate('/')}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card/30 backdrop-blur-sm border border-border/50 hover:bg-card/50 hover:border-pink-500/30 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] transition-all duration-300 group"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-pink-500/10 to-purple-500/10 border-2 border-pink-500/40 hover:border-pink-500/70 hover:shadow-[0_0_30px_rgba(236,72,153,0.4)] transition-all duration-300 group backdrop-blur-md"
                 >
-                  <ArrowLeft className="w-5 h-5 text-muted-foreground group-hover:text-pink-500 transition-colors" />
-                  <span className="text-muted-foreground group-hover:text-foreground transition-colors">Back to Chat</span>
+                  <ArrowLeft className="w-5 h-5 text-pink-400 group-hover:text-pink-300 transition-colors" />
+                  <span className="text-gray-200 group-hover:text-white transition-colors font-semibold">Back to Chat</span>
                 </button>
-                <div className="space-y-3 animate-fade-in">
-                  <div className="inline-flex items-center justify-center p-3 rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20 backdrop-blur-sm border border-pink-500/30 mb-2">
-                    <ImageIcon className="w-10 h-10 text-pink-400" />
+                <div className="space-y-4 animate-fade-in">
+                  <div className="inline-flex items-center justify-center p-4 rounded-full bg-gradient-to-br from-pink-500/30 to-purple-500/30 backdrop-blur-sm border-2 border-pink-500/50 mb-3 shadow-[0_0_40px_rgba(236,72,153,0.3)]">
+                    <ImageIcon className="w-14 h-14 text-pink-300" />
                   </div>
-                  <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                  <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-pink-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(236,72,153,0.5)]">
                     AI Image Generator
                   </h1>
-                  <p className="text-lg text-muted-foreground">
-                    Generate AI images from your prompts
+                  <p className="text-xl text-gray-200 font-medium">
+                    Generate stunning AI images from your prompts
                   </p>
                 </div>
               </div>
@@ -383,7 +383,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
               </Sheet>
             </div>
 
-          <Card className="bg-card/50 backdrop-blur-xl border-pink-500/20 shadow-[0_8px_32px_rgba(236,72,153,0.15)] hover:shadow-[0_8px_40px_rgba(236,72,153,0.25)] transition-all duration-300 p-6 space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <Card className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-2xl border-2 border-pink-500/40 shadow-[0_8px_32px_rgba(236,72,153,0.25),0_0_60px_rgba(168,85,247,0.15)] hover:shadow-[0_12px_48px_rgba(236,72,153,0.35),0_0_80px_rgba(168,85,247,0.25)] hover:border-pink-500/60 transition-all duration-500 p-8 space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="space-y-3">
               <Label htmlFor="prompt" className="text-sm font-semibold text-foreground">Prompt (3-500 characters)</Label>
               <Textarea
@@ -454,39 +454,39 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
               </div>
             )}
             
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <Button
                 onClick={enhancePrompt}
                 disabled={loading}
                 variant="outline"
-                className="flex-1 border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:text-pink-400 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] transition-all"
+                className="flex-1 h-14 border-2 border-purple-500/40 hover:border-purple-500/70 bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-all font-semibold text-base"
               >
                 {loading && status.includes('Enhancing') ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enhancing...
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    <span>Enhancing...</span>
                   </>
                 ) : (
                   <>
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Enhance Prompt
+                    <Wand2 className="mr-2 h-5 w-5" />
+                    <span>Enhance Prompt</span>
                   </>
                 )}
               </Button>
               <Button
                 onClick={() => generateImage(false)}
                 disabled={loading}
-                className="flex-1 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] transition-all"
+                className="flex-1 h-14 bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 hover:from-pink-400 hover:via-purple-400 hover:to-pink-400 shadow-[0_8px_32px_rgba(236,72,153,0.4)] hover:shadow-[0_12px_48px_rgba(236,72,153,0.6),0_0_60px_rgba(236,72,153,0.3)] hover:scale-[1.02] transition-all font-bold text-base border-2 border-pink-400/50"
               >
                 {loading && !status.includes('Enhancing') ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    <span>Generating...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Image
+                    <Sparkles className="mr-2 h-5 w-5 animate-pulse" />
+                    <span>Generate Image</span>
                   </>
                 )}
               </Button>
