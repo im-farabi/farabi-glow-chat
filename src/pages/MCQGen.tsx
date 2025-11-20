@@ -274,7 +274,8 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
   // Settings Panel
   if (!quizStarted) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-accent/5">
+      <div className="min-h-screen flex flex-col">
+        <PremiumBackground />
         {/* Breadcrumb Schema */}
         <script type="application/ld+json">
           {JSON.stringify({
@@ -298,8 +299,8 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
         </script>
         
         <Header />
-        <main className="flex-1 container max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12">
-          <Card className="border-2 md:border-4">
+        <main className="flex-1 container max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12 animate-fade-in">
+          <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
             <CardHeader className="pb-6 md:pb-8">
               <div className="flex items-center justify-between mb-2">
                 <Button
@@ -425,7 +426,7 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
               <Button
                 onClick={generateMCQs}
                 disabled={loading || !settings.topic.trim()}
-                className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all h-14 md:h-16 text-lg md:text-xl"
+                className="w-full bg-gradient-to-r from-primary to-secondary hover:shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all h-14 md:h-16 text-lg md:text-xl"
                 size="lg"
               >
                 {loading ? (
@@ -458,12 +459,13 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
     else performanceMessage = 'Keep practicing! 💪';
 
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-accent/5">
+      <div className="min-h-screen flex flex-col">
+        <PremiumBackground />
         <Header />
-        <main className="flex-1 container max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12">
-          <Card className="border-2 md:border-4">
+        <main className="flex-1 container max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12 animate-fade-in">
+          <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
             <CardHeader>
-              <CardTitle className="text-center text-3xl md:text-4xl">Quiz Complete!</CardTitle>
+              <CardTitle className="text-center text-3xl md:text-4xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Quiz Complete!</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 md:space-y-8 py-8 md:py-12">
               <div className="text-center space-y-6">
@@ -482,7 +484,7 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
                   </p>
                 </div>
 
-                <Progress value={percentage} className="h-4 md:h-5" />
+                <Progress value={percentage} className="h-4 md:h-5 [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-secondary" />
 
                 <div className="mt-6 p-5 md:p-6 bg-accent/50 rounded-lg md:rounded-xl">
                   <p className="text-lg md:text-xl flex items-center justify-center gap-2">
@@ -524,11 +526,12 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
 
   // Quiz Display Panel
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-accent/5">
+    <div className="min-h-screen flex flex-col">
+      <PremiumBackground />
       <Header />
-      <main className="flex-1 container max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-10 space-y-6">
+      <main className="flex-1 container max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-10 space-y-6 animate-fade-in">
         {/* Progress Header with Timer */}
-        <Card className="border-2 md:border-4">
+        <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
           <CardContent className="pt-6">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -540,7 +543,7 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
                       <span className="text-2xl md:text-3xl font-bold">{timeLeft}s</span>
                     </div>
                   </div>
-                  <Progress value={progress} className="h-3 md:h-4" />
+                  <Progress value={progress} className="h-3 md:h-4 [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-secondary" />
                 </div>
                 
                 <AlertDialog>
@@ -572,7 +575,7 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
         </Card>
 
         {/* Question Card */}
-        <Card className="border-2 md:border-4">
+        <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
           <CardHeader className="pb-6 md:pb-8">
             <CardTitle className="text-2xl md:text-3xl lg:text-4xl leading-relaxed">
               {currentQuestion.question}

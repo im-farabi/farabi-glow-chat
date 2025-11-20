@@ -190,7 +190,8 @@ CRITICAL REQUIREMENTS:
 
   if (!started) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-accent/5">
+      <div className="min-h-screen flex flex-col">
+        <PremiumBackground />
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
@@ -213,8 +214,8 @@ CRITICAL REQUIREMENTS:
         </script>
         
         <Header />
-        <main className="flex-1 container max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12">
-          <Card className="border-2 md:border-4">
+        <main className="flex-1 container max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12 animate-fade-in">
+          <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
             <CardHeader className="pb-6 md:pb-8">
               <div className="flex items-center justify-between mb-2">
                 <Button
@@ -363,10 +364,11 @@ CRITICAL REQUIREMENTS:
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-accent/5">
+    <div className="min-h-screen flex flex-col">
+      <PremiumBackground />
       <Header />
-      <main className="flex-1 container max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 space-y-6">
-        <Card className="border-2 md:border-4">
+      <main className="flex-1 container max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 space-y-6 animate-fade-in">
+        <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
           <CardContent className="pt-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-4">
@@ -377,7 +379,7 @@ CRITICAL REQUIREMENTS:
                   <div className="text-base md:text-lg text-muted-foreground mb-2">
                     Page {currentPage} of {totalPages}
                   </div>
-                  <Progress value={(currentPage / totalPages) * 100} className="h-3 md:h-4" />
+                  <Progress value={(currentPage / totalPages) * 100} className="h-3 md:h-4 [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-secondary" />
                 </div>
                 <div className="flex gap-2">
                   <Select value={flipMode} onValueChange={(value: 'click' | 'hover') => setFlipMode(value)}>
@@ -396,14 +398,14 @@ CRITICAL REQUIREMENTS:
         </Card>
 
         {totalPages > 1 && (
-          <Card className="border-2 md:border-4">
+          <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
             <CardContent className="pt-6">
               <div className="flex justify-center gap-3">
                 <Button
                   onClick={handlePrevPage}
                   disabled={currentPage === 1}
                   variant="outline"
-                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer"
+                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] transition-all"
                   size="lg"
                 >
                   Previous
@@ -412,7 +414,7 @@ CRITICAL REQUIREMENTS:
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
                   variant="outline"
-                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer"
+                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] transition-all"
                   size="lg"
                 >
                   Next
@@ -434,14 +436,14 @@ CRITICAL REQUIREMENTS:
         </div>
 
         {totalPages > 1 && (
-          <Card className="border-2 md:border-4">
+          <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
             <CardContent className="pt-6">
               <div className="flex justify-center gap-3">
                 <Button
                   onClick={handlePrevPage}
                   disabled={currentPage === 1}
                   variant="outline"
-                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer"
+                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] transition-all"
                   size="lg"
                 >
                   Previous
@@ -450,7 +452,7 @@ CRITICAL REQUIREMENTS:
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
                   variant="outline"
-                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer"
+                  className="h-12 md:h-14 text-base md:text-lg px-6 cursor-pointer hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] transition-all"
                   size="lg"
                 >
                   Next
@@ -460,13 +462,13 @@ CRITICAL REQUIREMENTS:
           </Card>
         )}
 
-        <Card className="border-2 md:border-4">
+        <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
               <Button
                 onClick={handleNewSet}
                 variant="outline"
-                className="flex-1 h-12 md:h-14 text-base md:text-lg"
+                className="flex-1 h-12 md:h-14 text-base md:text-lg hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] transition-all"
                 size="lg"
               >
                 <RotateCcw className="mr-2 h-5 w-5" />
@@ -475,7 +477,7 @@ CRITICAL REQUIREMENTS:
               <Button
                 onClick={() => navigate('/')}
                 variant="outline"
-                className="flex-1 h-12 md:h-14 text-base md:text-lg"
+                className="flex-1 h-12 md:h-14 text-base md:text-lg hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] transition-all"
                 size="lg"
               >
                 <Home className="mr-2 h-5 w-5" />
