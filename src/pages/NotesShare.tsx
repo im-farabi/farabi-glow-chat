@@ -198,11 +198,11 @@ export default function NotesShare() {
         {/* Hero Section */}
         <div className="text-center space-y-4 animate-fade-in">
           <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
-            NOTEZ.FUN    
+            NOTEZ.FUN
           </h1>
-          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">Share your notes publicly!   
-                                                                  </p>
-          
+          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
+            Share your notes publicly!
+          </p>
         </div>
 
         {/* Form Section */}
