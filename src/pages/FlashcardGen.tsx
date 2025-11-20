@@ -65,7 +65,10 @@ const FlashcardGen = () => {
 
   // Set up PDF.js worker
   useEffect(() => {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url
+    ).toString();
   }, []);
 
   useEffect(() => {
@@ -105,6 +108,16 @@ const FlashcardGen = () => {
 
       setPdfText(fullText.trim());
       
+      if (!fullText.trim()) {
+        toast({
+          title: "No text found",
+          description: "This PDF might be image-based or encrypted. Try a text-based PDF.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
       toast({
         title: "PDF loaded successfully",
         description: `Extracted text from ${pdf.numPages} pages`,
