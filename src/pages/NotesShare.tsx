@@ -13,7 +13,6 @@ import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import PremiumBackground from '@/components/PremiumBackground';
-
 export default function NotesShare() {
   const {
     toast
@@ -201,23 +200,19 @@ export default function NotesShare() {
           <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
             NOTEZ.FUN    
           </h1>
-          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">Share yo    </p>
+          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">Share your notes publicly!   
+                                                                  </p>
           
         </div>
 
         {/* Form Section */}
-        <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+        <div className="animate-fade-in" style={{
+        animationDelay: '0.2s'
+      }}>
           <Card className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-2xl border-2 border-pink-500/40 shadow-[0_8px_32px_rgba(236,72,153,0.25),0_0_60px_rgba(168,85,247,0.15)] hover:shadow-[0_12px_48px_rgba(236,72,153,0.35),0_0_80px_rgba(168,85,247,0.25)] hover:border-pink-500/60 transition-all duration-500 p-8 space-y-6">
             <div>
               <Label htmlFor="title" className="text-sm font-semibold text-foreground">Title *</Label>
-              <Input 
-                id="title" 
-                value={title} 
-                onChange={e => setTitle(e.target.value)} 
-                placeholder="Enter note title" 
-                maxLength={limits.title.max} 
-                className="mt-2 bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all" 
-              />
+              <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Enter note title" maxLength={limits.title.max} className="mt-2 bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all" />
               <p className="text-xs text-muted-foreground mt-1">
                 {title.length}/{limits.title.max} characters
               </p>
@@ -225,15 +220,7 @@ export default function NotesShare() {
 
             <div>
               <Label htmlFor="description" className="text-sm font-semibold text-foreground">Description *</Label>
-              <Textarea 
-                id="description" 
-                value={description} 
-                onChange={e => setDescription(e.target.value)} 
-                placeholder="Enter your note content" 
-                maxLength={limits.description.max} 
-                rows={8} 
-                className="mt-2 bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all" 
-              />
+              <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Enter your note content" maxLength={limits.description.max} rows={8} className="mt-2 bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all" />
               <p className="text-xs text-muted-foreground mt-1">
                 {description.length}/{limits.description.max} characters
               </p>
@@ -248,14 +235,7 @@ export default function NotesShare() {
                   {/* Short Description */}
                   <div>
                     <Label htmlFor="shortDesc" className="text-sm font-semibold text-foreground">Short Description</Label>
-                    <Input 
-                      id="shortDesc" 
-                      value={shortDescription} 
-                      onChange={e => setShortDescription(e.target.value)} 
-                      placeholder="Brief summary (optional)" 
-                      maxLength={limits.shortDescription.max} 
-                      className="mt-2 bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all" 
-                    />
+                    <Input id="shortDesc" value={shortDescription} onChange={e => setShortDescription(e.target.value)} placeholder="Brief summary (optional)" maxLength={limits.shortDescription.max} className="mt-2 bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all" />
                     <p className="text-xs text-muted-foreground mt-1">
                       {shortDescription.length}/{limits.shortDescription.max} characters
                     </p>
@@ -300,10 +280,7 @@ export default function NotesShare() {
               <div>
                 <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button 
-                      className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] transition-all animate-pulse" 
-                      disabled={!isValid}
-                    >
+                    <Button className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] transition-all animate-pulse" disabled={!isValid}>
                       <Send className="mr-2 h-4 w-4" />
                       Publish
                     </Button>
@@ -318,14 +295,7 @@ export default function NotesShare() {
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="slug" className="text-sm font-semibold text-foreground">URL Slug *</Label>
-                        <Input 
-                          id="slug" 
-                          value={slug} 
-                          onChange={e => setSlug(e.target.value.toLowerCase())} 
-                          placeholder="my-awesome-note" 
-                          maxLength={limits.slug.max} 
-                          className="mt-2 bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all" 
-                        />
+                        <Input id="slug" value={slug} onChange={e => setSlug(e.target.value.toLowerCase())} placeholder="my-awesome-note" maxLength={limits.slug.max} className="mt-2 bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all" />
                       <p className="text-xs text-muted-foreground mt-1">
                         Your note will be available at: /notes/{slug || 'your-slug'}
                       </p>
@@ -335,11 +305,7 @@ export default function NotesShare() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button 
-                      onClick={handlePublish} 
-                      disabled={isPublishing || !isSlugAvailable}
-                      className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] transition-all"
-                    >
+                    <Button onClick={handlePublish} disabled={isPublishing || !isSlugAvailable} className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] transition-all">
                       {isPublishing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Publish Note
                     </Button>
@@ -361,17 +327,8 @@ export default function NotesShare() {
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-muted-foreground">Primary URL:</p>
                   <div className="flex gap-2">
-                    <Input 
-                      value={publishedUrl} 
-                      readOnly 
-                      className="flex-1 bg-background/50 border-border/50 font-mono text-sm" 
-                    />
-                    <Button 
-                      onClick={copyToClipboard} 
-                      size="icon" 
-                      variant="outline"
-                      className="border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:shadow-[0_0_10px_rgba(236,72,153,0.3)] transition-all"
-                    >
+                    <Input value={publishedUrl} readOnly className="flex-1 bg-background/50 border-border/50 font-mono text-sm" />
+                    <Button onClick={copyToClipboard} size="icon" variant="outline" className="border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:shadow-[0_0_10px_rgba(236,72,153,0.3)] transition-all">
                       {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
@@ -384,20 +341,14 @@ export default function NotesShare() {
                     Also available at (redirects to primary):
                   </p>
                   <div className="flex gap-2">
-                    <Input 
-                      value={`https://notez.fun/${publishedUrl.split('/notes/')[1]}`} 
-                      readOnly 
-                      className="flex-1 bg-background/50 border-border/50 font-mono text-sm" 
-                    />
-                    <Button 
-                      onClick={() => {
-                        navigator.clipboard.writeText(`https://notez.fun/${publishedUrl.split('/notes/')[1]}`);
-                        toast({ title: 'Copied!', description: 'Short link copied to clipboard' });
-                      }} 
-                      size="icon" 
-                      variant="outline"
-                      className="border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:shadow-[0_0_10px_rgba(236,72,153,0.3)] transition-all"
-                    >
+                    <Input value={`https://notez.fun/${publishedUrl.split('/notes/')[1]}`} readOnly className="flex-1 bg-background/50 border-border/50 font-mono text-sm" />
+                    <Button onClick={() => {
+                  navigator.clipboard.writeText(`https://notez.fun/${publishedUrl.split('/notes/')[1]}`);
+                  toast({
+                    title: 'Copied!',
+                    description: 'Short link copied to clipboard'
+                  });
+                }} size="icon" variant="outline" className="border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:shadow-[0_0_10px_rgba(236,72,153,0.3)] transition-all">
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
@@ -430,11 +381,9 @@ export default function NotesShare() {
             </div>
             <p className="text-muted-foreground animate-pulse">Loading your notes...</p>
           </div> : dashboardData?.notes && dashboardData.notes.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {dashboardData.notes.map((note: any, index: number) => <Card 
-              key={note.id} 
-              className="bg-card/60 backdrop-blur-xl border-pink-500/20 hover:border-pink-500/40 shadow-[0_8px_32px_rgba(236,72,153,0.15)] hover:shadow-[0_8px_48px_rgba(236,72,153,0.3)] transition-all duration-300 hover:scale-[1.02] group animate-fade-in"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
+            {dashboardData.notes.map((note: any, index: number) => <Card key={note.id} className="bg-card/60 backdrop-blur-xl border-pink-500/20 hover:border-pink-500/40 shadow-[0_8px_32px_rgba(236,72,153,0.15)] hover:shadow-[0_8px_48px_rgba(236,72,153,0.3)] transition-all duration-300 hover:scale-[1.02] group animate-fade-in" style={{
+            animationDelay: `${index * 0.1}s`
+          }}>
                 <div className="p-6 space-y-4">
                   {/* Note Header */}
                   <div className="space-y-3">
@@ -459,12 +408,7 @@ export default function NotesShare() {
                         <span className="text-xs text-muted-foreground">total views</span>
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      asChild 
-                      className="hover:text-pink-400 hover:bg-pink-500/10 border border-transparent hover:border-pink-500/30 transition-all"
-                    >
+                    <Button variant="ghost" size="sm" asChild className="hover:text-pink-400 hover:bg-pink-500/10 border border-transparent hover:border-pink-500/30 transition-all">
                       <a href={`/notes/${note.slug}`} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="h-4 w-4 mr-2" />
                         View Note
@@ -495,9 +439,7 @@ export default function NotesShare() {
                           <HelpCircle className="h-3 w-3 mr-1.5" />
                           Unknown: {note.devices.unknown}
                         </Badge>}
-                      {note.devices.mobile === 0 && note.devices.desktop === 0 && note.devices.ios === 0 && note.devices.unknown === 0 && 
-                        <p className="text-sm text-muted-foreground bg-muted/30 px-3 py-1 rounded-lg">No device data yet</p>
-                      }
+                      {note.devices.mobile === 0 && note.devices.desktop === 0 && note.devices.ios === 0 && note.devices.unknown === 0 && <p className="text-sm text-muted-foreground bg-muted/30 px-3 py-1 rounded-lg">No device data yet</p>}
                     </div>
                   </div>
 
