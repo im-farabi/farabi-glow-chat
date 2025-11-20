@@ -50,7 +50,7 @@ serve(async (req) => {
       });
     }
 
-    const aiResponse = await fetch('https://text.pollinations.ai/openai', {
+    const aiResponse = await fetch('https://text.pollinations.ai/', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${pollinationsKey}`,
@@ -61,7 +61,8 @@ serve(async (req) => {
           { role: 'system', content: ai.full_instructions },
           { role: 'user', content: prompt }
         ],
-        model: 'google/gemini-2.5-flash',
+        model: 'gemini-search',
+        seed: 42,
       }),
     });
 
