@@ -1,9 +1,15 @@
 import { useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const PremiumBackground = () => {
+  const isMobile = useIsMobile();
+  
+  // Reduce particle count dramatically on mobile for performance (71% reduction)
+  const particleMultiplier = isMobile ? 0.3 : 1;
+  
   // Generate random particle data on mount (memoized for performance)
   const largeOrbs = useMemo(() => 
-    Array.from({ length: 6 }, (_, i) => ({
+    Array.from({ length: Math.floor(6 * particleMultiplier) }, (_, i) => ({
       id: i,
       size: Math.random() * 200 + 200, // 200-400px
       left: Math.random() * 100,
@@ -13,11 +19,11 @@ const PremiumBackground = () => {
       delay: Math.random() * 5,
       blur: Math.random() * 40 + 60, // 60-100px
       opacity: Math.random() * 0.1 + 0.05 // 5-15%
-    })), []
+    })), [particleMultiplier]
   );
 
   const mediumParticles = useMemo(() => 
-    Array.from({ length: 18 }, (_, i) => ({
+    Array.from({ length: Math.floor(18 * particleMultiplier) }, (_, i) => ({
       id: i,
       size: Math.random() * 70 + 80, // 80-150px
       left: Math.random() * 100,
@@ -25,13 +31,13 @@ const PremiumBackground = () => {
       color: Math.random() > 0.5 ? 'pink' : 'purple',
       duration: Math.random() * 10 + 15, // 15-25s
       delay: Math.random() * 8,
-      blur: 40,
+      blur: isMobile ? 20 : 40, // Reduce blur on mobile
       opacity: Math.random() * 0.05 + 0.03 // 3-8%
-    })), []
+    })), [particleMultiplier, isMobile]
   );
 
   const smallParticles = useMemo(() => 
-    Array.from({ length: 35 }, (_, i) => ({
+    Array.from({ length: Math.floor(35 * particleMultiplier) }, (_, i) => ({
       id: i,
       size: Math.random() * 40 + 20, // 20-60px
       left: Math.random() * 100,
@@ -39,9 +45,9 @@ const PremiumBackground = () => {
       color: Math.random() > 0.5 ? 'pink' : 'purple',
       duration: Math.random() * 10 + 10, // 10-20s
       delay: Math.random() * 10,
-      blur: 20,
+      blur: isMobile ? 10 : 20, // Reduce blur on mobile
       opacity: Math.random() * 0.03 + 0.02 // 2-5%
-    })), []
+    })), [particleMultiplier, isMobile]
   );
 
   const getAnimationClass = (index: number) => {

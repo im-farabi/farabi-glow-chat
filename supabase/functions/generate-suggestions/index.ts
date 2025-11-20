@@ -92,12 +92,23 @@ Rules:
     
     console.log('Raw suggestions response:', suggestionsText);
     
+    // Strip markdown code blocks if present
+    let cleanedText = suggestionsText;
+    if (suggestionsText.includes('```')) {
+      cleanedText = suggestionsText
+        .replace(/```json\s*/g, '')
+        .replace(/```\s*/g, '')
+        .trim();
+      console.log('Cleaned JSON (removed markdown):', cleanedText);
+    }
+    
     // Parse JSON from response
     let suggestions;
     try {
-      suggestions = JSON.parse(suggestionsText);
+      suggestions = JSON.parse(cleanedText);
     } catch (parseError) {
       console.error('Failed to parse suggestions JSON:', parseError);
+      console.error('Attempted to parse:', cleanedText);
       throw new Error('Invalid JSON response from AI');
     }
     
