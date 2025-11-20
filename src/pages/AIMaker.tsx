@@ -4,10 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Bot, Copy, ExternalLink, Sparkles, Loader2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { Bot, Copy, ExternalLink, Sparkles, Loader2, Trash2, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import PremiumBackground from "@/components/PremiumBackground";
 import { supabase } from "@/integrations/supabase/client";
+import { deleteAI, updateAI } from "@/lib/api";
 
 interface CustomAI {
   id: string;
@@ -29,6 +32,14 @@ export default function AIMaker() {
   const [publishedRandomId, setPublishedRandomId] = useState("");
   const [dashboardData, setDashboardData] = useState<CustomAI[]>([]);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [aiToDelete, setAiToDelete] = useState<CustomAI | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [aiToEdit, setAiToEdit] = useState<CustomAI | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editShortDescription, setEditShortDescription] = useState('');
+  const [editFullInstructions, setEditFullInstructions] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const getUserId = () => {
     const userId = localStorage.getItem('anonymousUserId');
@@ -109,27 +120,24 @@ export default function AIMaker() {
 
       const randomId = data.ai.random_id;
       setPublishedRandomId(randomId);
-      setPublishedUrl(`https://farabi.me/ai/${randomId}/prompt/YOUR_PROMPT_HERE`);
+      setPublishedUrl(`https://farabi.me/api/ai/${randomId}/YOUR_PROMPT_HERE`);
       setPublishDialogOpen(true);
 
-      // Reset form
       setName("");
       setShortDescription("");
       setFullInstructions("");
 
-      // Reload dashboard
       await loadDashboard();
 
       toast({
         title: "AI Published!",
-        description: "Your custom AI endpoint is ready to use"
+        description: "Your AI endpoint is ready to use",
       });
-
     } catch (error) {
-      console.error('Error publishing AI:', error);
+      console.error('Publish error:', error);
       toast({
-        title: "Failed to publish",
-        description: error instanceof Error ? error.message : "Unknown error",
+        title: "Error",
+        description: "Failed to publish AI. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -141,92 +149,170 @@ export default function AIMaker() {
     navigator.clipboard.writeText(text);
     toast({
       title: "Copied!",
-      description: "URL copied to clipboard"
+      description: "URL copied to clipboard",
     });
   };
 
+  const handleDelete = async () => {
+    if (!aiToDelete) return;
+    
+    try {
+      await deleteAI(aiToDelete.id, getUserId());
+      toast({
+        title: "Deleted!",
+        description: "AI deleted successfully",
+      });
+      setDeleteDialogOpen(false);
+      setAiToDelete(null);
+      loadDashboard();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete AI",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const openEditDialog = (ai: CustomAI) => {
+    setAiToEdit(ai);
+    setEditName(ai.name);
+    setEditShortDescription(ai.short_description);
+    setEditFullInstructions(ai.full_instructions);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!aiToEdit) return;
+
+    if (editName.length < 3 || editName.length > 100) {
+      toast({
+        title: "Invalid name",
+        description: "Name must be between 3 and 100 characters",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (editShortDescription.length < 10 || editShortDescription.length > 200) {
+      toast({
+        title: "Invalid description",
+        description: "Short description must be between 10 and 200 characters",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (editFullInstructions.length < 20 || editFullInstructions.length > 5000) {
+      toast({
+        title: "Invalid instructions",
+        description: "Full instructions must be between 20 and 5000 characters",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await updateAI({
+        aiId: aiToEdit.id,
+        anonymousUserId: getUserId(),
+        name: editName,
+        shortDescription: editShortDescription,
+        fullInstructions: editFullInstructions,
+      });
+      toast({
+        title: "Updated!",
+        description: "AI updated successfully",
+      });
+      setEditDialogOpen(false);
+      setAiToEdit(null);
+      loadDashboard();
+    } catch (error) {
+      console.error('Update error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update AI",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+    <div className="min-h-screen relative">
       <PremiumBackground />
       
-      <div className="relative z-10 container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <div className="text-center mb-12 animate-in fade-in slide-in-from-top duration-700">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary mb-6 shadow-[0_0_40px_rgba(236,72,153,0.3)]">
-            <Bot className="w-10 h-10 text-white" />
+      <div className="container max-w-4xl mx-auto px-4 py-8 relative z-10">
+        <div className="text-center mb-12 animate-fade-in">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <Bot className="w-12 h-12 text-primary" />
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              AI Maker
+            </h1>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            AI Maker
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Create your own custom AI endpoint with personalized instructions
+          <p className="text-muted-foreground text-lg">
+            Create your own custom AI endpoints with personalized instructions
           </p>
         </div>
 
-        {/* Create AI Form */}
-        <Card className="bg-card/60 backdrop-blur-xl border-border/50 mb-8 animate-in fade-in slide-in-from-bottom duration-700 delay-200">
+        <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
               Create Your AI
             </CardTitle>
             <CardDescription>
-              Define your AI's personality and behavior
+              Define your AI's personality and behavior with custom instructions
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Name */}
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                AI Name <span className="text-muted-foreground">({name.length}/100)</span>
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="name">
+                Name <span className="text-muted-foreground text-xs">({name.length}/100)</span>
+              </Label>
               <Input
-                placeholder="Apollo, Farabi or anything..."
+                id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                placeholder="Apollo, Farabi or anything..."
                 maxLength={100}
-                className="bg-background/50"
               />
             </div>
 
-            {/* Short Description */}
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Short Description <span className="text-muted-foreground">({shortDescription.length}/200)</span>
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="short-description">
+                Short Description <span className="text-muted-foreground text-xs">({shortDescription.length}/200)</span>
+              </Label>
               <Textarea
-                placeholder="This is a roblox chatbot to answer roblox questions..."
+                id="short-description"
                 value={shortDescription}
                 onChange={(e) => setShortDescription(e.target.value)}
+                placeholder="This is a roblox chatbot to answer roblox questions..."
                 maxLength={200}
-                rows={2}
-                className="bg-background/50 resize-none"
+                rows={3}
               />
             </div>
 
-            {/* Full Instructions */}
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Full Instructions <span className="text-muted-foreground">({fullInstructions.length}/5000)</span>
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="full-instructions">
+                Full Instructions <span className="text-muted-foreground text-xs">({fullInstructions.length}/5000)</span>
+              </Label>
               <Textarea
-                placeholder="You are a helpful assistant specialized in Roblox. Answer all questions about Roblox game development, scripting, and gameplay with enthusiasm and accuracy. Always be friendly and helpful..."
+                id="full-instructions"
                 value={fullInstructions}
                 onChange={(e) => setFullInstructions(e.target.value)}
+                placeholder="You are a helpful assistant specialized in..."
                 maxLength={5000}
-                rows={8}
-                className="bg-background/50 resize-none"
+                rows={12}
               />
-              <p className="text-xs text-muted-foreground mt-2">
-                These instructions will be used as the system prompt for your AI
-              </p>
             </div>
 
-            {/* Publish Button */}
             <Button
               onClick={handlePublish}
               disabled={isPublishing || name.length < 3 || shortDescription.length < 10 || fullInstructions.length < 20}
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity shadow-[0_8px_32px_rgba(236,72,153,0.3)]"
+              className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 shadow-lg hover:shadow-pink-500/50 transition-all"
+              size="lg"
             >
               {isPublishing ? (
                 <>
@@ -243,62 +329,95 @@ export default function AIMaker() {
           </CardContent>
         </Card>
 
-        {/* Dashboard */}
-        <Card className="bg-card/60 backdrop-blur-xl border-border/50 animate-in fade-in slide-in-from-bottom duration-700 delay-400">
+        <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
           <CardHeader>
-            <CardTitle>Your AI Endpoints</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="w-5 h-5 text-primary" />
+              Your AI Endpoints
+            </CardTitle>
             <CardDescription>
-              Manage and view your published AIs
+              Manage and share your custom AI endpoints
             </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoadingDashboard ? (
               <div className="text-center py-8">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-                <p className="text-muted-foreground mt-2">Loading your AIs...</p>
               </div>
             ) : dashboardData.length === 0 ? (
-              <div className="text-center py-12">
-                <Bot className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground">No AIs created yet</p>
-                <p className="text-sm text-muted-foreground">Create your first AI above!</p>
+              <div className="text-center py-12 text-muted-foreground">
+                <Bot className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg">No AIs created yet</p>
+                <p className="text-sm">Create your first AI above to get started!</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {dashboardData.map((ai) => (
                   <Card key={ai.id} className="bg-background/50 border-border/30">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg flex items-center gap-2">
-                            <Bot className="w-5 h-5 text-primary" />
-                            {ai.name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground mt-1">{ai.short_description}</p>
+                    <CardHeader>
+                      <CardTitle className="text-xl">{ai.name}</CardTitle>
+                      <CardDescription>{ai.short_description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">API Endpoint (Plain Text)</Label>
+                          <div className="flex gap-2">
+                            <code className="flex-1 p-2 bg-background/50 rounded text-xs break-all">
+                              /api/ai/{ai.random_id}/YOUR_PROMPT
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(`https://farabi.me/api/ai/${ai.random_id}/hello`)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">{ai.views_count} uses</p>
+
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Web UI URL</Label>
+                          <div className="flex gap-2">
+                            <code className="flex-1 p-2 bg-background/50 rounded text-xs break-all">
+                              /ai/{ai.random_id}/prompt/YOUR_PROMPT
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(`/ai/${ai.random_id}/prompt/hello`, '_blank')}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="mt-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <code className="flex-1 text-xs bg-muted/50 px-3 py-2 rounded border border-border/30 font-mono">
-                            farabi.me/ai/{ai.random_id}/prompt/YOUR_PROMPT
-                          </code>
+
+                        <div className="pt-2 text-sm text-muted-foreground">
+                          <p>Total Views: <span className="font-semibold text-foreground">{ai.views_count || 0}</span></p>
+                          <p className="text-xs mt-1">Created: {new Date(ai.created_at!).toLocaleDateString()}</p>
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
                           <Button
-                            size="sm"
                             variant="outline"
-                            onClick={() => copyToClipboard(`https://farabi.me/ai/${ai.random_id}/prompt/YOUR_PROMPT`)}
+                            size="sm"
+                            onClick={() => openEditDialog(ai)}
+                            className="flex-1"
                           >
-                            <Copy className="w-4 h-4" />
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
                           </Button>
                           <Button
-                            size="sm"
                             variant="outline"
-                            onClick={() => window.open(`/ai/${ai.random_id}/prompt/hi`, '_blank')}
+                            size="sm"
+                            onClick={() => {
+                              setAiToDelete(ai);
+                              setDeleteDialogOpen(true);
+                            }}
+                            className="flex-1 text-red-500 hover:text-red-600 hover:border-red-500"
                           >
-                            <ExternalLink className="w-4 h-4" />
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
                           </Button>
                         </div>
                       </div>
@@ -311,51 +430,154 @@ export default function AIMaker() {
         </Card>
       </div>
 
-      {/* Success Dialog */}
       <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-        <DialogContent className="bg-card/95 backdrop-blur-xl border-border/50">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-2xl">
-              <Sparkles className="w-6 h-6 text-primary" />
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
               AI Published Successfully!
             </DialogTitle>
             <DialogDescription>
-              Your custom AI endpoint is now live and ready to use
+              Your AI endpoint is ready to use
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 mt-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Your AI Endpoint URL:</label>
+
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">API Endpoint (Plain Text Response)</Label>
               <div className="flex gap-2">
-                <code className="flex-1 text-sm bg-muted/50 px-4 py-3 rounded border border-border/30 font-mono break-all">
-                  {publishedUrl}
+                <code className="flex-1 p-3 bg-muted rounded text-sm break-all">
+                  https://farabi.me/api/ai/{publishedRandomId}/YOUR_PROMPT_HERE
                 </code>
                 <Button
+                  variant="outline"
                   size="sm"
-                  onClick={() => copyToClipboard(publishedUrl)}
-                  className="shrink-0"
+                  onClick={() => copyToClipboard(`https://farabi.me/api/ai/${publishedRandomId}/hello`)}
                 >
-                  <Copy className="w-4 h-4" />
+                  <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Replace YOUR_PROMPT_HERE with any text to get a response from your AI
+              <p className="text-xs text-muted-foreground">
+                Use this URL in your applications - returns plain text response like Pollinations AI
               </p>
             </div>
 
-            <div className="bg-muted/30 p-4 rounded-lg border border-border/30">
-              <p className="text-sm font-medium mb-2">Example usage:</p>
-              <code className="text-xs bg-background/50 px-3 py-2 rounded block font-mono break-all">
-                https://farabi.me/ai/{publishedRandomId}/prompt/hello
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Web UI URL</Label>
+              <div className="flex gap-2">
+                <code className="flex-1 p-3 bg-muted rounded text-sm break-all">
+                  {publishedUrl}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(publishedUrl)}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Share this URL for a formatted view with UI
+              </p>
+            </div>
+
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <p className="text-sm font-semibold mb-2">Example Usage:</p>
+              <code className="text-xs block whitespace-pre-wrap">
+{`// JavaScript/TypeScript
+const response = await fetch('https://farabi.me/api/ai/${publishedRandomId}/hello');
+const text = await response.text();
+console.log(text); // Plain text response`}
               </code>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete AI?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{aiToDelete?.name}"? This action cannot be undone and all usage data will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit AI</DialogTitle>
+            <DialogDescription>
+              Update your AI's details and instructions
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">
+                Name <span className="text-muted-foreground text-xs">({editName.length}/100)</span>
+              </Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Apollo, Farabi or anything..."
+                maxLength={100}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-short-description">
+                Short Description <span className="text-muted-foreground text-xs">({editShortDescription.length}/200)</span>
+              </Label>
+              <Textarea
+                id="edit-short-description"
+                value={editShortDescription}
+                onChange={(e) => setEditShortDescription(e.target.value)}
+                placeholder="This is a roblox chatbot to answer roblox questions..."
+                maxLength={200}
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-full-instructions">
+                Full Instructions <span className="text-muted-foreground text-xs">({editFullInstructions.length}/5000)</span>
+              </Label>
+              <Textarea
+                id="edit-full-instructions"
+                value={editFullInstructions}
+                onChange={(e) => setEditFullInstructions(e.target.value)}
+                placeholder="You are a helpful assistant specialized in..."
+                maxLength={5000}
+                rows={12}
+              />
             </div>
 
             <Button
-              onClick={() => setPublishDialogOpen(false)}
-              className="w-full bg-gradient-to-r from-primary to-secondary"
+              onClick={handleUpdate}
+              disabled={isUpdating || editName.length < 3 || editShortDescription.length < 10 || editFullInstructions.length < 20}
+              className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
             >
-              Got it!
+              {isUpdating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Update AI
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
