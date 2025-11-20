@@ -147,6 +147,13 @@ const PremiumBackground = () => {
         />
       </div>
 
+      {/* Enhanced gradient overlays for depth */}
+      <div className="absolute inset-0 bg-gradient-to-br from-pink-500/8 via-transparent to-purple-500/8" />
+      <div className="absolute inset-0 bg-gradient-to-tl from-purple-500/8 via-transparent to-pink-500/8" />
+      <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/5 via-purple-500/3 to-transparent" />
+      <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-purple-500/6 via-pink-500/3 to-transparent" />
+      <div className="absolute bottom-0 right-0 w-full h-1/2 bg-gradient-to-t from-pink-500/6 via-purple-500/3 to-transparent" />
+
       {/* Noise texture overlay */}
       <div 
         className="absolute inset-0 opacity-[0.015]"
