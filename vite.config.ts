@@ -18,10 +18,12 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     minify: 'terser',
+    cssMinify: true,
     terserOptions: {
       compress: {
-        drop_console: true, // Remove console.logs in production
+        drop_console: true,
         drop_debugger: true,
+        passes: 2,
       },
     },
     rollupOptions: {

@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "https://farabi.me/:path*",
+      "destination": "https://www.farabi.me/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
