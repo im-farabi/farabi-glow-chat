@@ -258,49 +258,52 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Breadcrumb Schema */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          "itemListElement": [
-            {
-              "@type": "ListItem",
-              "position": 1,
-              "name": "Home",
-              "item": "https://farabi.me/"
-            },
-            {
-              "@type": "ListItem",
-              "position": 2,
-              "name": "Image Generator",
-              "item": "https://farabi.me/image-gen"
-            }
-          ]
-        })}
-      </script>
-      
-      <Header />
-      
-      <main className="flex-1 overflow-auto p-6">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 justify-between">
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
+    <div className="min-h-screen bg-black relative">
+      <PremiumBackground />
+      <div className="relative z-10">
+        {/* Breadcrumb Schema */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://farabi.me/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Image Generator",
+                "item": "https://farabi.me/image-gen"
+              }
+            ]
+          })}
+        </script>
+        
+        <Header />
+        
+        <main className="container mx-auto px-4 py-8 space-y-8">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-4">
+                <button
                   onClick={() => navigate('/')}
-                  className="shrink-0"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card/30 backdrop-blur-sm border border-border/50 hover:bg-card/50 hover:border-pink-500/30 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] transition-all duration-300 group"
                 >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    Image Generator
+                  <ArrowLeft className="w-5 h-5 text-muted-foreground group-hover:text-pink-500 transition-colors" />
+                  <span className="text-muted-foreground group-hover:text-foreground transition-colors">Back to Chat</span>
+                </button>
+                <div className="space-y-3 animate-fade-in">
+                  <div className="inline-flex items-center justify-center p-3 rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20 backdrop-blur-sm border border-pink-500/30 mb-2">
+                    <ImageIcon className="w-10 h-10 text-pink-400" />
+                  </div>
+                  <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                    AI Image Generator
                   </h1>
-                  <p className="text-muted-foreground">
+                  <p className="text-lg text-muted-foreground">
                     Generate AI images from your prompts
                   </p>
                 </div>
