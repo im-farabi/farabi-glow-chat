@@ -15,6 +15,37 @@ import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import PremiumBackground from '@/components/PremiumBackground';
+
+const themeClasses = {
+  'black-purple': {
+    background: 'glass-card',
+    title: 'bg-gradient-to-r from-purple-400 via-violet-400 to-purple-500 bg-clip-text text-transparent',
+    text: 'text-purple-50',
+    border: 'border-purple-400/40',
+    shortDesc: 'text-purple-200',
+    glow: 'shadow-[0_0_60px_rgba(168,85,247,0.5),0_0_30px_rgba(168,85,247,0.3)]',
+    accent: 'purple' as const,
+  },
+  'black-white': {
+    background: 'glass-card',
+    title: 'bg-gradient-to-r from-gray-100 via-white to-gray-200 bg-clip-text text-transparent',
+    text: 'text-gray-100',
+    border: 'border-gray-300/40',
+    shortDesc: 'text-gray-200',
+    glow: 'shadow-[0_0_60px_rgba(255,255,255,0.3),0_0_30px_rgba(255,255,255,0.2)]',
+    accent: 'white' as const,
+  },
+  'black-orange': {
+    background: 'glass-card',
+    title: 'bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent',
+    text: 'text-orange-50',
+    border: 'border-orange-400/40',
+    shortDesc: 'text-orange-200',
+    glow: 'shadow-[0_0_60px_rgba(249,115,22,0.5),0_0_30px_rgba(249,115,22,0.3)]',
+    accent: 'orange' as const,
+  },
+};
+
 export default function NotesShare() {
   const {
     toast
@@ -439,34 +470,37 @@ export default function NotesShare() {
             <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Live Preview</h2>
           </div>
           
-          <div className="relative rounded-2xl overflow-hidden border-2 border-purple-500/40 shadow-[0_8px_32px_rgba(168,85,247,0.25),0_0_60px_rgba(236,72,153,0.15)] min-h-[500px]">
-            <AnimatedBackground theme={colorTheme === 'black-purple' ? 'purple' : colorTheme === 'black-orange' ? 'orange' : 'white'} />
+          <div className="relative min-h-screen bg-black rounded-2xl overflow-hidden">
+            <AnimatedBackground theme={themeClasses[colorTheme as keyof typeof themeClasses].accent} />
             
-            <div className="relative z-10 p-8 md:p-12 min-h-[500px] flex flex-col">
-              <div className="space-y-6 animate-fade-in">
-                <h1 className={`text-4xl md:text-5xl font-bold ${
-                  colorTheme === 'black-purple' ? 'text-purple-300' :
-                  colorTheme === 'black-orange' ? 'text-orange-300' :
-                  'text-white'
-                }`}>
+            <div className="max-w-4xl mx-auto px-6 py-12 relative z-10">
+              <div 
+                className={`${themeClasses[colorTheme as keyof typeof themeClasses].background} ${themeClasses[colorTheme as keyof typeof themeClasses].border} ${themeClasses[colorTheme as keyof typeof themeClasses].glow} border-[3px] rounded-2xl p-8 md:p-12 backdrop-blur-[40px] bg-white/12 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.15)] hover:scale-[1.01] transition-all duration-500 animate-scale-in`}
+                style={{ animationDelay: '0.3s' }}
+              >
+                {/* Title with gradient animation */}
+                <h2 
+                  className={`${themeClasses[colorTheme as keyof typeof themeClasses].title} text-4xl md:text-6xl font-bold mb-6 animate-fade-in`}
+                  style={{ animationDelay: '0.5s' }}
+                >
                   {title || 'Untitled Note'}
-                </h1>
+                </h2>
                 
+                {/* Short Description */}
                 {shortDescription && (
-                  <p className={`text-lg md:text-xl italic ${
-                    colorTheme === 'black-purple' ? 'text-purple-200/80' :
-                    colorTheme === 'black-orange' ? 'text-orange-200/80' :
-                    'text-gray-300/80'
-                  }`}>
+                  <p 
+                    className={`${themeClasses[colorTheme as keyof typeof themeClasses].shortDesc} text-lg md:text-xl mb-8 italic border-l-4 ${themeClasses[colorTheme as keyof typeof themeClasses].border} pl-4 animate-fade-in`}
+                    style={{ animationDelay: '0.6s' }}
+                  >
                     {shortDescription}
                   </p>
                 )}
                 
-                <div className={`text-base md:text-lg whitespace-pre-wrap break-words leading-relaxed ${
-                  colorTheme === 'black-purple' ? 'text-purple-100' :
-                  colorTheme === 'black-orange' ? 'text-orange-100' :
-                  'text-gray-200'
-                }`}>
+                {/* Main Content */}
+                <div 
+                  className={`${themeClasses[colorTheme as keyof typeof themeClasses].text} text-base md:text-lg whitespace-pre-wrap break-words leading-relaxed animate-fade-in`}
+                  style={{ animationDelay: '0.7s' }}
+                >
                   {description || 'No description provided.'}
                 </div>
               </div>
