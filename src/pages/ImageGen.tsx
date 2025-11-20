@@ -382,7 +382,6 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
                 </SheetContent>
               </Sheet>
             </div>
-          </div>
 
           <Card className="bg-card/50 backdrop-blur-xl border-pink-500/20 shadow-[0_8px_32px_rgba(236,72,153,0.15)] hover:shadow-[0_8px_40px_rgba(236,72,153,0.25)] transition-all duration-300 p-6 space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="space-y-3">
