@@ -78,30 +78,32 @@ export default function ViewNote() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Update meta tags dynamically once on mount
+  // Update meta tags dynamically with note content when available
   useEffect(() => {
-    document.title = "A user sent you a note. Click the link to view";
-    
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute('content', 'This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!');
-    }
+    if (note) {
+      document.title = `${note.title} - FARABI Note`;
+      
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) {
+        metaDescription.setAttribute('content', note.short_description || 'A shared note on FARABI.me');
+      }
 
-    const ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) {
-      ogTitle.setAttribute('content', 'A user sent you a note. Click the link to view');
-    }
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) {
+        ogTitle.setAttribute('content', note.title);
+      }
 
-    const ogDescription = document.querySelector('meta[property="og:description"]');
-    if (ogDescription) {
-      ogDescription.setAttribute('content', 'This is a note made by a user. Make notes and publish for free without sign up required. FARABI.me to get started!');
-    }
+      const ogDescription = document.querySelector('meta[property="og:description"]');
+      if (ogDescription) {
+        ogDescription.setAttribute('content', note.short_description || 'This is a note made by a user. Make notes and publish for free without sign up required.');
+      }
 
-    const ogUrl = document.querySelector('meta[property="og:url"]');
-    if (ogUrl) {
-      ogUrl.setAttribute('content', window.location.href);
+      const ogUrl = document.querySelector('meta[property="og:url"]');
+      if (ogUrl) {
+        ogUrl.setAttribute('content', window.location.href);
+      }
     }
-  }, []);
+  }, [note]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

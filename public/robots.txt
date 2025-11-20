@@ -13,4 +13,20 @@ Allow: /
 User-agent: *
 Allow: /
 
+# Dynamic sitemap generated from database
 Sitemap: https://farabi.me/sitemap.xml
+
+# Main pages
+Allow: /
+Allow: /about
+Allow: /support
+Allow: /image-gen
+Allow: /mcq-gen
+Allow: /flashcard-gen
+Allow: /ai-maker
+Allow: /notes-share
+Allow: /youtube-explain
+
+# Dynamic routes
+Allow: /notes/
+Allow: /ai/
