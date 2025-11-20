@@ -206,9 +206,9 @@ export default function NotesShare() {
         </div>
 
         {/* Form & Preview Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
           {/* Form Section */}
-          <Card className="bg-card/50 backdrop-blur-xl border-pink-500/20 shadow-[0_8px_32px_rgba(236,72,153,0.15)] hover:shadow-[0_8px_40px_rgba(236,72,153,0.25)] transition-all duration-300 p-6 space-y-6">
+          <Card className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-2xl border-2 border-pink-500/40 shadow-[0_8px_32px_rgba(236,72,153,0.25),0_0_60px_rgba(168,85,247,0.15)] hover:shadow-[0_12px_48px_rgba(236,72,153,0.35),0_0_80px_rgba(168,85,247,0.25)] hover:border-pink-500/60 transition-all duration-500 p-8 space-y-6">
             <div>
               <Label htmlFor="title" className="text-sm font-semibold text-foreground">Title *</Label>
               <Input 
@@ -240,10 +240,10 @@ export default function NotesShare() {
               </p>
             </div>
 
-            <Accordion type="single" collapsible className="border border-border/50 rounded-lg bg-background/30 backdrop-blur-sm">
+            <Accordion type="single" collapsible className="border-2 border-pink-500/30 rounded-xl bg-gradient-to-br from-background/40 to-background/20 backdrop-blur-md shadow-[0_4px_16px_rgba(236,72,153,0.1)]">
               <AccordionItem value="advanced" className="border-none">
-                <AccordionTrigger className="px-4 hover:text-pink-400 transition-colors">
-                  <span className="font-semibold">Advanced Settings</span>
+                <AccordionTrigger className="px-4 hover:text-pink-400 transition-colors group">
+                  <span className="font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent group-hover:from-pink-300 group-hover:to-purple-300">Advanced Settings</span>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4 space-y-4">
                   {/* Short Description */}
