@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, SquareStack, ArrowLeft, RotateCcw, Sparkles, Home, History, Trash2, Clock } from 'lucide-react';
+import { Loader2, SquareStack, ArrowLeft, RotateCcw, Sparkles, Home, History, Trash2, Clock, FileUp, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendNormal } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,8 @@ import { getFlashcardHistory, saveFlashcardToHistory, deleteFlashcardFromHistory
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PremiumBackground from '@/components/PremiumBackground';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import * as pdfjsLib from 'pdfjs-dist';
 
 const useFlashcardPageSEO = () => {
   useEffect(() => {
@@ -58,10 +60,171 @@ const FlashcardGen = () => {
   const cardsPerPage = 2;
   const [history, setHistory] = useState<FlashcardHistoryItem[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfText, setPdfText] = useState<string>('');
+
+  // Set up PDF.js worker
+  useEffect(() => {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  }, []);
 
   useEffect(() => {
     setHistory(getFlashcardHistory());
   }, []);
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      toast({
+        title: "Invalid file",
+        description: "Please upload a PDF file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setPdfFile(file);
+    setLoading(true);
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      let fullText = '';
+      
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + ' ';
+      }
+
+      setPdfText(fullText.trim());
+      
+      toast({
+        title: "PDF loaded successfully",
+        description: `Extracted text from ${pdf.numPages} pages`,
+      });
+    } catch (error) {
+      console.error('PDF parsing error:', error);
+      toast({
+        title: "Error reading PDF",
+        description: "Could not extract text from PDF file",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateFromPdf = async () => {
+    if (!pdfText.trim()) {
+      toast({
+        title: "No PDF content",
+        description: "Please upload a PDF file first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    const prompt = `Based on the following PDF content, generate exactly ${settings.numCards} educational flashcards.
+
+PDF Content:
+${pdfText.slice(0, 4000)}
+
+Difficulty Level: ${settings.level}
+
+IMPORTANT RULES:
+1. Each flashcard should have a clear, concise question (max 150 characters)
+2. Each answer should be informative but brief (max 200 characters)
+3. Questions should be appropriate for ${settings.level} difficulty
+4. Make questions specific and testable based on the PDF content
+5. Answers should be factual and educational
+
+Format your response as a valid JSON array with this EXACT structure:
+[
+  {
+    "question": "Clear, specific question here?",
+    "answer": "Concise, accurate answer here"
+  }
+]
+
+CRITICAL REQUIREMENTS:
+- Return ONLY the JSON array, nothing else
+- NO markdown formatting, NO backticks, NO code blocks
+- NO explanatory text before or after the JSON
+- NO phrases like "Hope this helps" or "Here you go"
+- Start your response with [ and end with ]
+- If you include ANY text outside the JSON array, the system will fail`;
+
+    try {
+      const response = await sendNormal(prompt);
+      
+      let cleanedResponse = response.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      cleanedResponse = cleanedResponse.trim();
+      
+      const parsed = JSON.parse(cleanedResponse);
+      
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error('Invalid response format');
+      }
+      
+      const validFlashcards = parsed.filter(card => 
+        card && 
+        typeof card === 'object' && 
+        typeof card.question === 'string' && 
+        typeof card.answer === 'string' &&
+        card.question.trim().length > 0 &&
+        card.answer.trim().length > 0
+      ).slice(0, settings.numCards);
+      
+      if (validFlashcards.length === 0) {
+        throw new Error('No valid flashcards generated');
+      }
+      
+      setFlashcards(validFlashcards);
+      setStarted(true);
+      setCurrentPage(1);
+      
+      const historyItem = {
+        id: Date.now().toString(),
+        topic: pdfFile?.name || 'PDF Upload',
+        numCards: validFlashcards.length,
+        level: settings.level,
+        timestamp: Date.now(),
+        flashcards: validFlashcards
+      };
+      
+      saveFlashcardToHistory(historyItem);
+      setHistory(getFlashcardHistory());
+      
+      toast({
+        title: "Flashcards generated!",
+        description: `Created ${validFlashcards.length} flashcards from PDF`,
+      });
+    } catch (error) {
+      console.error('Generation error:', error);
+      toast({
+        title: "Generation failed",
+        description: "Could not generate flashcards. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const generateFlashcards = async () => {
     if (!settings.topic.trim()) {
@@ -285,77 +448,200 @@ CRITICAL REQUIREMENTS:
               </p>
             </CardHeader>
             <CardContent className="space-y-6 md:space-y-8">
-              <div className="space-y-3">
-                <Label htmlFor="topic" className="text-lg md:text-xl">Topic</Label>
-                <Textarea
-                  id="topic"
-                  placeholder="Enter a topic (e.g., Spanish Vocabulary, Chemistry, Programming)"
-                  value={settings.topic}
-                  onChange={(e) => setSettings({ ...settings, topic: e.target.value.slice(0, 200) })}
-                  maxLength={200}
-                  className="min-h-[100px] md:min-h-[120px] text-base md:text-lg p-4"
-                />
-                <p className="text-sm md:text-base text-muted-foreground text-right">
-                  {settings.topic.length}/200
-                </p>
-              </div>
+              <Tabs defaultValue="topic" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6 h-auto p-1">
+                  <TabsTrigger value="topic" className="data-[state=active]:bg-primary/20 py-3">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    By Topic
+                  </TabsTrigger>
+                  <TabsTrigger value="pdf" className="data-[state=active]:bg-primary/20 py-3">
+                    <FileUp className="w-4 h-4 mr-2" />
+                    From PDF
+                  </TabsTrigger>
+                </TabsList>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                <div className="space-y-3">
-                  <Label htmlFor="cards" className="text-lg md:text-xl">Number of Flashcards</Label>
-                  <Select
-                    value={settings.numCards.toString()}
-                    onValueChange={(value) => setSettings({ ...settings, numCards: parseInt(value) as 2 | 4 | 6 | 8 | 10 })}
+                <TabsContent value="topic" className="space-y-6 md:space-y-8">
+                  <div className="space-y-3">
+                    <Label htmlFor="topic" className="text-lg md:text-xl">Topic</Label>
+                    <Textarea
+                      id="topic"
+                      placeholder="Enter a topic (e.g., Spanish Vocabulary, Chemistry, Programming)"
+                      value={settings.topic}
+                      onChange={(e) => setSettings({ ...settings, topic: e.target.value.slice(0, 200) })}
+                      maxLength={200}
+                      className="min-h-[100px] md:min-h-[120px] text-base md:text-lg p-4"
+                    />
+                    <p className="text-sm md:text-base text-muted-foreground text-right">
+                      {settings.topic.length}/200
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="cards" className="text-lg md:text-xl">Number of Flashcards</Label>
+                      <Select
+                        value={settings.numCards.toString()}
+                        onValueChange={(value) => setSettings({ ...settings, numCards: parseInt(value) as 2 | 4 | 6 | 8 | 10 })}
+                      >
+                        <SelectTrigger id="cards" className="text-base md:text-lg h-12 md:h-14">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="2">2 Flashcards</SelectItem>
+                          <SelectItem value="4">4 Flashcards</SelectItem>
+                          <SelectItem value="6">6 Flashcards</SelectItem>
+                          <SelectItem value="8">8 Flashcards</SelectItem>
+                          <SelectItem value="10">10 Flashcards</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="level" className="text-lg md:text-xl">Difficulty Level</Label>
+                      <Select
+                        value={settings.level}
+                        onValueChange={(value) => setSettings({ ...settings, level: value as 'Easy' | 'Medium' | 'Hard' })}
+                      >
+                        <SelectTrigger id="level" className="text-base md:text-lg h-12 md:h-14">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Easy">Easy</SelectItem>
+                          <SelectItem value="Medium">Medium</SelectItem>
+                          <SelectItem value="Hard">Hard</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={generateFlashcards}
+                    disabled={loading || !settings.topic.trim()}
+                    className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all h-14 md:h-16 text-lg md:text-xl"
+                    size="lg"
                   >
-                    <SelectTrigger id="cards" className="text-base md:text-lg h-12 md:h-14">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="2">2 Flashcards</SelectItem>
-                      <SelectItem value="4">4 Flashcards</SelectItem>
-                      <SelectItem value="6">6 Flashcards</SelectItem>
-                      <SelectItem value="8">8 Flashcards</SelectItem>
-                      <SelectItem value="10">10 Flashcards</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 md:h-6 md:w-6 animate-spin" />
+                        Generating Flashcards...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-5 w-5 md:h-6 md:w-6" />
+                        Generate Flashcards
+                      </>
+                    )}
+                  </Button>
+                </TabsContent>
 
-                <div className="space-y-3">
-                  <Label htmlFor="level" className="text-lg md:text-xl">Difficulty Level</Label>
-                  <Select
-                    value={settings.level}
-                    onValueChange={(value) => setSettings({ ...settings, level: value as 'Easy' | 'Medium' | 'Hard' })}
+                <TabsContent value="pdf" className="space-y-6 md:space-y-8">
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <Label htmlFor="pdf-upload" className="text-lg md:text-xl">
+                        Upload PDF File
+                      </Label>
+                      <div className="relative border-2 border-dashed border-border/50 rounded-lg p-8 md:p-12 hover:border-primary/50 transition-colors bg-card/30 backdrop-blur-sm cursor-pointer">
+                        <input
+                          id="pdf-upload"
+                          type="file"
+                          accept=".pdf"
+                          onChange={handlePdfUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          disabled={loading}
+                        />
+                        <div className="flex flex-col items-center justify-center gap-4 text-center pointer-events-none">
+                          <div className="p-4 rounded-full bg-primary/10 border-2 border-primary/20">
+                            <Upload className="w-10 h-10 md:w-12 md:h-12 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-lg md:text-xl font-medium">
+                              {pdfFile ? pdfFile.name : 'Click to upload PDF'}
+                            </p>
+                            <p className="text-sm md:text-base text-muted-foreground mt-2">
+                              {pdfFile 
+                                ? `${(pdfFile.size / 1024).toFixed(1)} KB`
+                                : 'PDF files only (max 10MB)'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {pdfText && (
+                        <div className="p-4 md:p-6 rounded-lg bg-primary/10 border-2 border-primary/30 animate-fade-in">
+                          <p className="text-base md:text-lg font-medium text-primary mb-2 flex items-center gap-2">
+                            <Sparkles className="w-5 h-5" />
+                            PDF Content Extracted
+                          </p>
+                          <p className="text-sm md:text-base text-muted-foreground">
+                            {pdfText.split(' ').length} words ready for flashcard generation
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                      <div className="space-y-3">
+                        <Label htmlFor="pdf-num-cards" className="text-lg md:text-xl">
+                          Number of Flashcards
+                        </Label>
+                        <Select 
+                          value={settings.numCards.toString()} 
+                          onValueChange={(value) => setSettings({...settings, numCards: parseInt(value) as any})}
+                        >
+                          <SelectTrigger id="pdf-num-cards" className="text-base md:text-lg h-12 md:h-14">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="2">2 Flashcards</SelectItem>
+                            <SelectItem value="4">4 Flashcards</SelectItem>
+                            <SelectItem value="6">6 Flashcards</SelectItem>
+                            <SelectItem value="8">8 Flashcards</SelectItem>
+                            <SelectItem value="10">10 Flashcards</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label htmlFor="pdf-level" className="text-lg md:text-xl">
+                          Difficulty Level
+                        </Label>
+                        <Select 
+                          value={settings.level} 
+                          onValueChange={(value) => setSettings({...settings, level: value as any})}
+                        >
+                          <SelectTrigger id="pdf-level" className="text-base md:text-lg h-12 md:h-14">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Easy">Easy</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="Hard">Hard</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={generateFromPdf}
+                    disabled={loading || !pdfText}
+                    className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all h-14 md:h-16 text-lg md:text-xl"
+                    size="lg"
                   >
-                    <SelectTrigger id="level" className="text-base md:text-lg h-12 md:h-14">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Easy">Easy</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="Hard">Hard</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Button
-                onClick={generateFlashcards}
-                disabled={loading || !settings.topic.trim()}
-                className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all h-14 md:h-16 text-lg md:text-xl"
-                size="lg"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 md:h-6 md:w-6 animate-spin" />
-                    Generating Flashcards...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-5 w-5 md:h-6 md:w-6" />
-                    Generate Flashcards
-                  </>
-                )}
-              </Button>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 md:h-6 md:w-6 animate-spin" />
+                        {pdfFile && !pdfText ? 'Reading PDF...' : 'Generating Flashcards...'}
+                      </>
+                    ) : (
+                      <>
+                        <FileUp className="mr-2 h-5 w-5 md:h-6 md:w-6" />
+                        Generate from PDF
+                      </>
+                    )}
+                  </Button>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </main>
