@@ -8,8 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "postbuild": "react-snap"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -54,7 +53,6 @@
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "ogl": "^1.0.11",
-    "pdfjs-dist": "^5.4.394",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -62,7 +60,6 @@
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.1",
-    "react-snap": "^1.23.0",
     "react-syntax-highlighter": "^16.1.0",
     "recharts": "^2.15.4",
     "remark-gfm": "^4.0.1",
@@ -91,24 +88,5 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19"
-  },
-  "reactSnap": {
-    "inlineCss": true,
-    "minifyHtml": {
-      "collapseWhitespace": false
-    },
-    "include": [
-      "/",
-      "/about",
-      "/image-gen",
-      "/mcq-gen",
-      "/flashcard-gen",
-      "/youtube-explain",
-      "/notes-share",
-      "/ai-maker",
-      "/support",
-      "/terms",
-      "/privacy"
-    ]
   }
 }

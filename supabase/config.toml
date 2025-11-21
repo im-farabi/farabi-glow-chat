@@ -1,8 +1,5 @@
 project_id = "gjlxuvcfoqjhwzcmpaju"
 
-[functions.owner-websites]
-verify_jwt = false
-
 [functions.pollinations-chat]
 verify_jwt = false
 
@@ -43,25 +40,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-suggestions]
-verify_jwt = false
-
-[functions.create-ai]
-verify_jwt = false
-
-[functions.check-ai-id]
-verify_jwt = false
-
-[functions.get-ai]
-verify_jwt = false
-
-[functions.ai-chat]
-verify_jwt = false
-
-[functions.ai-endpoint]
-verify_jwt = false
-
-[functions.delete-ai]
-verify_jwt = false
-
-[functions.update-ai]
 verify_jwt = false

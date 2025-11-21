@@ -14,38 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ai_usages: {
-        Row: {
-          ai_id: string | null
-          id: string
-          prompt: string
-          response_length: number | null
-          viewed_at: string | null
-        }
-        Insert: {
-          ai_id?: string | null
-          id?: string
-          prompt: string
-          response_length?: number | null
-          viewed_at?: string | null
-        }
-        Update: {
-          ai_id?: string | null
-          id?: string
-          prompt?: string
-          response_length?: number | null
-          viewed_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_usages_ai_id_fkey"
-            columns: ["ai_id"]
-            isOneToOne: false
-            referencedRelation: "custom_ais"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       chat_messages: {
         Row: {
           anonymous_user_id: string
@@ -76,45 +44,6 @@ export type Database = {
           mode?: string | null
           role?: string
           session_id?: string
-        }
-        Relationships: []
-      }
-      custom_ais: {
-        Row: {
-          anonymous_user_id: string
-          created_at: string | null
-          full_instructions: string
-          id: string
-          is_published: boolean | null
-          name: string
-          random_id: string
-          short_description: string
-          updated_at: string | null
-          views_count: number | null
-        }
-        Insert: {
-          anonymous_user_id: string
-          created_at?: string | null
-          full_instructions: string
-          id?: string
-          is_published?: boolean | null
-          name: string
-          random_id: string
-          short_description: string
-          updated_at?: string | null
-          views_count?: number | null
-        }
-        Update: {
-          anonymous_user_id?: string
-          created_at?: string | null
-          full_instructions?: string
-          id?: string
-          is_published?: boolean | null
-          name?: string
-          random_id?: string
-          short_description?: string
-          updated_at?: string | null
-          views_count?: number | null
         }
         Relationships: []
       }

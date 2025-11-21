@@ -1,3 +1,0 @@
-# Ads.txt file for farabi.me
-# This file is intentionally minimal as the site is currently ad-supported through direct partnerships
-# Contact: support@farabi.me for advertising inquiries

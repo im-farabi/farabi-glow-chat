@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Users, MessageSquare, DollarSign, Clock, Globe, Eye, ExternalLink, RefreshCw, Activity } from "lucide-react";
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { Users, MessageSquare, Clock, Globe, Activity, RefreshCw, Heart, ExternalLink } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Website {
   id: string;
@@ -17,181 +19,206 @@ interface Website {
   is_published: boolean;
 }
 
-interface SharedNote {
-  id: string;
-  anonymous_user_id: string;
-  slug: string;
-  title: string;
-  views_count: number;
-  created_at: string;
-}
-
 interface DashboardData {
-  activeUsers: {
-    sessionId: string;
-    anonymousUserId: string;
-    countryName: string;
-    countryCode: string;
-    duration: number;
-  }[];
-  recentMessages: {
+  activeSessions: Array<{
+    anonymous_user_id: string;
+    session_id: string;
+    session_start: string;
+    last_activity: string;
+    country_name: string;
+    country_code: string;
+  }>;
+  recentMessages: Array<{
     id: string;
+    anonymous_user_id: string;
     role: string;
     content: string;
-    anonymousUserId: string;
-    countryName: string;
-    createdAt: string;
-    mode: string;
-  }[];
-  recentDonations: {
+    created_at: string;
+    country_name: string | null;
+    country_code: string | null;
+  }>;
+  recentDonations?: Array<{
     id: string;
-    donationType: string;
+    anonymous_user_id: string;
+    donation_type: string;
     amount: string;
-    message: string;
-    createdAt: string;
-  }[];
-  todayUsers: number;
-  todayMessages: number;
-  averageDuration: number;
-  todayCountries: { countryName: string; userCount: number }[];
+    message: string | null;
+    created_at: string;
+  }>;
+  stats: {
+    activeUsers: number;
+    uniqueUsersToday: number;
+    todayMessageCount: number;
+    todaySessionCount: number;
+    avgSessionDuration: number;
+    countryStats: Record<string, number>;
+  };
 }
 
-const Owner = () => {
+export default function Owner() {
+  const [password, setPassword] = useState('');
+  const [petName, setPetName] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState("");
-  const [petName, setPetName] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [websites, setWebsites] = useState<Website[]>([]);
-  const [sharedNotes, setSharedNotes] = useState<SharedNote[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
+  const [websitesLoading, setWebsitesLoading] = useState(false);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (showToast = false) => {
     try {
       const { data, error } = await supabase.functions.invoke('owner-dashboard', {
         body: { password, petName }
       });
 
       if (error) throw error;
-      if (data) {
-        setDashboardData(data);
+
+      if (data.error) {
+        toast.error('Failed to refresh data');
+        return;
+      }
+
+      setDashboardData(data.data);
+      if (showToast) {
+        toast.success('Dashboard refreshed');
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('Refresh error:', error);
+      if (showToast) {
+        toast.error('Failed to refresh');
+      }
     }
   }, [password, petName]);
 
-  const fetchWebsites = useCallback(async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('owner-dashboard', {
+        body: { password, petName }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error('Invalid credentials');
+        return;
+      }
+
+      // Fetch recent donations
+      const { data: donationsData } = await supabase
+        .from('donations')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      const dashboardWithDonations = {
+        ...data.data,
+        recentDonations: donationsData || []
+      };
+
+      setIsAuthenticated(true);
+      setDashboardData(dashboardWithDonations);
+      await fetchWebsites();
+      toast.success('Welcome, Owner!');
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Authentication failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchDashboardData(true);
+    await fetchWebsites();
+    setIsRefreshing(false);
+  };
+
+  const fetchWebsites = async () => {
+    setWebsitesLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('owner-websites', {
         body: { password, petName }
       });
 
       if (error) throw error;
-      if (data) {
+
+      if (data.success) {
         setWebsites(data.websites || []);
-        setSharedNotes(data.sharedNotes || []);
       }
     } catch (error) {
       console.error('Error fetching websites:', error);
-    }
-  }, [password, petName]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('owner-dashboard', {
-        body: { password, petName }
-      });
-
-      if (error) throw error;
-
-      if (data) {
-        setIsAuthenticated(true);
-        setDashboardData(data);
-        await fetchWebsites();
-      }
-    } catch (error) {
-      console.error('Authentication failed:', error);
-      alert('Invalid credentials');
+      toast.error('Failed to load websites');
     } finally {
-      setLoading(false);
+      setWebsitesLoading(false);
     }
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([fetchDashboardData(), fetchWebsites()]);
-    setRefreshing(false);
-  };
 
+  // Auto-refresh every 5 seconds
   useEffect(() => {
-    if (isAuthenticated) {
-      const interval = setInterval(fetchDashboardData, 5000);
-      return () => clearInterval(interval);
-    }
+    if (!isAuthenticated) return;
+
+    const interval = setInterval(() => {
+      fetchDashboardData(false);
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, [isAuthenticated, fetchDashboardData]);
 
   const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+    const seconds = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 1000);
     if (seconds < 60) return `${seconds}s ago`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    return `${Math.floor(seconds / 86400)}d ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
   };
 
-  const formatDuration = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+  const formatDuration = (start: string, end: string) => {
+    const minutes = Math.floor((new Date(end).getTime() - new Date(start).getTime()) / 1000 / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_50%)]" />
-        
-        <Card className="w-full max-w-md relative backdrop-blur-xl bg-slate-950/60 border-blue-500/20 shadow-[0_0_40px_rgba(59,130,246,0.15)]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/10 to-accent/5 p-4">
+        <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
-              Owner Dashboard
-            </CardTitle>
+            <CardTitle className="text-2xl">Owner Dashboard</CardTitle>
+            <CardDescription>Enter credentials to access analytics</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <Label htmlFor="password" className="text-slate-300">Password</Label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Password</label>
                 <Input
-                  id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="bg-slate-900/50 border-blue-500/30 text-white focus:border-blue-500"
+                  placeholder="Enter password"
                   required
                 />
               </div>
-              <div>
-                <Label htmlFor="petName" className="text-slate-300">Pet Name</Label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Pet's Name</label>
                 <Input
-                  id="petName"
                   type="text"
                   value={petName}
                   onChange={(e) => setPetName(e.target.value)}
-                  className="bg-slate-900/50 border-blue-500/30 text-white focus:border-blue-500"
+                  placeholder="Enter pet's name"
                   required
                 />
               </div>
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-                disabled={loading}
-              >
-                {loading ? "Authenticating..." : "Login"}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Authenticating...' : 'Access Dashboard'}
               </Button>
             </form>
           </CardContent>
@@ -202,338 +229,301 @@ const Owner = () => {
 
   if (!dashboardData) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 md:p-8">
-      {/* Animated background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.08),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(96,165,250,0.06),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(59,130,246,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(59,130,246,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-      </div>
-
-      <div className="relative max-w-7xl mx-auto space-y-6">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/10 to-accent/5 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 bg-clip-text text-transparent">
-              Owner Dashboard
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">Real-time analytics and monitoring</p>
+          <h1 className="text-3xl font-bold">Owner Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Badge variant="secondary" className="gap-2">
+              <Activity className="h-4 w-4" />
+              Auto-refresh: 5s
+            </Badge>
           </div>
-          <Button
-            onClick={handleRefresh}
-            variant="outline"
-            className="bg-slate-900/50 border-blue-500/30 hover:bg-slate-800/50 hover:border-blue-500/50 text-blue-400"
-            disabled={refreshing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="backdrop-blur-xl bg-slate-950/60 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.2)] group">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-sm">Active Users</p>
-                  <p className="text-3xl font-bold text-blue-400 mt-2">{dashboardData.activeUsers.length}</p>
-                </div>
-                <Activity className="h-8 w-8 text-blue-500 opacity-50 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="backdrop-blur-xl bg-slate-950/60 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.2)] group">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-sm">Today's Users</p>
-                  <p className="text-3xl font-bold text-blue-400 mt-2">{dashboardData.todayUsers}</p>
-                </div>
-                <Users className="h-8 w-8 text-blue-500 opacity-50 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="backdrop-blur-xl bg-slate-950/60 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.2)] group">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-sm">Messages</p>
-                  <p className="text-3xl font-bold text-blue-400 mt-2">{dashboardData.todayMessages}</p>
-                </div>
-                <MessageSquare className="h-8 w-8 text-blue-500 opacity-50 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="backdrop-blur-xl bg-slate-950/60 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 hover:shadow-[0_0_30px_rgba(59,130,246,0.2)] group">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-400 text-sm">Avg Duration</p>
-                  <p className="text-3xl font-bold text-blue-400 mt-2">{formatDuration(dashboardData.averageDuration)}</p>
-                </div>
-                <Clock className="h-8 w-8 text-blue-500 opacity-50 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue="analytics" className="space-y-4">
-          <TabsList className="bg-slate-900/50 border border-blue-500/20 p-1">
-            <TabsTrigger 
-              value="analytics"
-              className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 data-[state=active]:shadow-[0_0_10px_rgba(59,130,246,0.3)]"
-            >
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger 
-              value="websites"
-              className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 data-[state=active]:shadow-[0_0_10px_rgba(59,130,246,0.3)]"
-            >
-              Websites ({websites.length})
-            </TabsTrigger>
-            <TabsTrigger 
-              value="notes"
-              className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 data-[state=active]:shadow-[0_0_10px_rgba(59,130,246,0.3)]"
-            >
-              Shared Notes ({sharedNotes.length})
-            </TabsTrigger>
+        <Tabs defaultValue="analytics" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="websites">User Websites ({websites.length})</TabsTrigger>
           </TabsList>
 
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Active Users */}
-              <Card className="backdrop-blur-xl bg-slate-950/60 border-blue-500/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-blue-400">
-                    <Activity className="h-5 w-5 mr-2 animate-pulse" />
-                    Active Users ({dashboardData.activeUsers.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 max-h-96 overflow-y-auto">
-                  {dashboardData.activeUsers.map((user, index) => (
-                    <div 
-                      key={user.sessionId}
-                      className="p-3 bg-slate-900/50 border-l-2 border-blue-500 rounded hover:bg-slate-800/50 transition-all duration-300 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] animate-fade-in"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="flex items-center justify-between">
+          <TabsContent value="analytics" className="space-y-6 mt-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dashboardData.stats.activeUsers}</div>
+              <p className="text-xs text-muted-foreground">Online now</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Today's Users</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dashboardData.stats.uniqueUsersToday}</div>
+              <p className="text-xs text-muted-foreground">{dashboardData.stats.todaySessionCount} sessions</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Messages Today</CardTitle>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dashboardData.stats.todayMessageCount}</div>
+              <p className="text-xs text-muted-foreground">Total conversations</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg Duration</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dashboardData.stats.avgSessionDuration}m</div>
+              <p className="text-xs text-muted-foreground">Per active session</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Active Users by Country */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Active Users by Country
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-3">
+                  {dashboardData.activeSessions.map((session) => (
+                    <div key={session.session_id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                      <div className="flex-1">
+                        <p className="font-mono text-sm">{session.anonymous_user_id}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {session.country_name || 'Unknown'} • {formatDuration(session.session_start, session.last_activity)}
+                        </p>
+                      </div>
+                      <Badge variant="outline">{formatTimeAgo(session.last_activity)}</Badge>
+                    </div>
+                  ))}
+                  {dashboardData.activeSessions.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-8">No active users</p>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Country Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Today's Traffic by Country
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2">
+                  {Object.entries(dashboardData.stats.countryStats)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([country, count]) => (
+                      <div key={country} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                        <span className="text-sm">{country}</span>
+                        <Badge>{count} users</Badge>
+                      </div>
+                    ))}
+                  {Object.keys(dashboardData.stats.countryStats).length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-8">No data yet</p>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Donations */}
+        {dashboardData.recentDonations && dashboardData.recentDonations.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-pink-500" />
+                Recent Donations
+              </CardTitle>
+              <CardDescription>Latest donation notifications from supporters</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-3">
+                  {dashboardData.recentDonations.map((donation) => (
+                    <div key={donation.id} className="p-4 rounded-lg border bg-gradient-to-r from-pink-500/5 to-purple-500/5">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4 text-blue-400" />
-                          <span className="text-sm font-medium text-slate-300">{user.countryName}</span>
-                          <span className="text-xs text-slate-500">{user.countryCode}</span>
-                        </div>
-                        <Clock className="h-4 w-4 text-slate-500" />
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1 font-mono">{user.anonymousUserId}</p>
-                      <p className="text-xs text-blue-400 mt-1">Duration: {formatDuration(user.duration)}</p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Today's Traffic */}
-              <Card className="backdrop-blur-xl bg-slate-950/60 border-blue-500/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-blue-400">
-                    <Globe className="h-5 w-5 mr-2" />
-                    Today's Traffic by Country
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 max-h-96 overflow-y-auto">
-                  {dashboardData.todayCountries.map((country, index) => (
-                    <div 
-                      key={country.countryName}
-                      className="p-3 bg-slate-900/50 border-l-2 border-blue-500 rounded hover:bg-slate-800/50 transition-all duration-300"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-slate-300">{country.countryName}</span>
-                        <span className="text-sm font-bold text-blue-400">{country.userCount} users</span>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent Messages */}
-            <Card className="backdrop-blur-xl bg-slate-950/60 border-blue-500/20">
-              <CardHeader>
-                <CardTitle className="flex items-center text-blue-400">
-                  <MessageSquare className="h-5 w-5 mr-2" />
-                  Recent Conversations
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-                {dashboardData.recentMessages.map((message, index) => (
-                  <div 
-                    key={message.id}
-                    className={`p-4 rounded-lg border-l-2 transition-all duration-300 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] ${
-                      message.role === 'user' 
-                        ? 'bg-slate-900/50 border-blue-500' 
-                        : 'bg-slate-900/30 border-blue-400'
-                    }`}
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          message.role === 'user' 
-                            ? 'bg-blue-500/20 text-blue-400' 
-                            : 'bg-blue-400/20 text-blue-300'
-                        }`}>
-                          {message.role.toUpperCase()}
-                        </span>
-                        <span className="text-xs text-slate-500">{message.countryName}</span>
-                        {message.mode && (
-                          <span className="text-xs px-2 py-1 rounded bg-slate-700/50 text-slate-400">
-                            {message.mode}
+                          <Badge variant="secondary" className="capitalize">
+                            {donation.donation_type.replace('_', ' ')}
+                          </Badge>
+                          <span className="font-mono text-sm text-muted-foreground">
+                            {donation.anonymous_user_id}
                           </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTimeAgo(donation.created_at)}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold">Amount: {donation.amount}</p>
+                        {donation.message && (
+                          <p className="text-sm text-muted-foreground italic">"{donation.message}"</p>
                         )}
                       </div>
-                      <span className="text-xs text-slate-500">{formatTimeAgo(message.createdAt)}</span>
-                    </div>
-                    <p className="text-sm text-slate-300 line-clamp-2">{message.content}</p>
-                    <p className="text-xs text-slate-600 mt-1 font-mono">{message.anonymousUserId}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Recent Donations */}
-            {dashboardData.recentDonations.length > 0 && (
-              <Card className="backdrop-blur-xl bg-slate-950/60 border-blue-500/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-blue-400">
-                    <DollarSign className="h-5 w-5 mr-2" />
-                    Recent Donations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {dashboardData.recentDonations.map((donation, index) => (
-                    <div 
-                      key={donation.id}
-                      className="p-3 bg-slate-900/50 border-l-2 border-blue-500 rounded hover:bg-slate-800/50 transition-all duration-300"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-slate-300">{donation.donationType}</span>
-                        <span className="text-sm font-bold text-blue-400">${donation.amount}</span>
-                      </div>
-                      {donation.message && (
-                        <p className="text-xs text-slate-500 mt-1">{donation.message}</p>
-                      )}
-                      <p className="text-xs text-slate-600 mt-1">{formatTimeAgo(donation.createdAt)}</p>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
 
-          {/* User Websites Tab */}
-          <TabsContent value="websites" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {websites.map((website, index) => (
-                <Card 
-                  key={website.id}
-                  className="backdrop-blur-xl bg-slate-950/60 border-l-4 border-blue-500 hover:bg-slate-900/60 hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] transition-all duration-300 animate-fade-in"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <h3 className="font-semibold text-slate-200 line-clamp-1">{website.title}</h3>
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        website.is_published 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-orange-500/20 text-orange-400'
-                      }`}>
-                        {website.is_published ? 'Published' : 'Draft'}
+        {/* Live Conversation Monitor */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Recent Conversations
+            </CardTitle>
+            <CardDescription>Latest 100 messages from all users</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[500px]">
+              <div className="space-y-3">
+                {dashboardData.recentMessages.map((msg) => (
+                  <div key={msg.id} className="p-4 rounded-lg border bg-card">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={msg.role === 'user' ? 'default' : 'secondary'}>
+                          {msg.role}
+                        </Badge>
+                        <span className="font-mono text-sm text-muted-foreground">
+                          {msg.anonymous_user_id}
+                        </span>
+                        {msg.country_name && (
+                          <Badge variant="outline">{msg.country_name}</Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {formatTimeAgo(msg.created_at)}
                       </span>
                     </div>
-                    
-                    <div className="space-y-1 text-xs">
-                      <p className="text-slate-400">Slug: <span className="text-blue-400 font-mono">/{website.slug}</span></p>
-                      <p className="text-slate-400">User: <span className="text-slate-500 font-mono">{website.anonymous_user_id}</span></p>
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-800">
-                        <div className="flex items-center gap-1 text-slate-400">
-                          <Eye className="h-3 w-3" />
-                          <span>{website.views_count}</span>
+                    <p className="text-sm whitespace-pre-wrap break-words">
+                      {msg.content.length > 500 ? msg.content.substring(0, 500) + '...' : msg.content}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+        </TabsContent>
+
+        <TabsContent value="websites" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                User Generated Websites
+              </CardTitle>
+              <CardDescription>All websites created by users with the Website Generator</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {websitesLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Loading websites...</p>
+                </div>
+              ) : websites.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No websites created yet</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[600px]">
+                  <div className="space-y-3">
+                    {websites.map((website) => (
+                      <div key={website.id} className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Badge variant={website.is_published ? 'default' : 'secondary'}>
+                              {website.is_published ? 'Published' : 'Draft'}
+                            </Badge>
+                            <span className="font-semibold truncate">{website.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a 
+                              href={`/web/${website.slug}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-primary hover:underline flex items-center gap-1"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              View
+                            </a>
+                          </div>
                         </div>
-                        <span className="text-slate-500">{formatTimeAgo(website.created_at)}</span>
-                      </div>
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full bg-slate-900/50 border-blue-500/30 hover:bg-blue-500/10 hover:border-blue-500 text-blue-400"
-                      onClick={() => window.open(`https://farabi.me/${website.slug}`, '_blank')}
-                    >
-                      <ExternalLink className="h-3 w-3 mr-2" />
-                      View Website
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          {/* Shared Notes Tab */}
-          <TabsContent value="notes" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sharedNotes.map((note, index) => (
-                <Card 
-                  key={note.id}
-                  className="backdrop-blur-xl bg-slate-950/60 border-l-4 border-blue-500 hover:bg-slate-900/60 hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] transition-all duration-300 animate-fade-in"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <CardContent className="p-4 space-y-3">
-                    <h3 className="font-semibold text-slate-200 line-clamp-1">{note.title}</h3>
-                    
-                    <div className="space-y-1 text-xs">
-                      <p className="text-slate-400">Slug: <span className="text-blue-400 font-mono">/notes/{note.slug}</span></p>
-                      <p className="text-slate-400">User: <span className="text-slate-500 font-mono">{note.anonymous_user_id}</span></p>
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-800">
-                        <div className="flex items-center gap-1 text-slate-400">
-                          <Eye className="h-3 w-3" />
-                          <span>{note.views_count}</span>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">User ID: </span>
+                            <span className="font-mono text-xs">{website.anonymous_user_id}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Slug: </span>
+                            <span className="font-mono">/web/{website.slug}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Views: </span>
+                            <span className="font-semibold">{website.views_count}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Created: </span>
+                            <span>{formatTimeAgo(website.created_at)}</span>
+                          </div>
                         </div>
-                        <span className="text-slate-500">{formatTimeAgo(note.created_at)}</span>
                       </div>
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full bg-slate-900/50 border-blue-500/30 hover:bg-blue-500/10 hover:border-blue-500 text-blue-400"
-                      onClick={() => window.open(`https://farabi.me/notes/${note.slug}`, '_blank')}
-                    >
-                      <ExternalLink className="h-3 w-3 mr-2" />
-                      View Note
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
         </Tabs>
       </div>
     </div>
   );
-};
-
-export default Owner;
+}
