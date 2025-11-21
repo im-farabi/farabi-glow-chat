@@ -177,7 +177,8 @@ const Grammify = () => {
               {/* First Row - Enhancements only */}
               <div className="grid grid-cols-1">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Enhancements</label>
+                  <label className="text-sm font-medium mb-2 block">Enhancement Type</label>
+                  <p className="text-xs text-muted-foreground mb-2">Choose the type of content you're working on</p>
                   <Select value={enhancement} onValueChange={setEnhancement}>
                     <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue />
@@ -188,7 +189,10 @@ const Grammify = () => {
                           <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
                             <img src={openaiIcon} alt="OpenAI" className="w-full h-full object-contain" />
                           </div>
-                          Prompt Engineering
+                          <div className="flex flex-col">
+                            <span className="font-medium">AI Prompts</span>
+                            <span className="text-xs opacity-70">For ChatGPT, Claude, etc.</span>
+                          </div>
                         </div>
                       </SelectItem>
                       <SelectItem value="lettering-emailing">
@@ -196,7 +200,10 @@ const Grammify = () => {
                           <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
                             <img src={gmailIcon} alt="Gmail" className="w-full h-full object-contain" />
                           </div>
-                          Lettering / Emailing
+                          <div className="flex flex-col">
+                            <span className="font-medium">Emails & Letters</span>
+                            <span className="text-xs opacity-70">Professional correspondence</span>
+                          </div>
                         </div>
                       </SelectItem>
                       <SelectItem value="work-purpose">
@@ -204,7 +211,10 @@ const Grammify = () => {
                           <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
                             <img src={workIcon} alt="Work" className="w-full h-full object-contain" />
                           </div>
-                          Work Purpose
+                          <div className="flex flex-col">
+                            <span className="font-medium">Business Writing</span>
+                            <span className="text-xs opacity-70">Reports, proposals, documents</span>
+                          </div>
                         </div>
                       </SelectItem>
                       <SelectItem value="normal-chatting">
@@ -212,7 +222,10 @@ const Grammify = () => {
                           <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
                             <img src={chatIcon} alt="Chat" className="w-full h-full object-contain" />
                           </div>
-                          Normal Chatting
+                          <div className="flex flex-col">
+                            <span className="font-medium">Casual Messages</span>
+                            <span className="text-xs opacity-70">Texts, chats, social media</span>
+                          </div>
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -223,7 +236,8 @@ const Grammify = () => {
               {/* Second Row - Other 3 options */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Prompt Mode</label>
+                  <label className="text-sm font-medium mb-2 block">Length</label>
+                  <p className="text-xs text-muted-foreground mb-2">Control the output length</p>
                   <Select value={promptMode} onValueChange={setPromptMode}>
                     <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue />
@@ -252,7 +266,8 @@ const Grammify = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Personalization</label>
+                  <label className="text-sm font-medium mb-2 block">Tone</label>
+                  <p className="text-xs text-muted-foreground mb-2">Set the tone of your text</p>
                   <Select value={personalization} onValueChange={setPersonalization}>
                     <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue />
@@ -281,7 +296,8 @@ const Grammify = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Reply Mode</label>
+                  <label className="text-sm font-medium mb-2 block">Speed</label>
+                  <p className="text-xs text-muted-foreground mb-2">Choose processing speed</p>
                   <Select value={replyMode} onValueChange={setReplyMode}>
                     <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue />
