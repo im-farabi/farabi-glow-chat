@@ -68,21 +68,48 @@ serve(async (req) => {
     let response;
     let usedFallback = false;
 
+    // Helper function to make API call with retry
+    const makeAPICall = async (key: string, retries = 2): Promise<Response> => {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const res = await fetch('https://text.pollinations.ai/openai', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${key}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: text }
+              ]
+            })
+          });
+
+          // If success or non-retryable error, return immediately
+          if (res.ok || (res.status !== 502 && res.status !== 503 && res.status !== 504)) {
+            return res;
+          }
+
+          // For 502/503/504, retry after delay
+          if (attempt < retries) {
+            console.log(`API returned ${res.status}, retrying in ${(attempt + 1) * 500}ms...`);
+            await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 500));
+          } else {
+            return res;
+          }
+        } catch (error) {
+          if (attempt === retries) throw error;
+          console.log(`Request failed (attempt ${attempt + 1}), retrying...`);
+          await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 500));
+        }
+      }
+      throw new Error('Max retries exceeded');
+    };
+
     try {
-      response = await fetch('https://text.pollinations.ai/openai', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: text }
-          ]
-        })
-      });
+      response = await makeAPICall(apiKey);
 
       if (!response.ok) {
         throw new Error(`Primary API failed: ${response.status}`);
@@ -94,27 +121,18 @@ serve(async (req) => {
         throw new Error('Fallback API key not configured');
       }
 
-      response = await fetch('https://text.pollinations.ai/openai', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${fallbackKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: text }
-          ]
-        })
-      });
-
+      response = await makeAPICall(fallbackKey);
       usedFallback = true;
     }
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('API error:', response.status, errorText);
+      
+      if (response.status === 502 || response.status === 503 || response.status === 504) {
+        throw new Error('AI service temporarily unavailable. Please try again in a moment.');
+      }
+      
       throw new Error(`API Error: ${response.status}`);
     }
 
