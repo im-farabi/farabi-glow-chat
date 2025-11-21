@@ -185,46 +185,46 @@ const Grammify = () => {
                     </SelectTrigger>
                     <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-black dark:text-white">
                       <SelectItem value="prompt-engineering">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
                             <img src={openaiIcon} alt="OpenAI" className="w-full h-full object-contain" />
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium">AI Prompts</span>
-                            <span className="text-xs opacity-70">For ChatGPT, Claude, etc.</span>
+                          <div>
+                            <div className="font-medium">Prompt Engineering</div>
+                            <div className="text-xs opacity-70">For ChatGPT, Claude, etc.</div>
                           </div>
                         </div>
                       </SelectItem>
                       <SelectItem value="lettering-emailing">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
                             <img src={gmailIcon} alt="Gmail" className="w-full h-full object-contain" />
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium">Emails & Letters</span>
-                            <span className="text-xs opacity-70">Professional correspondence</span>
+                          <div>
+                            <div className="font-medium">Emails & Letters</div>
+                            <div className="text-xs opacity-70">Professional correspondence</div>
                           </div>
                         </div>
                       </SelectItem>
                       <SelectItem value="work-purpose">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
                             <img src={workIcon} alt="Work" className="w-full h-full object-contain" />
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium">Business Writing</span>
-                            <span className="text-xs opacity-70">Reports, proposals, documents</span>
+                          <div>
+                            <div className="font-medium">Business Writing</div>
+                            <div className="text-xs opacity-70">Reports, proposals, documents</div>
                           </div>
                         </div>
                       </SelectItem>
                       <SelectItem value="normal-chatting">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
                             <img src={chatIcon} alt="Chat" className="w-full h-full object-contain" />
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium">Casual Messages</span>
-                            <span className="text-xs opacity-70">Texts, chats, social media</span>
+                          <div>
+                            <div className="font-medium">Casual Messages</div>
+                            <div className="text-xs opacity-70">Texts, chats, social media</div>
                           </div>
                         </div>
                       </SelectItem>
