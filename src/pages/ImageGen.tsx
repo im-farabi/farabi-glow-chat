@@ -283,7 +283,7 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
           })}
         </script>
         
-        <Header />
+        <Header showTemporaryToggle={false} />
         
         <main className="container mx-auto px-4 py-8 space-y-8">
           <div className="space-y-6">

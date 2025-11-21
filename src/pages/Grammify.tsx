@@ -63,20 +63,27 @@ const Grammify = () => {
   return (
     <div className="min-h-screen flex flex-col bg-black text-foreground relative overflow-hidden">
       <PremiumBackground />
-      <Header />
+      <Header showTemporaryToggle={false} />
 
       <main className="flex-1 container mx-auto px-4 py-8 relative z-10">
         {/* Hero Section */}
-        <div className="text-center mb-12 animate-fade-in">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Sparkles className="w-10 h-10 text-primary animate-pulse" />
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
-              Grammify
-            </h1>
+        <div className="relative">
+          {/* Radial gradient overlay for depth */}
+          <div className="absolute inset-0 bg-gradient-radial from-primary/5 via-transparent to-transparent blur-3xl pointer-events-none" />
+          
+          <div className="text-center mb-12 animate-fade-in relative z-10">
+            <div className="flex items-center justify-center gap-4 mb-6">
+              <Sparkles className="w-10 h-10 text-primary" />
+              <div className="inline-block px-8 py-3 rounded-2xl bg-card/60 backdrop-blur-xl border-2 border-primary/50 shadow-[0_0_30px_rgba(236,72,153,0.3)]">
+                <h1 className="text-4xl md:text-5xl font-bold text-white">
+                  Grammify
+                </h1>
+              </div>
+            </div>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Enhance your text with AI-powered grammar improvements, style adjustments, and tone optimization
+            </p>
           </div>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Enhance your text with AI-powered grammar improvements, style adjustments, and tone optimization
-          </p>
         </div>
 
         <div className="max-w-4xl mx-auto space-y-8">
