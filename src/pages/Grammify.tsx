@@ -122,126 +122,141 @@ const Grammify = () => {
               <Scale className="w-5 h-5 text-primary" />
               Enhancement Options
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Enhancements</label>
-                <Select value={enhancement} onValueChange={setEnhancement}>
-                  <SelectTrigger className="bg-background/50 border-border/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="prompt-engineering">
-                      <div className="flex items-center">
-                        <img src={openaiIcon} alt="OpenAI" className="w-4 h-4 mr-2" />
-                        Prompt Engineering
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="lettering-emailing">
-                      <div className="flex items-center">
-                        <img src={gmailIcon} alt="Gmail" className="w-4 h-4 mr-2" />
-                        Lettering / Emailing
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="work-purpose">
-                      <div className="flex items-center">
-                        <img src={workIcon} alt="Work" className="w-4 h-4 mr-2" />
-                        Work Purpose
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="normal-chatting">
-                      <div className="flex items-center">
-                        <img src={chatIcon} alt="Chat" className="w-4 h-4 mr-2" />
-                        Normal Chatting
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Prompt Mode</label>
-                <Select value={promptMode} onValueChange={setPromptMode}>
-                  <SelectTrigger className="bg-background/50 border-border/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="longer">
-                      <div className="flex items-center">
-                        <ArrowUpRight className="w-4 h-4 mr-2" />
-                        Longer
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="shorter">
-                      <div className="flex items-center">
-                        <ArrowDownRight className="w-4 h-4 mr-2" />
-                        Shorter
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="balanced">
-                      <div className="flex items-center">
-                        <Scale className="w-4 h-4 mr-2" />
-                        Balanced
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="space-y-4">
+              {/* First Row - Enhancements only */}
+              <div className="grid grid-cols-1">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Enhancements</label>
+                  <Select value={enhancement} onValueChange={setEnhancement}>
+                    <SelectTrigger className="bg-background/50 border-border/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
+                      <SelectItem value="prompt-engineering">
+                        <div className="flex items-center">
+                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
+                            <img src={openaiIcon} alt="OpenAI" className="w-full h-full object-contain" />
+                          </div>
+                          Prompt Engineering
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="lettering-emailing">
+                        <div className="flex items-center">
+                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
+                            <img src={gmailIcon} alt="Gmail" className="w-full h-full object-contain" />
+                          </div>
+                          Lettering / Emailing
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="work-purpose">
+                        <div className="flex items-center">
+                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
+                            <img src={workIcon} alt="Work" className="w-full h-full object-contain" />
+                          </div>
+                          Work Purpose
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="normal-chatting">
+                        <div className="flex items-center">
+                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
+                            <img src={chatIcon} alt="Chat" className="w-full h-full object-contain" />
+                          </div>
+                          Normal Chatting
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-2 block">Personalization</label>
-                <Select value={personalization} onValueChange={setPersonalization}>
-                  <SelectTrigger className="bg-background/50 border-border/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="friendly">
-                      <div className="flex items-center">
-                        <Smile className="w-4 h-4 mr-2" />
-                        Friendly
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="professional">
-                      <div className="flex items-center">
-                        <Briefcase className="w-4 h-4 mr-2" />
-                        Professional
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="normal">
-                      <div className="flex items-center">
-                        <User className="w-4 h-4 mr-2" />
-                        Normal
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Second Row - Other 3 options */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Prompt Mode</label>
+                  <Select value={promptMode} onValueChange={setPromptMode}>
+                    <SelectTrigger className="bg-background/50 border-border/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
+                      <SelectItem value="longer">
+                        <div className="flex items-center">
+                          <ArrowUpRight className="w-4 h-4 mr-2" />
+                          Longer
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="shorter">
+                        <div className="flex items-center">
+                          <ArrowDownRight className="w-4 h-4 mr-2" />
+                          Shorter
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="balanced">
+                        <div className="flex items-center">
+                          <Scale className="w-4 h-4 mr-2" />
+                          Balanced
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <label className="text-sm font-medium mb-2 block">Reply Mode</label>
-                <Select value={replyMode} onValueChange={setReplyMode}>
-                  <SelectTrigger className="bg-background/50 border-border/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fast">
-                      <div className="flex items-center">
-                        <Rocket className="w-4 h-4 mr-2" />
-                        Fast
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="normal">
-                      <div className="flex items-center">
-                        <Zap className="w-4 h-4 mr-2" />
-                        Normal
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="think">
-                      <div className="flex items-center">
-                        <Brain className="w-4 h-4 mr-2" />
-                        Think
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Personalization</label>
+                  <Select value={personalization} onValueChange={setPersonalization}>
+                    <SelectTrigger className="bg-background/50 border-border/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
+                      <SelectItem value="friendly">
+                        <div className="flex items-center">
+                          <Smile className="w-4 h-4 mr-2" />
+                          Friendly
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="professional">
+                        <div className="flex items-center">
+                          <Briefcase className="w-4 h-4 mr-2" />
+                          Professional
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="normal">
+                        <div className="flex items-center">
+                          <User className="w-4 h-4 mr-2" />
+                          Normal
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Reply Mode</label>
+                  <Select value={replyMode} onValueChange={setReplyMode}>
+                    <SelectTrigger className="bg-background/50 border-border/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
+                      <SelectItem value="fast">
+                        <div className="flex items-center">
+                          <Rocket className="w-4 h-4 mr-2" />
+                          Fast
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="normal">
+                        <div className="flex items-center">
+                          <Zap className="w-4 h-4 mr-2" />
+                          Normal
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="think">
+                        <div className="flex items-center">
+                          <Brain className="w-4 h-4 mr-2" />
+                          Think
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
