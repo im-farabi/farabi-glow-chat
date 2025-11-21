@@ -39,13 +39,89 @@ CRITICAL RULES YOU MUST FOLLOW:
 
     // Enhancement Type - adds specific context
     if (enhancement === 'prompt-engineering') {
-      systemPrompt += `CONTEXT: This text is likely an AI prompt or instruction. Structure it clearly with proper formatting, logical flow, and precise language suitable for AI models. Use clear sections, bullet points if appropriate, and ensure instructions are unambiguous.\n\n`;
+      systemPrompt += `CONTEXT: This text is an AI prompt or instruction for models like ChatGPT, Claude, Gemini.
+
+ENHANCEMENT GOALS:
+- Structure with clear sections and logical hierarchy
+- Use specific, unambiguous language (avoid vague terms like "good", "nice")
+- Add formatting: bullet points, numbered steps, clear separators
+- Make instructions explicit and measurable
+- Use action verbs (Analyze, Generate, Explain, etc.)
+- Specify output format expectations
+- Remove redundancy and conversational fluff
+
+EXAMPLE:
+❌ "can you write me something about dogs that's good"
+✅ "Generate a 200-word informative paragraph about dog behavior. Include:
+   1. Social pack dynamics
+   2. Common body language signals
+   3. Training responsiveness
+   Use clear examples and scientific terminology where appropriate."
+
+`;
     } else if (enhancement === 'lettering-emailing') {
-      systemPrompt += `CONTEXT: This text is for an email or letter. Format it with proper email/letter conventions: clear greeting (if present), well-structured paragraphs, professional closing (if present), and appropriate tone. Ensure readability and politeness.\n\n`;
+      systemPrompt += `CONTEXT: This text is for email or letter communication.
+
+ENHANCEMENT GOALS:
+- Add/improve greeting and closing if missing or informal
+- Structure into clear paragraphs (each with one main idea)
+- Use professional but warm language
+- Ensure proper email etiquette (subject clarity, paragraph spacing)
+- Fix run-on sentences that hurt readability
+- Balance formality with approachability
+- Use active voice for directness
+- Add transition phrases between paragraphs
+
+EXAMPLE:
+❌ "hey just wanted to check if you got my last email about the meeting we need to schedule soon let me know"
+✅ "Hi [Name],
+
+I wanted to follow up on my previous email regarding scheduling our meeting. Could you please confirm your availability at your earliest convenience?
+
+Looking forward to hearing from you.
+
+Best regards,
+[Your name]"
+
+`;
     } else if (enhancement === 'work-purpose') {
-      systemPrompt += `CONTEXT: This text is for professional/business use. Make it formal, precise, and business-appropriate. Use professional vocabulary, clear structure, and ensure it sounds authoritative and credible. Remove casual language.\n\n`;
+      systemPrompt += `CONTEXT: This text is for professional business use (reports, proposals, presentations, documentation).
+
+ENHANCEMENT GOALS:
+- Use formal, authoritative language
+- Replace casual phrases with business terminology
+- Ensure precision and clarity (no ambiguity)
+- Structure with clear topic sentences
+- Use passive voice where appropriate for objectivity
+- Add industry-standard terminology
+- Remove emotional language and replace with data-focused statements
+- Ensure claims are specific and measurable
+
+EXAMPLE:
+❌ "I think the project went pretty well and we should probably do more stuff like this"
+✅ "The project achieved its primary objectives and demonstrated strong ROI. Based on these results, I recommend implementing similar initiatives across additional departments to maximize organizational efficiency."
+
+`;
     } else if (enhancement === 'normal-chatting') {
-      systemPrompt += `CONTEXT: This text is for casual conversation/messaging. Keep it natural, friendly, and conversational while fixing grammar. Preserve casual tone but ensure clarity and proper punctuation.\n\n`;
+      systemPrompt += `CONTEXT: This text is for casual conversation, texting, or social media.
+
+ENHANCEMENT GOALS:
+- Keep natural, conversational tone
+- Fix grammar WITHOUT making it sound formal or stiff
+- Preserve slang, emojis, and casual expressions that work
+- Add punctuation for clarity (but don't over-punctuate)
+- Fix obvious typos and autocorrect errors
+- Maintain the original energy and personality
+- DON'T make it sound corporate or professional
+- Keep it authentic to how people actually text
+
+EXAMPLE:
+❌ "omg did u see that thing yesterday it was insane i cant believe it"
+✅ "OMG, did you see that thing yesterday? It was insane! I can't believe it."
+
+NOT THIS: "I observed the event yesterday and found it quite remarkable. It exceeded my expectations."
+
+`;
     }
 
     systemPrompt += `Example of CORRECT behavior:
