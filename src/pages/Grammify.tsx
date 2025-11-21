@@ -1,13 +1,18 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import PremiumBackground from "@/components/PremiumBackground";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Sparkles, Zap, Scale, Brain, ArrowUpRight, ArrowDownRight, Smile, Briefcase, User, Rocket } from "lucide-react";
+import { Copy, Sparkles, Zap, Scale, Brain, ArrowUpRight, ArrowDownRight, Smile, Briefcase, User, Rocket, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import openaiIcon from "@/assets/openai-icon.png";
+import gmailIcon from "@/assets/gmail-icon.png";
+import workIcon from "@/assets/work-icon.png";
+import chatIcon from "@/assets/chat-icon.png";
 const Grammify = () => {
   const [inputText, setInputText] = useState("");
   const [outputText, setOutputText] = useState("");
@@ -15,6 +20,7 @@ const Grammify = () => {
   const [promptMode, setPromptMode] = useState("balanced");
   const [personalization, setPersonalization] = useState("normal");
   const [replyMode, setReplyMode] = useState("normal");
+  const [enhancement, setEnhancement] = useState("prompt-engineering");
   const handleEnhance = async () => {
     if (inputText.length < 3 || inputText.length > 1000) {
       toast.error("Text must be between 3 and 1000 characters");
@@ -31,7 +37,8 @@ const Grammify = () => {
           text: inputText,
           promptMode,
           personalization,
-          replyMode
+          replyMode,
+          enhancement
         }
       });
       if (error) throw error;
@@ -59,6 +66,14 @@ const Grammify = () => {
       <Header showTemporaryToggle={false} />
 
       <main className="flex-1 container mx-auto px-4 py-8 relative z-10">
+        {/* Back to Chat Button */}
+        <Link to="/">
+          <Button variant="ghost" className="mb-6 hover:bg-accent/50">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Chat
+          </Button>
+        </Link>
+
         {/* Hero Section */}
         <div className="relative">
           {/* Radial gradient overlay for depth */}
@@ -68,7 +83,7 @@ const Grammify = () => {
             <div className="flex items-center justify-center gap-4 mb-6">
               
               <div className="inline-block px-8 py-3 rounded-2xl backdrop-blur-xl border-2 border-primary/50 shadow-[0_0_30px_rgba(236,72,153,0.3)] text-slate-300 bg-[#181a1a]">
-                <h1 className="text-4xl md:text-5xl font-bold text-white">
+                <h1 className="text-5xl md:text-6xl font-bold text-white">
                   Grammify
                 </h1>
               </div>
@@ -107,7 +122,41 @@ const Grammify = () => {
               <Scale className="w-5 h-5 text-primary" />
               Enhancement Options
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Enhancements</label>
+                <Select value={enhancement} onValueChange={setEnhancement}>
+                  <SelectTrigger className="bg-background/50 border-border/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="prompt-engineering">
+                      <div className="flex items-center">
+                        <img src={openaiIcon} alt="OpenAI" className="w-4 h-4 mr-2" />
+                        Prompt Engineering
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="lettering-emailing">
+                      <div className="flex items-center">
+                        <img src={gmailIcon} alt="Gmail" className="w-4 h-4 mr-2" />
+                        Lettering / Emailing
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="work-purpose">
+                      <div className="flex items-center">
+                        <img src={workIcon} alt="Work" className="w-4 h-4 mr-2" />
+                        Work Purpose
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="normal-chatting">
+                      <div className="flex items-center">
+                        <img src={chatIcon} alt="Chat" className="w-4 h-4 mr-2" />
+                        Normal Chatting
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <label className="text-sm font-medium mb-2 block">Prompt Mode</label>
                 <Select value={promptMode} onValueChange={setPromptMode}>
