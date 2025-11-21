@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Copy, Sparkles, Zap, Scale, Brain, ArrowUpRight, ArrowDownRight, Smile, Briefcase, User, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-
 const Grammify = () => {
   const [inputText, setInputText] = useState("");
   const [outputText, setOutputText] = useState("");
@@ -16,28 +15,26 @@ const Grammify = () => {
   const [promptMode, setPromptMode] = useState("balanced");
   const [personalization, setPersonalization] = useState("normal");
   const [replyMode, setReplyMode] = useState("normal");
-
   const handleEnhance = async () => {
     if (inputText.length < 3 || inputText.length > 1000) {
       toast.error("Text must be between 3 and 1000 characters");
       return;
     }
-
     setIsLoading(true);
     setOutputText("");
-
     try {
-      const { data, error } = await supabase.functions.invoke("grammify", {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke("grammify", {
         body: {
           text: inputText,
           promptMode,
           personalization,
-          replyMode,
-        },
+          replyMode
+        }
       });
-
       if (error) throw error;
-
       if (data?.enhancedText) {
         setOutputText(data.enhancedText);
         toast.success("Text enhanced successfully!");
@@ -51,17 +48,13 @@ const Grammify = () => {
       setIsLoading(false);
     }
   };
-
   const handleCopy = () => {
     navigator.clipboard.writeText(outputText);
     toast.success("Copied to clipboard!");
   };
-
   const charCount = inputText.length;
   const isValid = charCount >= 3 && charCount <= 1000;
-
-  return (
-    <div className="min-h-screen flex flex-col bg-black text-foreground relative overflow-hidden">
+  return <div className="min-h-screen flex flex-col bg-black text-foreground relative overflow-hidden">
       <PremiumBackground />
       <Header showTemporaryToggle={false} />
 
@@ -73,8 +66,8 @@ const Grammify = () => {
           
           <div className="text-center mb-12 animate-fade-in relative z-10">
             <div className="flex items-center justify-center gap-4 mb-6">
-              <Sparkles className="w-10 h-10 text-primary" />
-              <div className="inline-block px-8 py-3 rounded-2xl bg-card/60 backdrop-blur-xl border-2 border-primary/50 shadow-[0_0_30px_rgba(236,72,153,0.3)]">
+              
+              <div className="inline-block px-8 py-3 rounded-2xl backdrop-blur-xl border-2 border-primary/50 shadow-[0_0_30px_rgba(236,72,153,0.3)] text-slate-300 bg-[#181a1a]">
                 <h1 className="text-4xl md:text-5xl font-bold text-white">
                   Grammify
                 </h1>
@@ -88,31 +81,28 @@ const Grammify = () => {
 
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Input Section */}
-          <Card className="p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in" style={{ animationDelay: "0.2s" }}>
+          <Card className="p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in" style={{
+          animationDelay: "0.2s"
+        }}>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <Zap className="w-5 h-5 text-primary" />
               Your Text
             </h2>
-            <Textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Enter your text here (3-1000 characters)..."
-              className="min-h-[150px] bg-background/50 border-border/50 focus:border-primary transition-colors resize-none"
-            />
+            <Textarea value={inputText} onChange={e => setInputText(e.target.value)} placeholder="Enter your text here (3-1000 characters)..." className="min-h-[150px] bg-background/50 border-border/50 focus:border-primary transition-colors resize-none" />
             <div className="flex justify-between items-center mt-2">
               <span className={`text-sm ${isValid ? "text-muted-foreground" : "text-destructive"}`}>
                 {charCount}/1000 characters
               </span>
-              {!isValid && charCount > 0 && (
-                <span className="text-xs text-destructive">
+              {!isValid && charCount > 0 && <span className="text-xs text-destructive">
                   {charCount < 3 ? "Too short" : "Too long"}
-                </span>
-              )}
+                </span>}
             </div>
           </Card>
 
           {/* Options Section */}
-          <Card className="p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in" style={{ animationDelay: "0.3s" }}>
+          <Card className="p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in" style={{
+          animationDelay: "0.3s"
+        }}>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <Scale className="w-5 h-5 text-primary" />
               Enhancement Options
@@ -206,39 +196,25 @@ const Grammify = () => {
               </div>
             </div>
 
-            <Button
-              onClick={handleEnhance}
-              disabled={!isValid || isLoading}
-              className="w-full mt-6 h-12 bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(236,72,153,0.4)]"
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
+            <Button onClick={handleEnhance} disabled={!isValid || isLoading} className="w-full mt-6 h-12 bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(236,72,153,0.4)]">
+              {isLoading ? <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                   Enhancing...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
+                </div> : <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5" />
                   Enhance Text
-                </div>
-              )}
+                </div>}
             </Button>
           </Card>
 
           {/* Output Section */}
-          {outputText && (
-            <Card className="p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in">
+          {outputText && <Card className="p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold flex items-center gap-2">
                   <Brain className="w-5 h-5 text-primary" />
                   Enhanced Text
                 </h2>
-                <Button
-                  onClick={handleCopy}
-                  variant="outline"
-                  size="sm"
-                  className="hover:bg-primary/10"
-                >
+                <Button onClick={handleCopy} variant="outline" size="sm" className="hover:bg-primary/10">
                   <Copy className="w-4 h-4 mr-2" />
                   Copy
                 </Button>
@@ -252,12 +228,9 @@ const Grammify = () => {
                 <span>Before: {charCount} chars</span>
                 <span>After: {outputText.length} chars</span>
               </div>
-            </Card>
-          )}
+            </Card>}
         </div>
       </main>
-    </div>
-  );
+    </div>;
 };
-
 export default Grammify;
