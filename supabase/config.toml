@@ -1,5 +1,8 @@
 project_id = "gjlxuvcfoqjhwzcmpaju"
 
+[functions.grammify]
+verify_jwt = false
+
 [functions.pollinations-chat]
 verify_jwt = false
 
