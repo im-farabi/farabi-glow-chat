@@ -116,11 +116,11 @@ const Grammify = () => {
       </div>
       <Header showTemporaryToggle={false} />
 
-      <main className="flex-1 container mx-auto px-4 py-8 relative z-10">
+      <main className="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8 max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl relative z-10">
         {/* Back to Chat Button */}
         <Link to="/">
-          <Button variant="ghost" className="mb-6 hover:bg-accent/50">
-            <ArrowLeft className="w-4 h-4 mr-2" />
+          <Button variant="ghost" className="mb-6 hover:bg-accent/50 text-base sm:text-sm py-2.5 sm:py-2">
+            <ArrowLeft className="w-5 h-5 sm:w-4 sm:h-4 mr-2" />
             Back to Chat
           </Button>
         </Link>
@@ -133,129 +133,129 @@ const Grammify = () => {
           <div className="text-center mb-12 animate-fade-in relative z-10">
             <div className="flex items-center justify-center gap-4 mb-6">
               
-              <div className="inline-block px-8 py-3 rounded-2xl backdrop-blur-xl border-2 border-primary/50 shadow-[0_0_30px_rgba(236,72,153,0.3)] text-slate-300 bg-[#181a1a]">
-                <h1 className="text-5xl md:text-6xl font-bold text-white">
+              <div className="inline-block px-4 sm:px-6 md:px-8 py-2 sm:py-3 rounded-2xl backdrop-blur-xl border-2 border-primary/50 shadow-[0_0_30px_rgba(236,72,153,0.3)] text-slate-300 bg-[#181a1a]">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white">
                   Grammify
                 </h1>
               </div>
             </div>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg max-w-2xl mx-auto px-4">
               Enhance your text with AI-powered grammar improvements, style adjustments, and tone optimization
             </p>
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="space-y-8">
           {/* Input Section */}
-          <Card className="p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in" style={{
+          <Card className="p-4 sm:p-5 md:p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in" style={{
           animationDelay: "0.2s"
         }}>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-primary" />
+            <h2 className="text-lg sm:text-xl font-semibold mb-4 flex items-center gap-2">
+              <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               Your Text
             </h2>
-            <Textarea value={inputText} onChange={e => setInputText(e.target.value)} placeholder="Enter your text here (3-1000 characters)..." className="min-h-[150px] bg-background/50 border-border/50 focus:border-primary transition-colors resize-none" />
-            <div className="flex justify-between items-center mt-2">
-              <span className={`text-sm ${isValid ? "text-muted-foreground" : "text-destructive"}`}>
+            <Textarea value={inputText} onChange={e => setInputText(e.target.value)} placeholder="Enter your text here (3-1000 characters)..." className="min-h-[120px] sm:min-h-[150px] bg-background/50 border-border/50 focus:border-primary transition-colors resize-none text-base" />
+            <div className="flex justify-between items-center mt-3 sm:mt-2">
+              <span className={`text-xs sm:text-sm ${isValid ? "text-muted-foreground" : "text-destructive"}`}>
                 {charCount}/1000 characters
               </span>
-              {!isValid && charCount > 0 && <span className="text-xs text-destructive">
+              {!isValid && charCount > 0 && <span className="text-[11px] sm:text-xs text-destructive">
                   {charCount < 3 ? "Too short" : "Too long"}
                 </span>}
             </div>
           </Card>
 
           {/* Options Section */}
-          <Card className="p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in" style={{
+          <Card className="p-4 sm:p-5 md:p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in" style={{
           animationDelay: "0.3s"
         }}>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Scale className="w-5 h-5 text-primary" />
+            <h2 className="text-lg sm:text-xl font-semibold mb-4 flex items-center gap-2">
+              <Scale className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               Enhancement Options
             </h2>
             <div className="space-y-4">
               {/* First Row - Enhancements only */}
               <div className="grid grid-cols-1">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Enhancement Type</label>
-                  <p className="text-xs text-muted-foreground mb-2">Choose the type of content you're working on</p>
+                  <label className="text-xs sm:text-sm font-medium mb-2 block">Enhancement Type</label>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mb-2">Choose the type of content you're working on</p>
                   <Select value={enhancement} onValueChange={setEnhancement}>
-                    <SelectTrigger className="bg-background/50 border-border/50">
+                    <SelectTrigger className="bg-background/50 border-border/50 h-11 sm:h-10 text-sm sm:text-base">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-black dark:text-white">
-                      <SelectItem value="prompt-engineering">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
-                            <img src={openaiIcon} alt="OpenAI" className="w-full h-full object-contain" />
-                          </div>
-                          <div>
-                            <div className="font-medium">Prompt Engineering</div>
-                            <div className="text-xs opacity-70">For ChatGPT, Claude, etc.</div>
-                          </div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="lettering-emailing">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
-                            <img src={gmailIcon} alt="Gmail" className="w-full h-full object-contain" />
-                          </div>
-                          <div>
-                            <div className="font-medium">Emails & Letters</div>
-                            <div className="text-xs opacity-70">Professional correspondence</div>
-                          </div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="work-purpose">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
-                            <img src={workIcon} alt="Work" className="w-full h-full object-contain" />
-                          </div>
-                          <div>
-                            <div className="font-medium">Business Writing</div>
-                            <div className="text-xs opacity-70">Reports, proposals, documents</div>
-                          </div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="normal-chatting">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
-                            <img src={chatIcon} alt="Chat" className="w-full h-full object-contain" />
-                          </div>
-                          <div>
-                            <div className="font-medium">Casual Messages</div>
-                            <div className="text-xs opacity-70">Texts, chats, social media</div>
-                          </div>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
+                <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-black dark:text-white">
+                  <SelectItem value="prompt-engineering" className="py-3 sm:py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
+                        <img src={openaiIcon} alt="OpenAI" className="w-full h-full object-contain" />
+                      </div>
+                      <div>
+                        <div className="font-medium">Prompt Engineering</div>
+                        <div className="text-xs opacity-70">For ChatGPT, Claude, etc.</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="lettering-emailing" className="py-3 sm:py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
+                        <img src={gmailIcon} alt="Gmail" className="w-full h-full object-contain" />
+                      </div>
+                      <div>
+                        <div className="font-medium">Emails & Letters</div>
+                        <div className="text-xs opacity-70">Professional correspondence</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="work-purpose" className="py-3 sm:py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
+                        <img src={workIcon} alt="Work" className="w-full h-full object-contain" />
+                      </div>
+                      <div>
+                        <div className="font-medium">Business Writing</div>
+                        <div className="text-xs opacity-70">Reports, proposals, documents</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="normal-chatting" className="py-3 sm:py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1">
+                        <img src={chatIcon} alt="Chat" className="w-full h-full object-contain" />
+                      </div>
+                      <div>
+                        <div className="font-medium">Casual Messages</div>
+                        <div className="text-xs opacity-70">Texts, chats, social media</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
                   </Select>
                 </div>
               </div>
 
               {/* Second Row - Other 3 options */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Length</label>
-                  <p className="text-xs text-muted-foreground mb-2">Control the output length</p>
+                  <label className="text-xs sm:text-sm font-medium mb-2 block">Length</label>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mb-2">Control the output length</p>
                   <Select value={promptMode} onValueChange={setPromptMode}>
-                    <SelectTrigger className="bg-background/50 border-border/50">
+                    <SelectTrigger className="bg-background/50 border-border/50 h-11 sm:h-10 text-sm sm:text-base">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-black dark:text-white">
-                      <SelectItem value="longer">
+                      <SelectItem value="longer" className="py-3 sm:py-2">
                         <div className="flex items-center">
                           <ArrowUpRight className="w-4 h-4 mr-2" />
                           Longer
                         </div>
                       </SelectItem>
-                      <SelectItem value="shorter">
+                      <SelectItem value="shorter" className="py-3 sm:py-2">
                         <div className="flex items-center">
                           <ArrowDownRight className="w-4 h-4 mr-2" />
                           Shorter
                         </div>
                       </SelectItem>
-                      <SelectItem value="balanced">
+                      <SelectItem value="balanced" className="py-3 sm:py-2">
                         <div className="flex items-center">
                           <Scale className="w-4 h-4 mr-2" />
                           Balanced
@@ -266,26 +266,26 @@ const Grammify = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Tone</label>
-                  <p className="text-xs text-muted-foreground mb-2">Set the tone of your text</p>
+                  <label className="text-xs sm:text-sm font-medium mb-2 block">Tone</label>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mb-2">Set the tone of your text</p>
                   <Select value={personalization} onValueChange={setPersonalization}>
-                    <SelectTrigger className="bg-background/50 border-border/50">
+                    <SelectTrigger className="bg-background/50 border-border/50 h-11 sm:h-10 text-sm sm:text-base">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-black dark:text-white">
-                      <SelectItem value="friendly">
+                      <SelectItem value="friendly" className="py-3 sm:py-2">
                         <div className="flex items-center">
                           <Smile className="w-4 h-4 mr-2" />
                           Friendly
                         </div>
                       </SelectItem>
-                      <SelectItem value="professional">
+                      <SelectItem value="professional" className="py-3 sm:py-2">
                         <div className="flex items-center">
                           <Briefcase className="w-4 h-4 mr-2" />
                           Professional
                         </div>
                       </SelectItem>
-                      <SelectItem value="normal">
+                      <SelectItem value="normal" className="py-3 sm:py-2">
                         <div className="flex items-center">
                           <User className="w-4 h-4 mr-2" />
                           Normal
@@ -296,26 +296,26 @@ const Grammify = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Speed</label>
-                  <p className="text-xs text-muted-foreground mb-2">Choose processing speed</p>
+                  <label className="text-xs sm:text-sm font-medium mb-2 block">Speed</label>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mb-2">Choose processing speed</p>
                   <Select value={replyMode} onValueChange={setReplyMode}>
-                    <SelectTrigger className="bg-background/50 border-border/50">
+                    <SelectTrigger className="bg-background/50 border-border/50 h-11 sm:h-10 text-sm sm:text-base">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-black dark:text-white">
-                      <SelectItem value="fast">
+                      <SelectItem value="fast" className="py-3 sm:py-2">
                         <div className="flex items-center">
                           <Rocket className="w-4 h-4 mr-2" />
                           Fast
                         </div>
                       </SelectItem>
-                      <SelectItem value="normal">
+                      <SelectItem value="normal" className="py-3 sm:py-2">
                         <div className="flex items-center">
                           <Zap className="w-4 h-4 mr-2" />
                           Normal
                         </div>
                       </SelectItem>
-                      <SelectItem value="think">
+                      <SelectItem value="think" className="py-3 sm:py-2">
                         <div className="flex items-center">
                           <Brain className="w-4 h-4 mr-2" />
                           Think
@@ -327,31 +327,31 @@ const Grammify = () => {
               </div>
             </div>
 
-            <Button onClick={handleEnhance} disabled={!isValid || isLoading} className="w-full mt-6 h-12 bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(236,72,153,0.4)]">
+            <Button onClick={handleEnhance} disabled={!isValid || isLoading} className="w-full mt-6 h-12 sm:h-13 md:h-14 bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(236,72,153,0.4)] text-sm sm:text-base">
               {isLoading ? <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                   {loadingStage === "checking" ? "Checking Prompt..." : "Enhancing Text..."}
                 </div> : <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" />
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                   Enhance Text
                 </div>}
             </Button>
           </Card>
 
           {/* Output Section */}
-          {outputText && <Card className="p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-primary" />
+          {outputText && <Card className="p-4 sm:p-5 md:p-6 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] animate-fade-in">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-4">
+                <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
+                  <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   Enhanced Text
                 </h2>
-                <Button onClick={handleCopy} variant="outline" size="sm" className="hover:bg-primary/10">
+                <Button onClick={handleCopy} variant="outline" size="sm" className="hover:bg-primary/10 h-9 sm:h-8 px-3 sm:px-2">
                   <Copy className="w-4 h-4 mr-2" />
                   Copy
                 </Button>
               </div>
-              <div className="bg-background/50 rounded-lg p-4 border border-border/50">
-                <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+              <div className="bg-background/50 rounded-lg p-3 sm:p-4 border border-border/50">
+                <p className="text-foreground whitespace-pre-wrap leading-relaxed text-sm sm:text-base">
                   {outputText}
                 </p>
               </div>
