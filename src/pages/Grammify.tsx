@@ -17,6 +17,7 @@ const Grammify = () => {
   const [inputText, setInputText] = useState("");
   const [outputText, setOutputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState<"checking" | "enhancing">("checking");
   const [promptMode, setPromptMode] = useState("balanced");
   const [personalization, setPersonalization] = useState("normal");
   const [replyMode, setReplyMode] = useState("normal");
@@ -27,7 +28,14 @@ const Grammify = () => {
       return;
     }
     setIsLoading(true);
+    setLoadingStage("checking");
     setOutputText("");
+    
+    // Show "Checking Prompt..." for 1.5 seconds
+    setTimeout(() => {
+      setLoadingStage("enhancing");
+    }, 1500);
+    
     try {
       const {
         data,
@@ -53,6 +61,7 @@ const Grammify = () => {
       toast.error("Failed to enhance text. Please try again.");
     } finally {
       setIsLoading(false);
+      setLoadingStage("checking");
     }
   };
   const handleCopy = () => {
@@ -62,7 +71,49 @@ const Grammify = () => {
   const charCount = inputText.length;
   const isValid = charCount >= 3 && charCount <= 1000;
   return <div className="min-h-screen flex flex-col bg-black text-foreground relative overflow-hidden">
-      <PremiumBackground />
+      {/* Tech-oriented background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        {/* Animated grid pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1a1a1a_1px,transparent_1px),linear-gradient(to_bottom,#1a1a1a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_100%)]">
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black" />
+        </div>
+        
+        {/* Glowing nodes */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        
+        {/* Animated circuit lines */}
+        <div className="absolute inset-0 opacity-30">
+          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="circuit-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#EC4899" stopOpacity="0" />
+                <stop offset="50%" stopColor="#EC4899" stopOpacity="1" />
+                <stop offset="100%" stopColor="#A855F7" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="M0,100 L200,100 L200,300 L400,300" stroke="url(#circuit-gradient)" strokeWidth="2" fill="none" className="animate-pulse" />
+            <path d="M800,200 L600,200 L600,400 L400,400" stroke="url(#circuit-gradient)" strokeWidth="2" fill="none" className="animate-pulse" style={{ animationDelay: '0.5s' }} />
+            <circle cx="200" cy="100" r="4" fill="#EC4899" className="animate-pulse" />
+            <circle cx="200" cy="300" r="4" fill="#A855F7" className="animate-pulse" style={{ animationDelay: '0.3s' }} />
+            <circle cx="600" cy="200" r="4" fill="#EC4899" className="animate-pulse" style={{ animationDelay: '0.6s' }} />
+          </svg>
+        </div>
+        
+        {/* Tech particles */}
+        {[...Array(15)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-primary rounded-full opacity-60"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animation: `float ${Math.random() * 10 + 10}s ease-in-out infinite`,
+              animationDelay: `${Math.random() * 5}s`
+            }}
+          />
+        ))}
+      </div>
       <Header showTemporaryToggle={false} />
 
       <main className="flex-1 container mx-auto px-4 py-8 relative z-10">
@@ -263,7 +314,7 @@ const Grammify = () => {
             <Button onClick={handleEnhance} disabled={!isValid || isLoading} className="w-full mt-6 h-12 bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(236,72,153,0.4)]">
               {isLoading ? <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  Enhancing...
+                  {loadingStage === "checking" ? "Checking Prompt..." : "Enhancing Text..."}
                 </div> : <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5" />
                   Enhance Text
