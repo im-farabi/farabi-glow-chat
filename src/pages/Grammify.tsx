@@ -131,7 +131,7 @@ const Grammify = () => {
                     <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
+                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-black dark:text-white">
                       <SelectItem value="prompt-engineering">
                         <div className="flex items-center">
                           <div className="w-6 h-6 flex items-center justify-center rounded bg-white/80 p-1 mr-2">
@@ -177,7 +177,7 @@ const Grammify = () => {
                     <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
+                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-black dark:text-white">
                       <SelectItem value="longer">
                         <div className="flex items-center">
                           <ArrowUpRight className="w-4 h-4 mr-2" />
@@ -206,7 +206,7 @@ const Grammify = () => {
                     <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
+                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-black dark:text-white">
                       <SelectItem value="friendly">
                         <div className="flex items-center">
                           <Smile className="w-4 h-4 mr-2" />
@@ -235,7 +235,7 @@ const Grammify = () => {
                     <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm">
+                    <SelectContent className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm text-black dark:text-white">
                       <SelectItem value="fast">
                         <div className="flex items-center">
                           <Rocket className="w-4 h-4 mr-2" />
