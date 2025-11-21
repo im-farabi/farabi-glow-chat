@@ -298,7 +298,7 @@ CRITICAL: Return ONLY the JSON array, no markdown, no backticks, no extra text.`
           })}
         </script>
         
-        <Header />
+        <Header showTemporaryToggle={false} />
         <main className="flex-1 container max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12 animate-fade-in">
           <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
             <CardHeader className="pb-6 md:pb-8">
