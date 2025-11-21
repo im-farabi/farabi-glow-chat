@@ -14,46 +14,66 @@ serve(async (req) => {
     const { text, promptMode, personalization, replyMode } = await req.json();
     
     // Validation
-    if (!text || text.length < 3 || text.length > 500) {
+    if (!text || text.length < 3 || text.length > 1000) {
       return new Response(
-        JSON.stringify({ error: 'Text must be between 3 and 500 characters' }),
+        JSON.stringify({ error: 'Text must be between 3 and 1000 characters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Build system prompt based on options
-    let systemPrompt = "You are a grammar and style enhancement AI. ";
+    // Build system prompt with strict constraints
+    let systemPrompt = `You are a professional text enhancement AI. Your ONLY job is to fix and improve the text provided.
+
+CRITICAL RULES YOU MUST FOLLOW:
+1. NEVER add new information, facts, or content that is not already in the original text
+2. NEVER respond to questions or statements conversationally - only fix their grammar and format
+3. NEVER break character or engage with the text as if you're having a conversation
+4. ONLY improve: grammar, spelling, punctuation, capitalization, sentence structure, clarity, and word choice
+5. Keep the original meaning, intent, and all factual content completely unchanged
+6. If the text is a question (like "how are you"), format it properly but DO NOT answer it
+
+Example of CORRECT behavior:
+- Input: "hi how are you ai"
+- Output: "Hi, how are you, AI?" (✓ Fixed capitalization and punctuation)
+- WRONG: "I'm doing well, thank you! How are you?" (✗ This is conversational and adds information)
+
+Example of CORRECT behavior:
+- Input: "the book was good i liked it"
+- Output: "The book was good; I liked it." (✓ Fixed grammar and punctuation)
+- WRONG: "The book was excellent and I thoroughly enjoyed reading it because..." (✗ This adds new opinions)
+
+`;
 
     // Prompt Mode
     if (promptMode === 'longer') {
-      systemPrompt += "Expand the text with more details and elaboration. ";
+      systemPrompt += "\nLength Adjustment: Slightly expand sentences for better clarity and flow, but ONLY by improving structure and word choice - never by adding new facts or ideas. ";
     } else if (promptMode === 'shorter') {
-      systemPrompt += "Make the text more concise and brief. ";
+      systemPrompt += "\nLength Adjustment: Make the text more concise by removing redundancy and tightening sentence structure, while keeping all original meaning. ";
     } else {
-      systemPrompt += "Analyze the text and optimize it to the ideal length naturally. ";
+      systemPrompt += "\nLength Adjustment: Optimize the text to its natural ideal length by improving structure without forcing it to be longer or shorter. ";
     }
 
     // Personalization
     if (personalization === 'friendly') {
-      systemPrompt += "Use a casual, fun, and approachable tone that's slightly shorter. ";
+      systemPrompt += "\nTone: Use a warm, casual, and approachable tone while maintaining proper grammar. Make it sound friendly but still clear. ";
     } else if (personalization === 'professional') {
-      systemPrompt += "Use a professional yet human tone, avoiding robotic language. ";
+      systemPrompt += "\nTone: Use a professional yet natural tone. Sound polished and business-appropriate, but avoid stiff or robotic language. ";
     } else {
-      systemPrompt += "Detect the appropriate tone from the context and apply it naturally. ";
+      systemPrompt += "\nTone: Detect the original tone from the text and enhance it naturally. Match the writer's intended style. ";
     }
 
     // Reply Mode
     let model = 'gemini-search';
     if (replyMode === 'fast') {
-      systemPrompt += "Provide quick, direct improvements.";
+      systemPrompt += "\nApproach: Quick, direct improvements focusing on the most obvious grammar and clarity issues.";
     } else if (replyMode === 'think') {
-      systemPrompt += "Carefully analyze and provide the best possible improvements with attention to nuance.";
+      systemPrompt += "\nApproach: Thoroughly analyze every aspect of the text. Pay careful attention to nuance, flow, sentence variety, and subtle improvements in word choice and structure.";
       model = 'openai-large';
     } else {
-      systemPrompt += "Provide balanced improvements.";
+      systemPrompt += "\nApproach: Balanced improvements covering grammar, clarity, and structure with moderate attention to detail.";
     }
 
-    systemPrompt += "\n\nIMPORTANT: Return ONLY the enhanced text. Do not include any explanations, notes, or additional commentary.";
+    systemPrompt += "\n\nOUTPUT FORMAT: Return ONLY the enhanced text. No explanations, no notes, no commentary, no quotation marks around it. Just the improved text itself.";
 
     console.log('Enhancing text with:', { promptMode, personalization, replyMode, model });
 

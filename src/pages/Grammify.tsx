@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Sparkles, Zap, Scale, Brain } from "lucide-react";
+import { Copy, Sparkles, Zap, Scale, Brain, ArrowUpRight, ArrowDownRight, Smile, Briefcase, User, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,8 +18,8 @@ const Grammify = () => {
   const [replyMode, setReplyMode] = useState("normal");
 
   const handleEnhance = async () => {
-    if (inputText.length < 3 || inputText.length > 500) {
-      toast.error("Text must be between 3 and 500 characters");
+    if (inputText.length < 3 || inputText.length > 1000) {
+      toast.error("Text must be between 3 and 1000 characters");
       return;
     }
 
@@ -58,7 +58,7 @@ const Grammify = () => {
   };
 
   const charCount = inputText.length;
-  const isValid = charCount >= 3 && charCount <= 500;
+  const isValid = charCount >= 3 && charCount <= 1000;
 
   return (
     <div className="min-h-screen flex flex-col bg-black text-foreground relative overflow-hidden">
@@ -89,12 +89,12 @@ const Grammify = () => {
             <Textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Enter your text here (3-500 characters)..."
+              placeholder="Enter your text here (3-1000 characters)..."
               className="min-h-[150px] bg-background/50 border-border/50 focus:border-primary transition-colors resize-none"
             />
             <div className="flex justify-between items-center mt-2">
               <span className={`text-sm ${isValid ? "text-muted-foreground" : "text-destructive"}`}>
-                {charCount}/500 characters
+                {charCount}/1000 characters
               </span>
               {!isValid && charCount > 0 && (
                 <span className="text-xs text-destructive">
@@ -118,9 +118,24 @@ const Grammify = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="longer">Longer</SelectItem>
-                    <SelectItem value="shorter">Shorter</SelectItem>
-                    <SelectItem value="balanced">Balanced</SelectItem>
+                    <SelectItem value="longer">
+                      <div className="flex items-center">
+                        <ArrowUpRight className="w-4 h-4 mr-2" />
+                        Longer
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="shorter">
+                      <div className="flex items-center">
+                        <ArrowDownRight className="w-4 h-4 mr-2" />
+                        Shorter
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="balanced">
+                      <div className="flex items-center">
+                        <Scale className="w-4 h-4 mr-2" />
+                        Balanced
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -132,9 +147,24 @@ const Grammify = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="friendly">Friendly</SelectItem>
-                    <SelectItem value="professional">Professional</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="friendly">
+                      <div className="flex items-center">
+                        <Smile className="w-4 h-4 mr-2" />
+                        Friendly
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="professional">
+                      <div className="flex items-center">
+                        <Briefcase className="w-4 h-4 mr-2" />
+                        Professional
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="normal">
+                      <div className="flex items-center">
+                        <User className="w-4 h-4 mr-2" />
+                        Normal
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -146,9 +176,24 @@ const Grammify = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="fast">Fast</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="think">Think</SelectItem>
+                    <SelectItem value="fast">
+                      <div className="flex items-center">
+                        <Rocket className="w-4 h-4 mr-2" />
+                        Fast
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="normal">
+                      <div className="flex items-center">
+                        <Zap className="w-4 h-4 mr-2" />
+                        Normal
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="think">
+                      <div className="flex items-center">
+                        <Brain className="w-4 h-4 mr-2" />
+                        Think
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
