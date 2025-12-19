@@ -24,6 +24,7 @@ import Owner from "./pages/Owner";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import Install from "./pages/Install";
 import { getCursorPreference } from "./lib/storage";
 import { useCursorEffects } from "./hooks/useCursorEffects";
 
@@ -61,6 +62,7 @@ const App = () => {
           <Route path="/owner" element={<Owner />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/install" element={<Install />} />
           <Route path="/horizon" element={<HorizonRedirect />} />
           <Route path="/lovable" element={<LovableRedirect />} />
           <Route path="/ad" element={<AdRedirect />} />

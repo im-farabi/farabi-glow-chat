@@ -7,6 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import InstallBanner from './InstallBanner';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -17,7 +18,9 @@ interface HeaderProps {
 
 const Header = ({ onMenuClick, isTemporaryChat, onToggleTemporaryChat, showTemporaryToggle = true }: HeaderProps) => {
   return (
-    <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl h-14">
+    <>
+      <InstallBanner />
+      <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl h-14">
       <div className="flex items-center justify-between px-4 h-full">
         <Button
           variant="ghost"
@@ -60,6 +63,7 @@ const Header = ({ onMenuClick, isTemporaryChat, onToggleTemporaryChat, showTempo
         )}
       </div>
     </header>
+    </>
   );
 };
 
