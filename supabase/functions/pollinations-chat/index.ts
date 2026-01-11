@@ -15,7 +15,7 @@ serve(async (req) => {
     
     const apiKey = useFallback 
       ? Deno.env.get('POLLINATIONS_FALLBACK_API_KEY')
-      : Deno.env.get('POLLINATIONS_API_KEY');
+      : Deno.env.get('NEW_POLLINATIONS_APIKEY_1');
 
     if (!apiKey) {
       throw new Error('API key not configured');

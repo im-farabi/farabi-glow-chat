@@ -17,7 +17,7 @@ serve(async (req) => {
       throw new Error('No prompt provided');
     }
 
-    const apiKey = Deno.env.get('POLLINATIONS_API_KEY');
+    const apiKey = Deno.env.get('NEW_POLLINATIONS_APIKEY_1');
     if (!apiKey) {
       throw new Error('API key not configured');
     }
