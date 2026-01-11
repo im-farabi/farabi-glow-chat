@@ -41,16 +41,20 @@ serve(async (req) => {
       messageContent = prompt;
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       model: model,
       messages: [
         {
           role: "user",
           content: messageContent
         }
-      ],
-      seed: seed
+      ]
     };
+    
+    // Only include seed if provided, and ensure it's an integer
+    if (seed !== undefined && seed !== null) {
+      payload.seed = Math.floor(Number(seed));
+    }
 
     // Use OpenAI-compatible endpoint (new gen.pollinations.ai)
     const response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
