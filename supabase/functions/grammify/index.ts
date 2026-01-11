@@ -189,7 +189,7 @@ ${text}
     console.log('Enhancing text with:', { promptMode, personalization, replyMode, model });
 
     // Try primary API key first
-    const apiKey = Deno.env.get('POLLINATIONS_API_KEY');
+    const apiKey = Deno.env.get('NEW_POLLINATIONS_APIKEY_1');
     const fallbackKey = Deno.env.get('POLLINATIONS_FALLBACK_API_KEY');
 
     if (!apiKey) {

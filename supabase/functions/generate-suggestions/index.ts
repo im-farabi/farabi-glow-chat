@@ -14,7 +14,7 @@ serve(async (req) => {
   try {
     const { aiResponse } = await req.json();
     
-    const apiKey = Deno.env.get('POLLINATIONS_API_KEY');
+    const apiKey = Deno.env.get('NEW_POLLINATIONS_APIKEY_1');
     const fallbackApiKey = Deno.env.get('POLLINATIONS_FALLBACK_API_KEY');
 
     if (!apiKey) {
