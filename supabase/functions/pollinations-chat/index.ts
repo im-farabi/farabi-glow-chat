@@ -52,8 +52,8 @@ serve(async (req) => {
       seed: seed
     };
 
-    // Use OpenAI-compatible endpoint
-    const response = await fetch('https://text.pollinations.ai/openai', {
+    // Use OpenAI-compatible endpoint (new gen.pollinations.ai)
+    const response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,

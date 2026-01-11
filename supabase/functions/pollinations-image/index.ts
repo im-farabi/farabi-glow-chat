@@ -17,10 +17,16 @@ serve(async (req) => {
       throw new Error('No prompt provided');
     }
 
+    const apiKey = Deno.env.get('POLLINATIONS_API_KEY');
+    if (!apiKey) {
+      throw new Error('API key not configured');
+    }
+
     console.log('Generating image for prompt:', prompt);
 
     const encodedPrompt = encodeURIComponent(prompt);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?nologo=true`;
+    // Use new gen.pollinations.ai endpoint with key as query param
+    const imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?nologo=true&key=${apiKey}`;
 
     const response = await fetch(imageUrl);
 
