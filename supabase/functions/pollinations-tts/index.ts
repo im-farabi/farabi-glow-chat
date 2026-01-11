@@ -21,13 +21,11 @@ serve(async (req) => {
     console.log('Generating TTS with voice:', voice, 'model:', model);
 
     const encodedText = encodeURIComponent(text);
-    const audioUrl = `https://text.pollinations.ai/${encodedText}?model=${model || 'openai-audio'}&voice=${voice || 'nova'}`;
+    // Use new gen.pollinations.ai endpoint with key as query param
+    const audioUrl = `https://gen.pollinations.ai/text/${encodedText}?model=${model || 'openai-audio'}&voice=${voice || 'nova'}&key=${apiKey}`;
 
     const response = await fetch(audioUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
-      }
+      method: 'GET'
     });
 
     if (!response.ok) {

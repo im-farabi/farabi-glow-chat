@@ -38,7 +38,7 @@ Rules:
 
     // Try primary model (gemini-search)
     console.log('Attempting suggestion generation with gemini-search model...');
-    let response = await fetch('https://text.pollinations.ai/openai', {
+    let response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -62,7 +62,7 @@ Rules:
       }
 
       console.log('Retrying with fallback API key...');
-      response = await fetch('https://text.pollinations.ai/openai', {
+      response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${fallbackApiKey}`,

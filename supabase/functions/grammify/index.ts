@@ -203,7 +203,7 @@ ${text}
     const makeAPICall = async (key: string, retries = 2): Promise<Response> => {
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-          const res = await fetch('https://text.pollinations.ai/openai', {
+          const res = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${key}`,
