@@ -8,6 +8,9 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import Index from "./pages/Index";
 import About from "./pages/About";
+import BookPage from "./pages/BookPage";
+import BookLibrary from "./pages/BookLibrary";
+import BookSearch from "./pages/BookSearch";
 import HorizonRedirect from "./pages/HorizonRedirect";
 import LovableRedirect from "./pages/LovableRedirect";
 import AdRedirect from "./pages/AdRedirect";
@@ -52,6 +55,9 @@ const App = () => {
           <Route path="/" element={<Index />} />
           <Route path="/c/:chatId" element={<Index />} />
           <Route path="/about" element={<About />} />
+          <Route path="/book" element={<BookPage />} />
+          <Route path="/book/library" element={<BookLibrary />} />
+          <Route path="/book/search" element={<BookSearch />} />
           <Route path="/image-gen" element={<ImageGen />} />
           <Route path="/mcq-gen" element={<MCQGen />} />
           <Route path="/flashcard-gen" element={<FlashcardGen />} />
