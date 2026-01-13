@@ -11,6 +11,7 @@ import About from "./pages/About";
 import BookPage from "./pages/BookPage";
 import BookLibrary from "./pages/BookLibrary";
 import BookSearch from "./pages/BookSearch";
+import BookReader from "./pages/BookReader";
 import HorizonRedirect from "./pages/HorizonRedirect";
 import LovableRedirect from "./pages/LovableRedirect";
 import AdRedirect from "./pages/AdRedirect";
@@ -58,6 +59,7 @@ const App = () => {
           <Route path="/book" element={<BookPage />} />
           <Route path="/book/library" element={<BookLibrary />} />
           <Route path="/book/search" element={<BookSearch />} />
+          <Route path="/book/read/:bookTitle" element={<BookReader />} />
           <Route path="/image-gen" element={<ImageGen />} />
           <Route path="/mcq-gen" element={<MCQGen />} />
           <Route path="/flashcard-gen" element={<FlashcardGen />} />
