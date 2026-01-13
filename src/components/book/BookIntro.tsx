@@ -1,4 +1,4 @@
-import { BookOpen, BookMarked, Library, Bookmark } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface BookIntroProps {
@@ -8,15 +8,6 @@ interface BookIntroProps {
 const BookIntro = ({ onStart }: BookIntroProps) => {
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center relative overflow-hidden px-6">
-      {/* Floating book icons - CSS only, no JS animations */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <BookOpen className="absolute top-[15%] left-[10%] w-12 h-12 text-primary/10 animate-float-slow" />
-        <BookMarked className="absolute top-[25%] right-[15%] w-10 h-10 text-primary/8 animate-float-medium" />
-        <Library className="absolute bottom-[30%] left-[20%] w-14 h-14 text-primary/6 animate-float-slow" />
-        <Bookmark className="absolute bottom-[20%] right-[10%] w-8 h-8 text-primary/10 animate-float-medium" />
-        <BookOpen className="absolute top-[60%] left-[5%] w-10 h-10 text-primary/5 animate-float-medium" />
-        <BookMarked className="absolute top-[10%] right-[30%] w-8 h-8 text-primary/8 animate-float-slow" />
-      </div>
 
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center text-center max-w-sm">

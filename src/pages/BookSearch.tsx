@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Search, Plus, Loader2, BookOpen, AlertCircle } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Search, Loader2, BookOpen, AlertCircle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addBookToRead, getBookUserProfile } from "@/lib/bookStorage";
+import { getBookUserProfile } from "@/lib/bookStorage";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,6 +12,7 @@ interface SearchResult {
   title: string;
   author: string;
   coverUrl: string;
+  isExactMatch?: boolean;
 }
 
 const BookSearch = () => {
@@ -20,7 +21,9 @@ const BookSearch = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [bookNotFound, setBookNotFound] = useState(false);
+  const [exactMatchTitle, setExactMatchTitle] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const searchBooks = async () => {
     if (!query.trim()) return;
@@ -36,15 +39,18 @@ const BookSearch = () => {
 User interests: ${interests}
 
 INSTRUCTIONS:
-1. If the exact book exists, include it FIRST
+1. If the exact book exists, mark it with "isExact": true and include it FIRST
 2. If the book doesn't exist or has an alternate name/spelling, find the CLOSEST match
-3. Return 3-5 relevant book recommendations
+3. Return 3-5 relevant book recommendations total (including the match)
 4. If you truly can't find anything close, suggest books the user might like based on their interests
 
-IMPORTANT: Set "found" to false ONLY if the exact searched book doesn't exist and you couldn't find a close match.
+IMPORTANT: 
+- Set "found" to true if you found the exact book OR a very close match
+- Set "found" to false ONLY if you couldn't find the book at all
+- Mark the first/main book with "isExact": true if it matches what the user searched for
 
 Return ONLY valid JSON, no other text:
-{"found": true, "books": [{"title": "Book Title", "author": "Author Name"}, ...]}`;
+{"found": true, "books": [{"title": "Book Title", "author": "Author Name", "isExact": true}, {"title": "Similar Book", "author": "Author", "isExact": false}]}`;
 
     // Try gemini-large first, fallback to openai
     let responseText = '';
@@ -95,11 +101,16 @@ Return ONLY valid JSON, no other text:
         
         setBookNotFound(!wasFound);
         
+        // Find the exact match title
+        const exactMatch = books.find((b: any) => b.isExact === true);
+        setExactMatchTitle(exactMatch ? exactMatch.title : null);
+        
         const formattedResults: SearchResult[] = books.map((book: any, index: number) => ({
           id: `search-${Date.now()}-${index}`,
           title: book.title,
           author: book.author,
-          coverUrl: `https://covers.openlibrary.org/b/title/${encodeURIComponent(book.title)}-M.jpg`
+          coverUrl: `https://covers.openlibrary.org/b/title/${encodeURIComponent(book.title)}-M.jpg`,
+          isExactMatch: book.isExact === true
         }));
         setResults(formattedResults);
       } else {
@@ -111,34 +122,27 @@ Return ONLY valid JSON, no other text:
             id: `search-${Date.now()}-${index}`,
             title: book.title,
             author: book.author,
-            coverUrl: `https://covers.openlibrary.org/b/title/${encodeURIComponent(book.title)}-M.jpg`
+            coverUrl: `https://covers.openlibrary.org/b/title/${encodeURIComponent(book.title)}-M.jpg`,
+            isExactMatch: false
           }));
           setResults(formattedResults);
+          setExactMatchTitle(null);
         } else {
           setResults([]);
+          setExactMatchTitle(null);
         }
       }
     } catch (parseError) {
       console.error('Parse error:', parseError);
       setResults([]);
+      setExactMatchTitle(null);
     } finally {
       setIsSearching(false);
     }
   };
 
-  const handleAddBook = (book: SearchResult) => {
-    addBookToRead({
-      id: book.id,
-      title: book.title,
-      author: book.author,
-      coverUrl: book.coverUrl
-    });
-    toast({
-      title: "Book added!",
-      description: `"${book.title}" has been added to your library.`
-    });
-    // Remove from results to show it's been added
-    setResults(results.filter(r => r.id !== book.id));
+  const handleReadBook = (book: SearchResult) => {
+    navigate(`/book/read/${encodeURIComponent(book.title)}`);
   };
 
   return (
@@ -203,11 +207,25 @@ Return ONLY valid JSON, no other text:
               </div>
             )}
             
-            <p className="text-sm text-muted-foreground">{results.length} books found</p>
-            {results.map((book) => (
+            {/* Found exact match message */}
+            {!bookNotFound && exactMatchTitle && (
+              <div className="flex items-start gap-3 bg-green-500/10 border border-green-500/30 rounded-xl p-3">
+                <BookOpen className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-green-500 font-medium text-sm">Found: {exactMatchTitle}</p>
+                  {results.length > 1 && (
+                    <p className="text-green-500/80 text-xs mt-0.5">Similar books you might like:</p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {results.map((book, index) => (
               <div
                 key={book.id}
-                className="flex gap-4 p-3 rounded-xl border border-border bg-card"
+                className={`flex gap-4 p-3 rounded-xl border bg-card ${
+                  book.isExactMatch ? 'border-primary/40 bg-primary/5' : 'border-border'
+                }`}
               >
                 <div className="w-16 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
                   <img
@@ -224,12 +242,12 @@ Return ONLY valid JSON, no other text:
                   <p className="text-sm text-muted-foreground mt-0.5">{book.author}</p>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant={book.isExactMatch ? "default" : "outline"}
                     className="mt-3"
-                    onClick={() => handleAddBook(book)}
+                    onClick={() => handleReadBook(book)}
                   >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Mark as Read
+                    <Eye className="w-4 h-4 mr-1" />
+                    Click to Read
                   </Button>
                 </div>
               </div>
