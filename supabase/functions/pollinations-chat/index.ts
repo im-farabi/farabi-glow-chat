@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, model, seed, image, useFallback } = await req.json();
+    const { prompt, model, seed, image, useFallback, temperature, max_tokens, systemPrompt } = await req.json();
     
     const apiKey = useFallback 
       ? Deno.env.get('POLLINATIONS_FALLBACK_API_KEY')
@@ -41,19 +41,41 @@ serve(async (req) => {
       messageContent = prompt;
     }
 
+    // Build messages array
+    const messages = [];
+    
+    // Add system prompt if provided
+    if (systemPrompt) {
+      messages.push({
+        role: "system",
+        content: systemPrompt
+      });
+    }
+    
+    // Add user message
+    messages.push({
+      role: "user",
+      content: messageContent
+    });
+
     const payload: Record<string, unknown> = {
       model: model,
-      messages: [
-        {
-          role: "user",
-          content: messageContent
-        }
-      ]
+      messages: messages
     };
     
     // Only include seed if provided, and ensure it's an integer
     if (seed !== undefined && seed !== null) {
       payload.seed = Math.floor(Number(seed));
+    }
+    
+    // Add temperature if provided
+    if (temperature !== undefined && temperature !== null) {
+      payload.temperature = Number(temperature);
+    }
+    
+    // Add max_tokens if provided
+    if (max_tokens !== undefined && max_tokens !== null) {
+      payload.max_tokens = Math.floor(Number(max_tokens));
     }
 
     // Use OpenAI-compatible endpoint (new gen.pollinations.ai)
