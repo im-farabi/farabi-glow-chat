@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, duration, resolution, seed } = await req.json();
+    const { prompt, duration, aspectRatio, seed } = await req.json();
     
     const apiKey = Deno.env.get('NEW_POLLINATIONS_APIKEY_1');
 
@@ -19,27 +19,36 @@ serve(async (req) => {
       throw new Error('API key not configured');
     }
 
-    console.log('Generating video with veo-3.1-fast, duration:', duration, 'resolution:', resolution, 'seed:', seed);
+    console.log('Generating video with veo, duration:', duration, 'aspectRatio:', aspectRatio, 'seed:', seed);
 
-    const payload: Record<string, unknown> = {
-      model: "veo-3.1-fast",
-      prompt: prompt,
-      duration: duration || 6,
-      resolution: resolution || "512x512",
-    };
+    // Build URL with parameters - GET endpoint (same as image but with model=veo)
+    const encodedPrompt = encodeURIComponent(prompt);
+    let url = `https://gen.pollinations.ai/image/${encodedPrompt}?model=veo`;
     
-    if (seed !== undefined && seed !== null) {
-      payload.seed = Math.floor(Number(seed));
+    // Add duration if provided (4, 6, or 8 seconds)
+    if (duration) {
+      url += `&duration=${duration}`;
     }
+    
+    // Add aspect ratio if provided (16:9 or 9:16)
+    if (aspectRatio) {
+      url += `&aspectRatio=${encodeURIComponent(aspectRatio)}`;
+    }
+    
+    // Add seed if provided
+    if (seed !== undefined && seed !== null) {
+      url += `&seed=${Math.floor(Number(seed))}`;
+    }
+    
+    // Add API key
+    url += `&key=${apiKey}`;
+    
+    // Add nologo and nofeed for cleaner output
+    url += `&nologo=true&nofeed=true`;
 
-    const response = await fetch('https://gen.pollinations.ai/v1/videos/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+    console.log('Fetching video from URL (without key):', url.replace(apiKey, '***'));
+
+    const response = await fetch(url);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -47,13 +56,14 @@ serve(async (req) => {
       throw new Error(`API Error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
-    console.log('Video generation response:', JSON.stringify(data).substring(0, 200));
+    // The response is the actual video binary
+    const videoBuffer = await response.arrayBuffer();
+    const base64Video = btoa(String.fromCharCode(...new Uint8Array(videoBuffer)));
+    const videoUrl = `data:video/mp4;base64,${base64Video}`;
 
-    // Response format: { data: [{ url: "..." }] }
-    const videoUrl = data.data?.[0]?.url;
+    console.log('Video generated successfully, size:', videoBuffer.byteLength, 'bytes');
 
-    return new Response(JSON.stringify({ videoUrl, data }), {
+    return new Response(JSON.stringify({ videoUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

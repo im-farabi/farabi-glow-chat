@@ -18,10 +18,10 @@ const durations = [
   { value: "8", label: "8 seconds" },
 ];
 
-const resolutions = [
-  { value: "480x480", label: "480×480 (Fast)" },
-  { value: "512x512", label: "512×512 (Balanced)" },
-  { value: "720x720", label: "720×720 (Quality)" },
+const aspectRatios = [
+  { value: "16:9", label: "16:9 (Landscape)" },
+  { value: "9:16", label: "9:16 (Portrait)" },
+  { value: "1:1", label: "1:1 (Square)" },
 ];
 
 const NewVideo = () => {
@@ -29,7 +29,7 @@ const NewVideo = () => {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [duration, setDuration] = useState("6");
-  const [resolution, setResolution] = useState("512x512");
+  const [aspectRatio, setAspectRatio] = useState("16:9");
   const [seed, setSeed] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
@@ -47,7 +47,7 @@ const NewVideo = () => {
         body: {
           prompt: prompt.trim(),
           duration: parseInt(duration),
-          resolution,
+          aspectRatio,
           seed: seed ? parseInt(seed) : undefined,
         }
       });
@@ -182,15 +182,15 @@ const NewVideo = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Resolution</Label>
-                <Select value={resolution} onValueChange={setResolution} disabled={isLoading}>
+                <Label>Aspect Ratio</Label>
+                <Select value={aspectRatio} onValueChange={setAspectRatio} disabled={isLoading}>
                   <SelectTrigger className="bg-card/50 border-border/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {resolutions.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
+                    {aspectRatios.map((ar) => (
+                      <SelectItem key={ar.value} value={ar.value}>
+                        {ar.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

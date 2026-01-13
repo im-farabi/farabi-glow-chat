@@ -78,6 +78,10 @@ serve(async (req) => {
       payload.max_tokens = Math.floor(Number(max_tokens));
     }
 
+    // Add AbortController for timeout (45 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
     // Use OpenAI-compatible endpoint (new gen.pollinations.ai)
     const response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
       method: 'POST',
@@ -85,8 +89,11 @@ serve(async (req) => {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -102,7 +109,14 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error in pollinations-chat:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    let errorMessage = 'Unknown error';
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timed out after 45 seconds';
+      } else {
+        errorMessage = error.message;
+      }
+    }
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

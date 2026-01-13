@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, size, seed } = await req.json();
+    const { prompt, width, height, seed } = await req.json();
     
     const apiKey = Deno.env.get('NEW_POLLINATIONS_APIKEY_1');
 
@@ -19,26 +19,34 @@ serve(async (req) => {
       throw new Error('API key not configured');
     }
 
-    console.log('Generating image with gptimage-large, size:', size, 'seed:', seed);
+    console.log('Generating image with gptimage, width:', width, 'height:', height, 'seed:', seed);
 
-    const payload: Record<string, unknown> = {
-      model: "gptimage-large",
-      prompt: prompt,
-      size: size || "1024x1024",
-    };
+    // Build URL with parameters - GET endpoint
+    const encodedPrompt = encodeURIComponent(prompt);
+    let url = `https://gen.pollinations.ai/image/${encodedPrompt}?model=gptimage`;
     
-    if (seed !== undefined && seed !== null) {
-      payload.seed = Math.floor(Number(seed));
+    // Add size parameters
+    if (width) {
+      url += `&width=${width}`;
     }
+    if (height) {
+      url += `&height=${height}`;
+    }
+    
+    // Add seed if provided
+    if (seed !== undefined && seed !== null) {
+      url += `&seed=${Math.floor(Number(seed))}`;
+    }
+    
+    // Add API key
+    url += `&key=${apiKey}`;
+    
+    // Add nologo and nofeed for cleaner output
+    url += `&nologo=true&nofeed=true`;
 
-    const response = await fetch('https://gen.pollinations.ai/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+    console.log('Fetching image from URL (without key):', url.replace(apiKey, '***'));
+
+    const response = await fetch(url);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -46,13 +54,14 @@ serve(async (req) => {
       throw new Error(`API Error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
-    console.log('Image generation response:', JSON.stringify(data).substring(0, 200));
+    // The response is the actual image binary
+    const imageBuffer = await response.arrayBuffer();
+    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+    const imageUrl = `data:image/png;base64,${base64Image}`;
 
-    // Response format: { data: [{ url: "...", b64_json: "..." }] }
-    const imageUrl = data.data?.[0]?.url || data.data?.[0]?.b64_json;
+    console.log('Image generated successfully, size:', imageBuffer.byteLength, 'bytes');
 
-    return new Response(JSON.stringify({ imageUrl, data }), {
+    return new Response(JSON.stringify({ imageUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
