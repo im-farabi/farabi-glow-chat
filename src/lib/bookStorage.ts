@@ -20,6 +20,7 @@ export interface ReadBook {
 // Storage keys
 const BOOK_PROFILE_KEY = 'readme_user_profile';
 const BOOK_HISTORY_KEY = 'readme_book_history';
+const PREVIOUS_RECOMMENDATIONS_KEY = 'readme_previous_recommendations';
 
 // Get user profile from localStorage
 export const getBookUserProfile = (): BookUserProfile | null => {
@@ -79,8 +80,31 @@ export const getRecentBooks = (limit: number = 2): ReadBook[] => {
   return books.slice(0, limit);
 };
 
+// Get previous recommendations
+export const getPreviousRecommendations = (): string[] => {
+  try {
+    const stored = localStorage.getItem(PREVIOUS_RECOMMENDATIONS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Add a recommendation to history (keep last 10)
+export const addPreviousRecommendation = (title: string): void => {
+  const previous = getPreviousRecommendations();
+  const updated = [title, ...previous.filter(t => t !== title)].slice(0, 10);
+  localStorage.setItem(PREVIOUS_RECOMMENDATIONS_KEY, JSON.stringify(updated));
+};
+
+// Clear previous recommendations
+export const clearPreviousRecommendations = (): void => {
+  localStorage.removeItem(PREVIOUS_RECOMMENDATIONS_KEY);
+};
+
 // Clear all book data (for reset)
 export const clearBookData = (): void => {
   localStorage.removeItem(BOOK_PROFILE_KEY);
   localStorage.removeItem(BOOK_HISTORY_KEY);
+  localStorage.removeItem(PREVIOUS_RECOMMENDATIONS_KEY);
 };

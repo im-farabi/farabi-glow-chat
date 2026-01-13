@@ -1,120 +1,140 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Library, Search, Settings } from "lucide-react";
+import { BookOpen, Library, Search, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getBookUserProfile, getRecentBooks, type ReadBook } from "@/lib/bookStorage";
-import RecommendationBox from "./RecommendationBox";
+import { getBookUserProfile, getRecentBooks, ReadBook } from "@/lib/bookStorage";
+import { POPULAR_BOOKS } from "@/data/popularBooks";
 import BookCard from "./BookCard";
+import RecommendationBox from "./RecommendationBox";
 
 const BookHome = () => {
-  const [userName, setUserName] = useState("");
+  const [userName, setUserName] = useState<string>("Reader");
   const [recentBooks, setRecentBooks] = useState<ReadBook[]>([]);
 
   useEffect(() => {
     const profile = getBookUserProfile();
-    if (profile) {
+    if (profile?.name) {
       setUserName(profile.name);
     }
     setRecentBooks(getRecentBooks(2));
   }, []);
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  }, []);
+
+  // Convert ReadBook to PopularBook format for BookCard
+  const recentBooksAsCards = useMemo(() => {
+    return recentBooks.map(book => ({
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      cover: book.coverUrl
+    }));
+  }, [recentBooks]);
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-[100dvh] bg-background flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BookOpen className="w-7 h-7 text-primary" />
-            <span className="text-xl font-bold text-foreground">ReadME</span>
+      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border safe-area-top">
+        <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-6 h-6 text-primary" />
+            <span className="font-bold text-lg">Read<span className="text-primary">ME</span></span>
           </div>
           <Link to="/book/library">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="touch-manipulation">
               <Library className="w-5 h-5" />
             </Button>
           </Link>
         </div>
-      </div>
+      </header>
 
-      <div className="p-4 space-y-6 pb-24">
+      {/* Main Content */}
+      <main className="flex-1 px-4 py-5 max-w-lg mx-auto w-full space-y-6">
         {/* Greeting */}
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            Hello, {userName}! 👋
+            {greeting}, <span className="text-primary">{userName}</span>!
           </h1>
-          <p className="text-muted-foreground mt-1">Ready to discover your next read?</p>
+          <p className="text-muted-foreground text-sm mt-1">What will you read today?</p>
         </div>
 
-        {/* AI Recommendation Box */}
+        {/* AI Recommendation */}
         <RecommendationBox />
 
         {/* Recent Reads */}
         {recentBooks.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          <section>
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-foreground">Your Recent Reads</h2>
-              <Link to="/book/library" className="text-sm text-primary hover:underline">
-                View All
+              <Link to="/book/library" className="text-primary text-sm flex items-center gap-1">
+                See all <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {recentBooks.map((book) => (
+            <div className="grid grid-cols-2 gap-3">
+              {recentBooksAsCards.map((book) => (
                 <BookCard
                   key={book.id}
-                  title={book.title}
-                  author={book.author}
-                  cover={book.coverUrl}
+                  book={book}
+                  isSelected={false}
+                  onToggle={() => {}}
                   showCheckmark={false}
-                  size="md"
                 />
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Empty State for Recent Reads */}
+        {/* Empty State */}
         {recentBooks.length === 0 && (
-          <div className="text-center py-8 px-4 rounded-xl border border-dashed border-border">
-            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <h3 className="font-medium text-foreground mb-1">No books read yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Start building your reading history by searching for books
-            </p>
+          <section className="text-center py-8">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted flex items-center justify-center">
+              <BookOpen className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-1">No books yet</h3>
+            <p className="text-muted-foreground text-sm mb-4">Search and mark books as read to track your progress</p>
             <Link to="/book/search">
-              <Button variant="outline" size="sm">
+              <Button className="rounded-xl">
                 <Search className="w-4 h-4 mr-2" />
-                Search Books
+                Find Books
               </Button>
             </Link>
-          </div>
+          </section>
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3">
+        <section className="grid grid-cols-2 gap-3">
           <Link to="/book/search" className="block">
-            <div className="p-4 rounded-xl border border-border bg-card hover:bg-accent transition-colors">
-              <Search className="w-6 h-6 text-primary mb-2" />
-              <h3 className="font-medium text-foreground">Search Books</h3>
-              <p className="text-xs text-muted-foreground">Find your next read</p>
+            <div className="p-4 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors active:scale-[0.98]">
+              <Search className="w-5 h-5 text-primary mb-2" />
+              <h3 className="font-medium text-foreground text-sm">Search Books</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Find your next read</p>
             </div>
           </Link>
           <Link to="/book/library" className="block">
-            <div className="p-4 rounded-xl border border-border bg-card hover:bg-accent transition-colors">
-              <Library className="w-6 h-6 text-primary mb-2" />
-              <h3 className="font-medium text-foreground">My Library</h3>
-              <p className="text-xs text-muted-foreground">View all your books</p>
+            <div className="p-4 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors active:scale-[0.98]">
+              <Library className="w-5 h-5 text-primary mb-2" />
+              <h3 className="font-medium text-foreground text-sm">My Library</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Books you've read</p>
             </div>
           </Link>
-        </div>
-      </div>
+        </section>
+      </main>
 
-      {/* Bottom Search Button */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
-        <Link to="/book/search" className="block">
-          <Button className="w-full h-12 text-base" size="lg">
-            <Search className="w-5 h-5 mr-2" />
-            Search New Books
-          </Button>
-        </Link>
+      {/* Bottom CTA */}
+      <div className="sticky bottom-0 p-4 bg-background/80 backdrop-blur-sm border-t border-border safe-area-bottom">
+        <div className="max-w-lg mx-auto">
+          <Link to="/book/search" className="block">
+            <Button className="w-full h-12 rounded-xl font-semibold text-base">
+              <Search className="w-5 h-5 mr-2" />
+              Search New Books
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

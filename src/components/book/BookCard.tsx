@@ -1,61 +1,51 @@
-import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
+import { PopularBook } from "@/data/popularBooks";
 
 interface BookCardProps {
-  title: string;
-  author: string;
-  cover: string;
-  selected?: boolean;
-  onClick?: () => void;
+  book: PopularBook;
+  isSelected: boolean;
+  onToggle: () => void;
   showCheckmark?: boolean;
-  size?: 'sm' | 'md' | 'lg';
 }
 
-const BookCard = ({
-  title,
-  author,
-  cover,
-  selected = false,
-  onClick,
-  showCheckmark = true,
-  size = 'md'
-}: BookCardProps) => {
-  const sizeClasses = {
-    sm: 'w-24',
-    md: 'w-32',
-    lg: 'w-40'
-  };
-
+const BookCard = ({ book, isSelected, onToggle, showCheckmark = true }: BookCardProps) => {
   return (
-    <div
-      onClick={onClick}
-      className={cn(
-        "relative flex flex-col cursor-pointer transition-all duration-200",
-        sizeClasses[size],
-        onClick && "hover:scale-105",
-        selected && "ring-2 ring-primary rounded-lg"
-      )}
+    <button
+      onClick={onToggle}
+      className={`relative flex flex-col items-center p-2 rounded-xl border transition-all touch-manipulation active:scale-[0.97] ${
+        isSelected
+          ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+          : "border-border bg-card hover:bg-muted/50"
+      }`}
     >
-      <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-muted">
+      {/* Book Cover */}
+      <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-muted mb-2">
         <img
-          src={cover}
-          alt={title}
+          src={book.cover}
+          alt={book.title}
+          loading="lazy"
           className="w-full h-full object-cover"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = `https://placehold.co/200x300/1a1a2e/white?text=${encodeURIComponent(title.slice(0, 10))}`;
+            e.currentTarget.src = `https://placehold.co/200x300/1a1a2e/white?text=${encodeURIComponent(book.title.slice(0, 10))}`;
           }}
         />
-        {selected && showCheckmark && (
-          <div className="absolute top-2 right-2 bg-primary rounded-full p-1">
+        {showCheckmark && isSelected && (
+          <div className="absolute top-1 right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg">
             <Check className="w-4 h-4 text-primary-foreground" />
           </div>
         )}
       </div>
-      <div className="mt-2 space-y-0.5">
-        <p className="text-sm font-medium text-foreground line-clamp-2">{title}</p>
-        <p className="text-xs text-muted-foreground line-clamp-1">{author}</p>
+
+      {/* Book Info */}
+      <div className="w-full text-left">
+        <h3 className="text-xs font-medium text-foreground line-clamp-2 leading-tight">
+          {book.title}
+        </h3>
+        <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
+          {book.author}
+        </p>
       </div>
-    </div>
+    </button>
   );
 };
 
