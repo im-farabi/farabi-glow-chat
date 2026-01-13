@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, BookOpen, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getBooksRead, removeBookFromRead, type ReadBook } from "@/lib/bookStorage";
-import BookCard from "@/components/book/BookCard";
 import { useToast } from "@/hooks/use-toast";
 
 const BookLibrary = () => {
@@ -57,17 +56,27 @@ const BookLibrary = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {books.map((book) => (
                 <div key={book.id} className="relative group">
-                  <BookCard
-                    book={{
-                      id: book.id,
-                      title: book.title,
-                      author: book.author,
-                      cover: book.coverUrl
-                    }}
-                    isSelected={false}
-                    onToggle={() => {}}
-                    showCheckmark={false}
-                  />
+                  <div className="w-full">
+                    <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-muted mb-2">
+                      <img
+                        src={book.coverUrl}
+                        alt={book.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = `https://placehold.co/200x300/1a1a2e/white?text=${encodeURIComponent(book.title.slice(0, 10))}`;
+                        }}
+                      />
+                    </div>
+                    <div className="w-full text-left">
+                      <h3 className="text-xs font-medium text-foreground line-clamp-2 leading-tight">
+                        {book.title}
+                      </h3>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
+                        {book.author}
+                      </p>
+                    </div>
+                  </div>
                   <Button
                     variant="destructive"
                     size="icon"

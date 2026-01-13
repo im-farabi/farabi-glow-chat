@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Loader2, BookOpen, AlertCircle, Eye } from "lucide-react";
+import { ArrowLeft, Search, BookOpen, AlertCircle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getBookUserProfile } from "@/lib/bookStorage";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -31,111 +32,104 @@ const BookSearch = () => {
     setIsSearching(true);
     setHasSearched(true);
     setBookNotFound(false);
+    setResults([]);
+    setExactMatchTitle(null);
 
     const profile = getBookUserProfile();
     const interests = profile?.interests.join(', ') || 'general reading';
 
-    const prompt = `Search for books matching: "${query}"
-User interests: ${interests}
+    // Two parallel AI calls for speed
+    const exactMatchPrompt = `Find the book: "${query}"
+If this exact book exists, return: {"found": true, "title": "Exact Book Title", "author": "Author Name"}
+If it doesn't exist but there's a close match, return: {"found": true, "title": "Close Match Title", "author": "Author Name"}
+If nothing matches at all, return: {"found": false, "title": "", "author": ""}
+Return ONLY valid JSON.`;
 
-INSTRUCTIONS:
-1. If the exact book exists, mark it with "isExact": true and include it FIRST
-2. If the book doesn't exist or has an alternate name/spelling, find the CLOSEST match
-3. Return 3-5 relevant book recommendations total (including the match)
-4. If you truly can't find anything close, suggest books the user might like based on their interests
-
-IMPORTANT: 
-- Set "found" to true if you found the exact book OR a very close match
-- Set "found" to false ONLY if you couldn't find the book at all
-- Mark the first/main book with "isExact": true if it matches what the user searched for
-
-Return ONLY valid JSON, no other text:
-{"found": true, "books": [{"title": "Book Title", "author": "Author Name", "isExact": true}, {"title": "Similar Book", "author": "Author", "isExact": false}]}`;
-
-    // Try gemini-large first, fallback to openai
-    let responseText = '';
-    let success = false;
+    const similarBooksPrompt = `Suggest 2-3 books similar to "${query}" for someone interested in: ${interests}
+Return ONLY valid JSON: {"books": [{"title": "Book Title", "author": "Author Name"}]}
+Maximum 3 books. Be concise.`;
 
     try {
-      const { data, error } = await supabase.functions.invoke('pollinations-chat', {
-        body: { prompt, model: 'gemini-large', seed: Date.now() }
-      });
+      // Run both AI calls in parallel
+      const [exactResult, similarResult] = await Promise.allSettled([
+        supabase.functions.invoke('pollinations-chat', {
+          body: { prompt: exactMatchPrompt, model: 'gemini-large', seed: Date.now() }
+        }),
+        supabase.functions.invoke('pollinations-chat', {
+          body: { prompt: similarBooksPrompt, model: 'gemini-large', seed: Date.now() + 1 }
+        })
+      ]);
 
-      if (!error && data) {
-        responseText = data?.response || data?.text || '';
-        success = true;
+      let exactMatch: { found: boolean; title: string; author: string } | null = null;
+      let similarBooks: { title: string; author: string }[] = [];
+
+      // Parse exact match result
+      if (exactResult.status === 'fulfilled' && exactResult.value.data) {
+        const responseText = exactResult.value.data?.response || exactResult.value.data?.text || '';
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            exactMatch = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            console.log('Failed to parse exact match');
+          }
+        }
       }
-    } catch (e) {
-      console.log('gemini-large failed, trying openai fallback');
-    }
 
-    // Fallback to openai if gemini-large failed
-    if (!success) {
-      try {
-        const { data, error } = await supabase.functions.invoke('pollinations-chat', {
-          body: { prompt, model: 'openai', seed: Date.now() }
-        });
-
-        if (error) throw error;
-        responseText = data?.response || data?.text || '';
-      } catch (error) {
-        console.error('Search error:', error);
-        toast({
-          title: "Search failed",
-          description: "Unable to search for books. Please try again.",
-          variant: "destructive"
-        });
-        setResults([]);
-        setIsSearching(false);
-        return;
+      // Parse similar books result
+      if (similarResult.status === 'fulfilled' && similarResult.value.data) {
+        const responseText = similarResult.value.data?.response || similarResult.value.data?.text || '';
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            const parsed = JSON.parse(jsonMatch[0]);
+            similarBooks = (parsed.books || []).slice(0, 3);
+          } catch (e) {
+            console.log('Failed to parse similar books');
+          }
+        }
       }
-    }
 
-    try {
-      // Try to parse JSON object from response
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const wasFound = parsed.found !== false;
-        const books = parsed.books || [];
-        
-        setBookNotFound(!wasFound);
-        
-        // Find the exact match title
-        const exactMatch = books.find((b: any) => b.isExact === true);
-        setExactMatchTitle(exactMatch ? exactMatch.title : null);
-        
-        const formattedResults: SearchResult[] = books.map((book: any, index: number) => ({
-          id: `search-${Date.now()}-${index}`,
-          title: book.title,
-          author: book.author,
-          coverUrl: `https://covers.openlibrary.org/b/title/${encodeURIComponent(book.title)}-M.jpg`,
-          isExactMatch: book.isExact === true
-        }));
-        setResults(formattedResults);
+      // Build results array
+      const formattedResults: SearchResult[] = [];
+
+      if (exactMatch?.found && exactMatch.title) {
+        setExactMatchTitle(exactMatch.title);
+        setBookNotFound(false);
+        formattedResults.push({
+          id: `exact-${Date.now()}`,
+          title: exactMatch.title,
+          author: exactMatch.author,
+          coverUrl: `https://covers.openlibrary.org/b/title/${encodeURIComponent(exactMatch.title)}-M.jpg`,
+          isExactMatch: true
+        });
       } else {
-        // Fallback: try parsing as array (old format)
-        const arrayMatch = responseText.match(/\[[\s\S]*\]/);
-        if (arrayMatch) {
-          const parsed = JSON.parse(arrayMatch[0]);
-          const formattedResults: SearchResult[] = parsed.map((book: any, index: number) => ({
-            id: `search-${Date.now()}-${index}`,
+        setBookNotFound(true);
+        setExactMatchTitle(null);
+      }
+
+      // Add similar books (filter out the exact match if present)
+      similarBooks.forEach((book, index) => {
+        if (exactMatch?.title?.toLowerCase() !== book.title.toLowerCase()) {
+          formattedResults.push({
+            id: `similar-${Date.now()}-${index}`,
             title: book.title,
             author: book.author,
             coverUrl: `https://covers.openlibrary.org/b/title/${encodeURIComponent(book.title)}-M.jpg`,
             isExactMatch: false
-          }));
-          setResults(formattedResults);
-          setExactMatchTitle(null);
-        } else {
-          setResults([]);
-          setExactMatchTitle(null);
+          });
         }
-      }
-    } catch (parseError) {
-      console.error('Parse error:', parseError);
+      });
+
+      setResults(formattedResults);
+    } catch (error) {
+      console.error('Search error:', error);
+      toast({
+        title: "Search failed",
+        description: "Unable to search for books. Please try again.",
+        variant: "destructive"
+      });
       setResults([]);
-      setExactMatchTitle(null);
     } finally {
       setIsSearching(false);
     }
@@ -170,22 +164,30 @@ Return ONLY valid JSON, no other text:
             onKeyDown={(e) => e.key === 'Enter' && searchBooks()}
           />
           <Button onClick={searchBooks} disabled={isSearching || !query.trim()}>
-            {isSearching ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Search className="w-4 h-4" />
-            )}
+            <Search className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* Search Results */}
+        {/* Loading Skeleton */}
         {isSearching && (
-          <div className="text-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary mb-3" />
-            <p className="text-muted-foreground">Searching for books...</p>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex gap-4 p-3 rounded-xl border border-border bg-card">
+                <Skeleton className="w-16 h-24 rounded-lg flex-shrink-0" />
+                <div className="flex-1 space-y-2 py-1">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-8 w-24 mt-3" />
+                </div>
+              </div>
+            ))}
+            <p className="text-center text-sm text-muted-foreground animate-pulse">
+              Finding your book...
+            </p>
           </div>
         )}
 
+        {/* No Results */}
         {!isSearching && hasSearched && results.length === 0 && (
           <div className="text-center py-8">
             <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -194,6 +196,7 @@ Return ONLY valid JSON, no other text:
           </div>
         )}
 
+        {/* Search Results */}
         {!isSearching && results.length > 0 && (
           <div className="space-y-3">
             {/* Book not found message */}
@@ -220,7 +223,7 @@ Return ONLY valid JSON, no other text:
               </div>
             )}
             
-            {results.map((book, index) => (
+            {results.map((book) => (
               <div
                 key={book.id}
                 className={`flex gap-4 p-3 rounded-xl border bg-card ${
