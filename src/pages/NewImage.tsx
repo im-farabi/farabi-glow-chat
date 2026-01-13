@@ -12,10 +12,11 @@ import PremiumBackground from "@/components/PremiumBackground";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const sizes = [
-  { value: "512x512", label: "512×512 (Square)" },
-  { value: "768x768", label: "768×768 (Square)" },
-  { value: "1024x1024", label: "1024×1024 (HD Square)" },
-  { value: "1536x1536", label: "1536×1536 (Ultra HD)" },
+  { value: "512x512", label: "512×512 (Square)", width: 512, height: 512 },
+  { value: "768x768", label: "768×768 (Square)", width: 768, height: 768 },
+  { value: "1024x1024", label: "1024×1024 (HD Square)", width: 1024, height: 1024 },
+  { value: "1024x768", label: "1024×768 (Landscape)", width: 1024, height: 768 },
+  { value: "768x1024", label: "768×1024 (Portrait)", width: 768, height: 1024 },
 ];
 
 const NewImage = () => {
@@ -34,11 +35,14 @@ const NewImage = () => {
     setIsLoading(true);
     setLastPrompt(prompt.trim());
 
+    const selectedSize = sizes.find(s => s.value === size);
+    
     try {
       const { data, error } = await supabase.functions.invoke("pollinations-image-v2", {
         body: {
           prompt: prompt.trim(),
-          size,
+          width: selectedSize?.width || 1024,
+          height: selectedSize?.height || 1024,
           seed: seed ? parseInt(seed) : undefined,
         }
       });
