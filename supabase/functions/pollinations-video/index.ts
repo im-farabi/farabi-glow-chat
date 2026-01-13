@@ -58,7 +58,16 @@ serve(async (req) => {
 
     // The response is the actual video binary
     const videoBuffer = await response.arrayBuffer();
-    const base64Video = btoa(String.fromCharCode(...new Uint8Array(videoBuffer)));
+    const uint8Array = new Uint8Array(videoBuffer);
+
+    // Convert to base64 in chunks to avoid stack overflow
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.subarray(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64Video = btoa(binary);
     const videoUrl = `data:video/mp4;base64,${base64Video}`;
 
     console.log('Video generated successfully, size:', videoBuffer.byteLength, 'bytes');
