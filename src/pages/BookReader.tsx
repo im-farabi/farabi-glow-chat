@@ -58,11 +58,12 @@ Keep language simple for age ${userAge}. Be concise.`;
 
     let responseText = '';
     let success = false;
+    const seed = Math.floor(Date.now() % 1000000); // Must be INT32
 
     // Try gemini-large first
     try {
       const { data, error } = await supabase.functions.invoke('pollinations-chat', {
-        body: { prompt, model: 'gemini-large', seed: Date.now() }
+        body: { prompt, model: 'gemini-large', seed }
       });
 
       if (!error && data) {
@@ -77,7 +78,7 @@ Keep language simple for age ${userAge}. Be concise.`;
     if (!success) {
       try {
         const { data, error } = await supabase.functions.invoke('pollinations-chat', {
-          body: { prompt, model: 'openai', seed: Date.now() }
+          body: { prompt, model: 'openai', seed }
         });
 
         if (error) throw error;
