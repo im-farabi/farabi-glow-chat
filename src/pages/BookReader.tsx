@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, BookOpen, CheckCircle, Sparkles, Target, Lightbulb } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle, Sparkles, Target, Lightbulb, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { addBookToRead, getBookUserProfile } from "@/lib/bookStorage";
+import { addBookToRead, getBookUserProfile, saveBookSummary, getSavedSummary, type SavedBookSummary } from "@/lib/bookStorage";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,6 +15,7 @@ interface BookSummary {
   summary: string;
   keyPoints: string[];
   moral: string;
+  coverUrl?: string;
 }
 
 const BookReader = () => {
@@ -24,12 +25,21 @@ const BookReader = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<BookSummary | null>(null);
   const [isMarkedAsRead, setIsMarkedAsRead] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
 
   const decodedTitle = decodeURIComponent(bookTitle || "");
 
   useEffect(() => {
     if (decodedTitle) {
-      fetchBookSummary();
+      // First check if we have a saved summary (offline reading)
+      const savedSummary = getSavedSummary(decodedTitle);
+      if (savedSummary) {
+        setSummary(savedSummary);
+        setIsLoading(false);
+        setIsOffline(true);
+      } else {
+        fetchBookSummary();
+      }
     }
   }, [decodedTitle]);
 
@@ -99,14 +109,32 @@ Keep language simple for age ${userAge}. Be concise.`;
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        setSummary({
+        const coverUrl = `https://covers.openlibrary.org/b/title/${encodeURIComponent(parsed.title || decodedTitle)}-M.jpg`;
+        
+        const bookSummary: BookSummary = {
           title: parsed.title || decodedTitle,
           author: parsed.author || "Unknown Author",
           year: parsed.year || parsed.publishedYear || "",
           about: parsed.about || "",
           summary: parsed.summary || parsed.detailed || "",
           keyPoints: (parsed.keyPoints || []).slice(0, 3),
-          moral: parsed.moral || ""
+          moral: parsed.moral || "",
+          coverUrl
+        };
+        
+        setSummary(bookSummary);
+        
+        // Auto-save summary to localStorage for offline reading
+        const coverUrlForStorage = `https://placehold.co/200x300/1a1a2e/white?text=${encodeURIComponent((parsed.title || decodedTitle).slice(0, 15))}`;
+        saveBookSummary({
+          ...bookSummary,
+          coverUrl: coverUrlForStorage,
+          savedAt: Date.now()
+        });
+        
+        toast({
+          title: "📥 Saved for offline",
+          description: "This summary is now available offline!"
         });
       }
     } catch (parseError) {
@@ -123,11 +151,12 @@ Keep language simple for age ${userAge}. Be concise.`;
 
   const handleMarkAsRead = () => {
     if (summary) {
+      const coverUrl = summary.coverUrl || `https://placehold.co/200x300/1a1a2e/white?text=${encodeURIComponent(summary.title.slice(0, 15))}`;
       addBookToRead({
         id: `read-${Date.now()}`,
         title: summary.title,
         author: summary.author,
-        coverUrl: `https://placehold.co/200x300/1a1a2e/white?text=${encodeURIComponent(summary.title.slice(0, 15))}`
+        coverUrl
       });
       setIsMarkedAsRead(true);
       toast({
