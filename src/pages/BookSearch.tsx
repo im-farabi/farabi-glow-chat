@@ -50,14 +50,14 @@ Return ONLY valid JSON: {"books": [{"title": "Book Title", "author": "Author Nam
 Maximum 3 books. Be concise.`;
 
     try {
-      // Run both AI calls in parallel (seed must be INT32, so use modulo)
+      // Run both AI calls in parallel using openai (cheaper)
       const seed = Math.floor(Date.now() % 1000000);
       const [exactResult, similarResult] = await Promise.allSettled([
         supabase.functions.invoke('pollinations-chat', {
-          body: { prompt: exactMatchPrompt, model: 'gemini-large', seed }
+          body: { prompt: exactMatchPrompt, model: 'openai', seed }
         }),
         supabase.functions.invoke('pollinations-chat', {
-          body: { prompt: similarBooksPrompt, model: 'gemini-large', seed: seed + 1 }
+          body: { prompt: similarBooksPrompt, model: 'openai', seed: seed + 1 }
         })
       ]);
 

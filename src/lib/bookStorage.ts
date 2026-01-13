@@ -17,10 +17,24 @@ export interface ReadBook {
   readAt: number;
 }
 
+// Saved Book Summary interface (for offline reading)
+export interface SavedBookSummary {
+  title: string;
+  author: string;
+  year: string;
+  about: string;
+  summary: string;
+  keyPoints: string[];
+  moral: string;
+  coverUrl: string;
+  savedAt: number;
+}
+
 // Storage keys
 const BOOK_PROFILE_KEY = 'readme_user_profile';
 const BOOK_HISTORY_KEY = 'readme_book_history';
 const PREVIOUS_RECOMMENDATIONS_KEY = 'readme_previous_recommendations';
+const SAVED_SUMMARIES_KEY = 'readme_saved_summaries';
 
 // Get user profile from localStorage
 export const getBookUserProfile = (): BookUserProfile | null => {
@@ -102,9 +116,34 @@ export const clearPreviousRecommendations = (): void => {
   localStorage.removeItem(PREVIOUS_RECOMMENDATIONS_KEY);
 };
 
+// Save a book summary for offline reading
+export const saveBookSummary = (summary: SavedBookSummary): void => {
+  const summaries = getSavedSummaries();
+  const key = summary.title.toLowerCase();
+  summaries[key] = { ...summary, savedAt: Date.now() };
+  localStorage.setItem(SAVED_SUMMARIES_KEY, JSON.stringify(summaries));
+};
+
+// Get all saved summaries
+export const getSavedSummaries = (): Record<string, SavedBookSummary> => {
+  try {
+    const stored = localStorage.getItem(SAVED_SUMMARIES_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+};
+
+// Get a specific saved summary by title
+export const getSavedSummary = (title: string): SavedBookSummary | null => {
+  const summaries = getSavedSummaries();
+  return summaries[title.toLowerCase()] || null;
+};
+
 // Clear all book data (for reset)
 export const clearBookData = (): void => {
   localStorage.removeItem(BOOK_PROFILE_KEY);
   localStorage.removeItem(BOOK_HISTORY_KEY);
   localStorage.removeItem(PREVIOUS_RECOMMENDATIONS_KEY);
+  localStorage.removeItem(SAVED_SUMMARIES_KEY);
 };
