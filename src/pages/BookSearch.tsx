@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Search, Plus, Loader2, BookOpen } from "lucide-react";
+import { ArrowLeft, Search, Plus, Loader2, BookOpen, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addBookToRead, getBookUserProfile } from "@/lib/bookStorage";
@@ -19,6 +19,7 @@ const BookSearch = () => {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [bookNotFound, setBookNotFound] = useState(false);
   const { toast } = useToast();
 
   const searchBooks = async () => {
@@ -26,6 +27,7 @@ const BookSearch = () => {
 
     setIsSearching(true);
     setHasSearched(true);
+    setBookNotFound(false);
 
     const profile = getBookUserProfile();
     const interests = profile?.interests.join(', ') || 'general reading';
@@ -33,27 +35,67 @@ const BookSearch = () => {
     const prompt = `Search for books matching: "${query}"
 User interests: ${interests}
 
-Return exactly 5 book recommendations as a JSON array. Each book should have:
-- title: The book title
-- author: The author name
+INSTRUCTIONS:
+1. If the exact book exists, include it FIRST
+2. If the book doesn't exist or has an alternate name/spelling, find the CLOSEST match
+3. Return 3-5 relevant book recommendations
+4. If you truly can't find anything close, suggest books the user might like based on their interests
 
-Return ONLY valid JSON array, no other text:
-[{"title": "Book Title", "author": "Author Name"}, ...]`;
+IMPORTANT: Set "found" to false ONLY if the exact searched book doesn't exist and you couldn't find a close match.
+
+Return ONLY valid JSON, no other text:
+{"found": true, "books": [{"title": "Book Title", "author": "Author Name"}, ...]}`;
+
+    // Try gemini-large first, fallback to openai
+    let responseText = '';
+    let success = false;
 
     try {
       const { data, error } = await supabase.functions.invoke('pollinations-chat', {
-        body: { prompt, model: 'openai' }
+        body: { prompt, model: 'gemini-large', seed: Date.now() }
       });
 
-      if (error) throw error;
+      if (!error && data) {
+        responseText = data?.response || data?.text || '';
+        success = true;
+      }
+    } catch (e) {
+      console.log('gemini-large failed, trying openai fallback');
+    }
 
-      const responseText = data?.response || data?.text || '';
-      
-      // Try to parse JSON array from response
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+    // Fallback to openai if gemini-large failed
+    if (!success) {
+      try {
+        const { data, error } = await supabase.functions.invoke('pollinations-chat', {
+          body: { prompt, model: 'openai', seed: Date.now() }
+        });
+
+        if (error) throw error;
+        responseText = data?.response || data?.text || '';
+      } catch (error) {
+        console.error('Search error:', error);
+        toast({
+          title: "Search failed",
+          description: "Unable to search for books. Please try again.",
+          variant: "destructive"
+        });
+        setResults([]);
+        setIsSearching(false);
+        return;
+      }
+    }
+
+    try {
+      // Try to parse JSON object from response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        const formattedResults: SearchResult[] = parsed.map((book: any, index: number) => ({
+        const wasFound = parsed.found !== false;
+        const books = parsed.books || [];
+        
+        setBookNotFound(!wasFound);
+        
+        const formattedResults: SearchResult[] = books.map((book: any, index: number) => ({
           id: `search-${Date.now()}-${index}`,
           title: book.title,
           author: book.author,
@@ -61,15 +103,23 @@ Return ONLY valid JSON array, no other text:
         }));
         setResults(formattedResults);
       } else {
-        setResults([]);
+        // Fallback: try parsing as array (old format)
+        const arrayMatch = responseText.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          const parsed = JSON.parse(arrayMatch[0]);
+          const formattedResults: SearchResult[] = parsed.map((book: any, index: number) => ({
+            id: `search-${Date.now()}-${index}`,
+            title: book.title,
+            author: book.author,
+            coverUrl: `https://covers.openlibrary.org/b/title/${encodeURIComponent(book.title)}-M.jpg`
+          }));
+          setResults(formattedResults);
+        } else {
+          setResults([]);
+        }
       }
-    } catch (error) {
-      console.error('Search error:', error);
-      toast({
-        title: "Search failed",
-        description: "Unable to search for books. Please try again.",
-        variant: "destructive"
-      });
+    } catch (parseError) {
+      console.error('Parse error:', parseError);
       setResults([]);
     } finally {
       setIsSearching(false);
@@ -142,6 +192,17 @@ Return ONLY valid JSON array, no other text:
 
         {!isSearching && results.length > 0 && (
           <div className="space-y-3">
+            {/* Book not found message */}
+            {bookNotFound && (
+              <div className="flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3">
+                <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-yellow-500 font-medium text-sm">📚 Book couldn't be found</p>
+                  <p className="text-yellow-500/80 text-xs mt-0.5">You may like these similar books:</p>
+                </div>
+              </div>
+            )}
+            
             <p className="text-sm text-muted-foreground">{results.length} books found</p>
             {results.map((book) => (
               <div
@@ -154,7 +215,7 @@ Return ONLY valid JSON array, no other text:
                     alt={book.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://placehold.co/160x240/1a1a2e/white?text=${encodeURIComponent(book.title.slice(0, 8))}`;
+                      (e.target as HTMLImageElement).src = `https://placehold.co/160x240/1a1a2e/white?text=${encodeURIComponent(book.title.slice(0, 15))}`;
                     }}
                   />
                 </div>
