@@ -58,11 +58,15 @@ const BookLibrary = () => {
               {books.map((book) => (
                 <div key={book.id} className="relative group">
                   <BookCard
-                    title={book.title}
-                    author={book.author}
-                    cover={book.coverUrl}
+                    book={{
+                      id: book.id,
+                      title: book.title,
+                      author: book.author,
+                      cover: book.coverUrl
+                    }}
+                    isSelected={false}
+                    onToggle={() => {}}
                     showCheckmark={false}
-                    size="md"
                   />
                   <Button
                     variant="destructive"
