@@ -44,3 +44,9 @@ verify_jwt = false
 
 [functions.generate-suggestions]
 verify_jwt = false
+
+[functions.pollinations-image-v2]
+verify_jwt = false
+
+[functions.pollinations-video]
+verify_jwt = false

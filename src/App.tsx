@@ -29,6 +29,10 @@ import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Install from "./pages/Install";
+import NewPage from "./pages/NewPage";
+import NewChat from "./pages/NewChat";
+import NewImage from "./pages/NewImage";
+import NewVideo from "./pages/NewVideo";
 import { getCursorPreference } from "./lib/storage";
 import { useCursorEffects } from "./hooks/useCursorEffects";
 
@@ -71,6 +75,10 @@ const App = () => {
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/install" element={<Install />} />
+          <Route path="/new" element={<NewPage />} />
+          <Route path="/new/chat" element={<NewChat />} />
+          <Route path="/new/image" element={<NewImage />} />
+          <Route path="/new/video" element={<NewVideo />} />
           <Route path="/horizon" element={<HorizonRedirect />} />
           <Route path="/lovable" element={<LovableRedirect />} />
           <Route path="/ad" element={<AdRedirect />} />
