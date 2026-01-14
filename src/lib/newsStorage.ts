@@ -117,6 +117,30 @@ export const clearNewsData = (): void => {
   }
 };
 
+// Refresh cooldown management (5 minutes)
+const REFRESH_COOLDOWN_MS = 5 * 60 * 1000;
+
+export const getLastRefreshTime = (category: string, timeFilter: string): number => {
+  const key = `news_last_refresh_${category}_${timeFilter}`;
+  return parseInt(localStorage.getItem(key) || "0");
+};
+
+export const setLastRefreshTime = (category: string, timeFilter: string): void => {
+  const key = `news_last_refresh_${category}_${timeFilter}`;
+  localStorage.setItem(key, Date.now().toString());
+};
+
+export const canRefreshNews = (category: string, timeFilter: string): boolean => {
+  const lastRefresh = getLastRefreshTime(category, timeFilter);
+  return Date.now() - lastRefresh >= REFRESH_COOLDOWN_MS;
+};
+
+export const getRefreshCooldownRemaining = (category: string, timeFilter: string): number => {
+  const lastRefresh = getLastRefreshTime(category, timeFilter);
+  const remaining = REFRESH_COOLDOWN_MS - (Date.now() - lastRefresh);
+  return Math.max(0, remaining);
+};
+
 // Category display helpers
 export const getCategoryDisplayName = (categoryId: string): string => {
   const names: Record<string, string> = {

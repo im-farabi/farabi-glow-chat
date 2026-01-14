@@ -51,8 +51,10 @@ const NewsCategory = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{categoryEmoji}</span>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-md">
+              <span className="text-xl">{categoryEmoji}</span>
+            </div>
             <h1 className="font-bold text-lg text-foreground">{categoryName}</h1>
           </div>
         </div>
@@ -61,7 +63,7 @@ const NewsCategory = () => {
       {/* Main Content */}
       <main className="flex-1 px-4 py-6 relative z-10">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
             Choose time range
           </h2>
           <p className="text-muted-foreground">
@@ -74,10 +76,10 @@ const NewsCategory = () => {
             <button
               key={filter.id}
               onClick={() => handleTimeFilterClick(filter.id)}
-              className="w-full flex items-center gap-4 p-5 rounded-2xl bg-card/50 border border-border/50 backdrop-blur-sm hover:bg-card/70 hover:border-primary/30 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] text-left"
+              className="w-full flex items-center gap-4 p-5 rounded-2xl bg-gradient-to-br from-card/80 to-card/40 border border-border/50 backdrop-blur-sm hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] text-left"
             >
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                <filter.icon className="w-6 h-6 text-primary" />
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-md">
+                <filter.icon className="w-7 h-7 text-primary" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-foreground mb-1">
