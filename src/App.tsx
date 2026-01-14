@@ -9,6 +9,9 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import BookPage from "./pages/BookPage";
+import NewsPage from "./pages/NewsPage";
+import NewsCategory from "./pages/NewsCategory";
+import NewsArticles from "./pages/NewsArticles";
 import BookLibrary from "./pages/BookLibrary";
 import BookSearch from "./pages/BookSearch";
 import BookReader from "./pages/BookReader";
@@ -64,6 +67,9 @@ const App = () => {
           <Route path="/book/library" element={<BookLibrary />} />
           <Route path="/book/search" element={<BookSearch />} />
           <Route path="/book/read/:bookTitle" element={<BookReader />} />
+          <Route path="/news" element={<NewsPage />} />
+          <Route path="/news/category/:categoryId" element={<NewsCategory />} />
+          <Route path="/news/articles/:categoryId/:timeFilter" element={<NewsArticles />} />
           <Route path="/image-gen" element={<ImageGen />} />
           <Route path="/mcq-gen" element={<MCQGen />} />
           <Route path="/flashcard-gen" element={<FlashcardGen />} />
