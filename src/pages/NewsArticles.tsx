@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import PremiumBackground from "@/components/PremiumBackground";
@@ -13,6 +13,9 @@ import {
   saveNews,
   isNewsCacheValid,
   getNewsUserProfile,
+  canRefreshNews,
+  setLastRefreshTime,
+  getRefreshCooldownRemaining,
   NewsArticle
 } from "@/lib/newsStorage";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,25 +28,40 @@ const NewsArticles = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   const categoryName = getCategoryDisplayName(categoryId || "");
   const categoryEmoji = getCategoryEmoji(categoryId || "");
   const timeFilterName = getTimeFilterDisplayName(timeFilter || "");
 
+  // Update cooldown timer
+  useEffect(() => {
+    if (!categoryId || !timeFilter) return;
+    
+    const updateCooldown = () => {
+      const remaining = getRefreshCooldownRemaining(categoryId, timeFilter);
+      setCooldownRemaining(remaining);
+    };
+    
+    updateCooldown();
+    const interval = setInterval(updateCooldown, 1000);
+    return () => clearInterval(interval);
+  }, [categoryId, timeFilter]);
+
   const getArticleCount = () => {
     switch (timeFilter) {
-      case "latest": return "3-5";
-      case "week": return "4-6";
-      case "month": return "5-8";
-      default: return "3-5";
+      case "latest": return "3";
+      case "week": return "4";
+      case "month": return "5";
+      default: return "3";
     }
   };
 
   const getTimeContext = () => {
     switch (timeFilter) {
-      case "latest": return "from today or the past 24 hours";
-      case "week": return "from the past 7 days";
-      case "month": return "from the past 30 days";
+      case "latest": return "from today";
+      case "week": return "from this week";
+      case "month": return "from this month";
       default: return "recent";
     }
   };
@@ -68,46 +86,29 @@ const NewsArticles = () => {
       const userProfile = getNewsUserProfile();
       const userAge = userProfile?.age || 18;
 
-      const prompt = `Generate ${getArticleCount()} recent news articles about ${categoryName} ${getTimeContext()}.
-Reader age: ${userAge}
+      const prompt = `Generate ${getArticleCount()} news about ${categoryName} ${getTimeContext()} (January 2026).
 
-Return ONLY valid JSON in this exact format (no markdown, no code blocks):
-{
-  "articles": [
-    {
-      "headline": "Short, attention-grabbing headline",
-      "context": "1-2 sentence summary of what happened",
-      "body": "2-3 paragraphs with details, dates, names, and facts"
-    }
-  ]
-}
+Return JSON only:
+{"articles":[{"headline":"...","context":"...","body":"..."}]}
 
-Rules:
-- Make news realistic and plausible for January 2026
-- Use simple language appropriate for age ${userAge}
-- Include specific dates, names, and numbers
-- Each article should be complete and informative
-- Keep it factual and easy to understand
-- Headlines should be catchy but informative
-- Context should summarize the key point
-- Body should provide full details with proper formatting`;
+Rules: realistic news, age ${userAge} language, include dates/names, no markdown.`;
 
       const { data, error } = await supabase.functions.invoke("pollinations-chat", {
         body: {
           prompt,
-          model: "openai",
-          temperature: 0.7
+          model: "gemini-large",
+          temperature: 0.7,
+          max_tokens: 2000
         }
       });
 
       if (error) throw error;
 
-      const responseText = data?.response || "";
+      const responseText = data?.text || "";
       
       // Parse JSON from response
       let parsed;
       try {
-        // Try to extract JSON from the response
         const jsonMatch = responseText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           parsed = JSON.parse(jsonMatch[0]);
@@ -131,8 +132,11 @@ Rules:
         generatedAt: Date.now()
       }));
 
-      // Save to cache
+      // Save to cache and set refresh time
       saveNews(categoryId, timeFilter, newArticles);
+      if (forceRefresh) {
+        setLastRefreshTime(categoryId, timeFilter);
+      }
       setArticles(newArticles);
 
     } catch (error) {
@@ -153,7 +157,23 @@ Rules:
   }, [categoryId, timeFilter]);
 
   const handleRefresh = () => {
+    if (!categoryId || !timeFilter) return;
+    
+    if (!canRefreshNews(categoryId, timeFilter)) {
+      const mins = Math.ceil(cooldownRemaining / 60000);
+      toast({
+        title: "Cooldown Active",
+        description: `Please wait ${mins} minute${mins !== 1 ? 's' : ''} before refreshing`,
+      });
+      return;
+    }
     generateNews(true);
+  };
+
+  const formatCooldown = () => {
+    const mins = Math.floor(cooldownRemaining / 60000);
+    const secs = Math.floor((cooldownRemaining % 60000) / 1000);
+    return mins > 0 ? `${mins}m` : `${secs}s`;
   };
 
   return (
@@ -185,10 +205,14 @@ Rules:
             variant="outline"
             size="icon"
             onClick={handleRefresh}
-            disabled={isLoading || isRefreshing}
-            className="rounded-full"
+            disabled={isLoading || isRefreshing || cooldownRemaining > 0}
+            className="rounded-full relative"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            {cooldownRemaining > 0 ? (
+              <span className="text-xs font-medium">{formatCooldown()}</span>
+            ) : (
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            )}
           </Button>
         </div>
       </header>
@@ -196,10 +220,26 @@ Rules:
       {/* Main Content */}
       <main className="flex-1 px-4 py-4 relative z-10 overflow-y-auto pb-8">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-            <p className="text-muted-foreground">Generating news...</p>
-            <p className="text-sm text-muted-foreground/60 mt-1">This may take a moment</p>
+          <div className="flex flex-col items-center justify-center py-16">
+            {/* Animated newspaper icon */}
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/30 flex items-center justify-center mb-6 shadow-lg shadow-primary/20 animate-pulse">
+              <Newspaper className="w-10 h-10 text-primary" />
+            </div>
+            
+            {/* Loading text */}
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Gathering News
+            </h3>
+            <p className="text-muted-foreground text-center max-w-xs">
+              Our AI is finding the latest stories for you...
+            </p>
+            
+            {/* Progress dots */}
+            <div className="flex gap-2 mt-6">
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{animationDelay: "0ms"}} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{animationDelay: "150ms"}} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{animationDelay: "300ms"}} />
+            </div>
           </div>
         ) : articles.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">

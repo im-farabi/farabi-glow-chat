@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Newspaper, Library, Globe, Trophy, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Newspaper, Globe, Trophy, ArrowRight, Sparkles } from "lucide-react";
 import PremiumBackground from "@/components/PremiumBackground";
-import { getNewsUserProfile, getCategoryEmoji } from "@/lib/newsStorage";
+import { getNewsUserProfile } from "@/lib/newsStorage";
 
 interface CategoryCardProps {
   id: string;
@@ -15,23 +14,29 @@ interface CategoryCardProps {
 const CategoryCard = ({ id, name, emoji, onClick }: CategoryCardProps) => (
   <button
     onClick={onClick}
-    className="flex flex-col items-center justify-center p-4 rounded-2xl bg-card/50 border border-border/50 backdrop-blur-sm hover:bg-card/70 hover:border-primary/30 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] min-w-[100px]"
+    className="flex flex-col items-center justify-center p-5 rounded-2xl bg-gradient-to-br from-card/80 to-card/40 border border-border/50 backdrop-blur-sm hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] min-w-[100px]"
   >
-    <span className="text-3xl mb-2">{emoji}</span>
-    <span className="text-sm text-muted-foreground text-center leading-tight">{name}</span>
+    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-3 shadow-md">
+      <span className="text-2xl">{emoji}</span>
+    </div>
+    <span className="text-sm font-medium text-foreground">{name}</span>
   </button>
 );
 
 const WideCard = ({ id, name, emoji, onClick }: CategoryCardProps) => (
   <button
     onClick={onClick}
-    className="flex items-center justify-between w-full p-4 rounded-2xl bg-card/50 border border-border/50 backdrop-blur-sm hover:bg-card/70 hover:border-primary/30 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
+    className="flex items-center justify-between w-full p-5 rounded-2xl bg-gradient-to-br from-card/80 to-card/40 border border-border/50 backdrop-blur-sm hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
   >
-    <div className="flex items-center gap-3">
-      <span className="text-2xl">{emoji}</span>
-      <span className="text-foreground font-medium">{name}</span>
+    <div className="flex items-center gap-4">
+      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-md">
+        <span className="text-xl">{emoji}</span>
+      </div>
+      <span className="text-foreground font-semibold">{name}</span>
     </div>
-    <ArrowRight className="w-5 h-5 text-muted-foreground" />
+    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+      <ArrowRight className="w-4 h-4 text-primary" />
+    </div>
   </button>
 );
 
@@ -74,16 +79,22 @@ const NewsHome = () => {
       <PremiumBackground />
 
       {/* Header */}
-      <header className="relative z-10 px-4 pt-4 pb-2">
+      <header className="relative z-10 px-4 pt-6 pb-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-              <Newspaper className="w-5 h-5 text-primary" />
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/30 flex items-center justify-center shadow-lg shadow-primary/20">
+              <Newspaper className="w-6 h-6 text-primary" />
             </div>
-            <span className="font-bold text-lg">
-              <span className="text-foreground">Quick</span>
-              <span className="text-primary">News</span>
-            </span>
+            <div>
+              <span className="font-bold text-xl">
+                <span className="text-foreground">Quick</span>
+                <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">News</span>
+              </span>
+              <div className="flex items-center gap-1 mt-0.5">
+                <Sparkles className="w-3 h-3 text-primary/60" />
+                <span className="text-xs text-muted-foreground">AI Powered</span>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -91,23 +102,29 @@ const NewsHome = () => {
       {/* Main Content */}
       <main className="flex-1 px-4 pb-24 relative z-10 overflow-y-auto">
         {/* Greeting */}
-        <div className="py-6">
-          <h1 className="text-2xl font-bold text-foreground">
-            {greeting}, <span className="text-primary">{userName}</span>!
+        <div className="py-8">
+          <h1 className="text-2xl font-bold">
+            <span className="text-foreground">{greeting}, </span>
+            <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">{userName}</span>
+            <span className="text-foreground">!</span>
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-2">
             What news would you like to read today?
           </p>
         </div>
 
         {/* Countrywise News Section */}
         <section className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Globe className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Countrywise News</h2>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+              <Globe className="w-4 h-4 text-primary" />
+            </div>
+            <h2 className="text-lg font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              Countrywise News
+            </h2>
           </div>
           
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-3 gap-3 mb-4">
             {countrywiseCategories.map((cat) => (
               <CategoryCard
                 key={cat.id}
@@ -129,9 +146,13 @@ const NewsHome = () => {
 
         {/* Typewise News Section */}
         <section className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Typewise News</h2>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+              <Trophy className="w-4 h-4 text-primary" />
+            </div>
+            <h2 className="text-lg font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              Typewise News
+            </h2>
           </div>
           
           <div className="grid grid-cols-3 gap-3">
