@@ -62,44 +62,85 @@ function parseFlags(line: string): string[] {
 
 // Connect to IMAP server using Deno's native TCP
 async function connectIMAP(host: string, port: number, email: string, password: string): Promise<EmailMessage[]> {
+  console.log('Creating TLS connection to', host, port);
   const conn = await Deno.connectTls({ hostname: host, port });
+  console.log('TLS connection established');
+  
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   
-  const readResponse = async (): Promise<string> => {
-    const buffer = new Uint8Array(8192);
-    const n = await conn.read(buffer);
-    if (n === null) return '';
-    return decoder.decode(buffer.subarray(0, n));
+  const readResponse = async (timeout = 5000): Promise<string> => {
+    const buffer = new Uint8Array(16384);
+    try {
+      // Set up timeout
+      const timeoutId = setTimeout(() => conn.close(), timeout);
+      const n = await conn.read(buffer);
+      clearTimeout(timeoutId);
+      if (n === null) return '';
+      const result = decoder.decode(buffer.subarray(0, n));
+      return result;
+    } catch (e) {
+      console.error('Read error:', e);
+      return '';
+    }
   };
   
-  const sendCommand = async (cmd: string): Promise<string> => {
-    await conn.write(encoder.encode(cmd + '\r\n'));
-    // Small delay to allow server response
-    await new Promise(r => setTimeout(r, 200));
+  const sendCommand = async (tag: string, cmd: string): Promise<string> => {
+    const fullCmd = `${tag} ${cmd}`;
+    console.log('Sending:', tag, cmd.substring(0, 20) + '...');
+    await conn.write(encoder.encode(fullCmd + '\r\n'));
+    
+    // Wait for complete response (until we see the tag with OK/NO/BAD)
     let response = '';
     let attempts = 0;
-    while (attempts < 10) {
-      const chunk = await readResponse();
+    const maxAttempts = 15;
+    
+    while (attempts < maxAttempts) {
+      await new Promise(r => setTimeout(r, 300));
+      const chunk = await readResponse(3000);
       response += chunk;
-      if (chunk.includes('OK') || chunk.includes('NO') || chunk.includes('BAD') || !chunk) break;
-      attempts++;
+      console.log('Chunk received:', chunk.length, 'bytes');
+      
+      // Check if we got the tagged response
+      if (response.includes(`${tag} OK`) || response.includes(`${tag} NO`) || response.includes(`${tag} BAD`)) {
+        break;
+      }
+      
+      if (!chunk) {
+        attempts++;
+      }
     }
+    
+    console.log('Full response for', tag, ':', response.substring(0, 200));
     return response;
   };
   
   try {
     // Read greeting
-    await readResponse();
+    const greeting = await readResponse();
+    console.log('Server greeting received');
     
-    // Login
-    const loginResp = await sendCommand(`A001 LOGIN "${email}" "${password}"`);
-    if (loginResp.includes('NO') || loginResp.includes('BAD')) {
+    // Login - escape password properly for IMAP (use literal or escape special chars)
+    // IMAP requires special characters in passwords to be properly escaped
+    const escapedPassword = password.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    console.log('Attempting login for:', email);
+    const loginResp = await sendCommand('A001', `LOGIN "${email}" "${escapedPassword}"`);
+    console.log('Login response:', loginResp.substring(0, 100));
+    
+    // Check for specific tagged response - A001 OK means success
+    if (loginResp.includes('A001 NO') || loginResp.includes('A001 BAD')) {
+      console.error('Login failed with response:', loginResp);
       throw new Error('Authentication failed');
     }
     
+    if (!loginResp.includes('A001 OK')) {
+      console.error('Unexpected login response:', loginResp);
+      throw new Error('Authentication failed - unexpected response');
+    }
+    console.log('Login successful');
+    
     // Select INBOX
-    const selectResp = await sendCommand('A002 SELECT INBOX');
+    const selectResp = await sendCommand('A002', 'SELECT INBOX');
     const existsMatch = selectResp.match(/\* (\d+) EXISTS/);
     const exists = existsMatch ? parseInt(existsMatch[1]) : 0;
     
@@ -108,7 +149,7 @@ async function connectIMAP(host: string, port: number, email: string, password: 
     if (exists > 0) {
       // Fetch last 50 emails
       const start = Math.max(1, exists - 49);
-      const fetchResp = await sendCommand(`A003 FETCH ${start}:* (UID FLAGS ENVELOPE)`);
+      const fetchResp = await sendCommand('A003', `FETCH ${start}:* (UID FLAGS ENVELOPE)`);
       
       // Parse the fetch response
       const lines = fetchResp.split('\r\n');
@@ -156,7 +197,7 @@ async function connectIMAP(host: string, port: number, email: string, password: 
     }
     
     // Logout
-    await sendCommand('A004 LOGOUT');
+    await sendCommand('A004', 'LOGOUT');
     conn.close();
     
     // Sort by date descending
