@@ -61,7 +61,63 @@ function parseFlags(line: string): string[] {
   return [];
 }
 
-// Connect to IMAP server using Deno's native TCP
+// Parse MIME multipart content to extract clean text
+function parseMimeContent(raw: string): string {
+  let text = raw;
+  
+  // Check if this is multipart content (has boundary markers like --000000...)
+  const boundaryMatch = text.match(/--([a-f0-9]+)/i);
+  if (boundaryMatch) {
+    // This is MIME multipart - try to extract plain text section
+    const boundary = boundaryMatch[1];
+    const parts = text.split(new RegExp(`--${boundary}`, 'g'));
+    
+    // Find the text/plain part
+    for (const part of parts) {
+      if (part.includes('text/plain')) {
+        // Extract content after the headers (double newline)
+        const headerEnd = part.indexOf('\n\n');
+        if (headerEnd !== -1) {
+          text = part.substring(headerEnd + 2);
+          break;
+        }
+        // Try with \r\n\r\n
+        const headerEndCRLF = part.indexOf('\r\n\r\n');
+        if (headerEndCRLF !== -1) {
+          text = part.substring(headerEndCRLF + 4);
+          break;
+        }
+      }
+    }
+  }
+  
+  // Remove Content-Type headers if they appear at the start
+  text = text.replace(/^Content-Type:[^\n]*\n/gi, '');
+  text = text.replace(/^charset=[^\n]*\n/gi, '');
+  
+  // Remove HTML tags
+  text = text.replace(/<[^>]*>/g, ' ');
+  
+  // Decode HTML entities
+  text = text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  
+  // Clean up whitespace
+  text = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  return text.substring(0, 400);
+}
+
+
 async function connectIMAP(host: string, port: number, email: string, password: string): Promise<EmailMessage[]> {
   console.log('Creating TLS connection to', host, port);
   const conn = await Deno.connectTls({ hostname: host, port });
@@ -179,17 +235,8 @@ async function connectIMAP(host: string, port: number, email: string, password: 
           }
         }
         
-        // Clean up body text - remove HTML tags and decode entities
-        bodyText = bodyText
-          .replace(/<[^>]*>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/\s+/g, ' ')
-          .trim()
-          .substring(0, 300);
+        // Parse MIME multipart content - extract plain text part
+        bodyText = parseMimeContent(bodyText);
         
         // Extract envelope data (simplified parsing)
         const envelopeMatch = block.match(/ENVELOPE\s*\((.+?)\)\s*(?:BODY|$)/s);
