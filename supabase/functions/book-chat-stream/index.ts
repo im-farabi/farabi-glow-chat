@@ -49,7 +49,7 @@ NOW HELP THEM UNDERSTAND THIS BOOK! Keep it real, keep it simple.`;
 
     console.log('Book chat request for:', bookTitle, 'messages:', messages.length);
 
-    // Try gemini-large first with streaming (faster than openai models)
+    // Try openai-large first with streaming
     let response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -57,16 +57,16 @@ NOW HELP THEM UNDERSTAND THIS BOOK! Keep it real, keep it simple.`;
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gemini-large',
+        model: 'openai-large',
         messages: fullMessages,
         stream: true,
         max_tokens: 500
       })
     });
 
-    // Fallback to gemini-search if gemini-large fails
+    // Fallback to openai if openai-large fails
     if (!response.ok) {
-      console.log('gemini-large failed, trying gemini-search fallback');
+      console.log('openai-large failed, trying openai fallback');
       response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -74,7 +74,7 @@ NOW HELP THEM UNDERSTAND THIS BOOK! Keep it real, keep it simple.`;
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gemini-search',
+          model: 'openai',
           messages: fullMessages,
           stream: true,
           max_tokens: 500
