@@ -107,11 +107,11 @@ function parseMimeContent(raw: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'");
   
-  // Clean up whitespace
+  // Clean up whitespace but preserve line breaks
   text = text
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
-    .replace(/\s+/g, ' ')
+    .replace(/[ \t]+/g, ' ')  // Only collapse spaces/tabs, not newlines
     .trim();
   
   return text.substring(0, 400);
