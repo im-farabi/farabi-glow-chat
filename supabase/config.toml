@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.pollinations-video]
 verify_jwt = false
+
+[functions.book-chat-stream]
+verify_jwt = false
