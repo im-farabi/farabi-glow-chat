@@ -40,7 +40,7 @@ const BookHome = () => {
     <div className="min-h-[100dvh] bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border safe-area-top">
-        <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
+        <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
           <div className="flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-primary" />
             <span className="font-bold text-lg">Read<span className="text-primary">ME</span></span>
@@ -54,7 +54,7 @@ const BookHome = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 px-4 py-5 max-w-lg mx-auto w-full space-y-6">
+      <main className="flex-1 px-4 md:px-6 py-5 max-w-4xl mx-auto w-full space-y-6">
         {/* Greeting */}
         <div>
           <h1 className="text-2xl font-bold text-foreground">
@@ -75,7 +75,7 @@ const BookHome = () => {
                 See all <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {recentBooksAsCards.map((book) => (
                 <BookCard
                   key={book.id}
@@ -107,7 +107,7 @@ const BookHome = () => {
         )}
 
         {/* Quick Actions */}
-        <section className="grid grid-cols-2 gap-3">
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <Link to="/book/search" className="block">
             <div className="p-4 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors active:scale-[0.98]">
               <Search className="w-5 h-5 text-primary mb-2" />
@@ -127,7 +127,7 @@ const BookHome = () => {
 
       {/* Bottom CTA */}
       <div className="sticky bottom-0 p-4 bg-background/80 backdrop-blur-sm border-t border-border safe-area-bottom">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-4xl mx-auto">
           <Link to="/book/search" className="block">
             <Button className="w-full h-12 rounded-xl font-semibold text-base">
               <Search className="w-5 h-5 mr-2" />
