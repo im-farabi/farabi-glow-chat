@@ -12,6 +12,7 @@ interface EmailMessage {
   subject: string;
   date: string;
   preview: string;
+  body: string;
   isRead: boolean;
 }
 
@@ -147,51 +148,77 @@ async function connectIMAP(host: string, port: number, email: string, password: 
     const emails: EmailMessage[] = [];
     
     if (exists > 0) {
-      // Fetch last 50 emails
+      // Fetch last 50 emails with body preview
       const start = Math.max(1, exists - 49);
-      const fetchResp = await sendCommand('A003', `FETCH ${start}:* (UID FLAGS ENVELOPE)`);
+      const fetchResp = await sendCommand('A003', `FETCH ${start}:* (UID FLAGS ENVELOPE BODY.PEEK[TEXT]<0.500>)`);
       
-      // Parse the fetch response
-      const lines = fetchResp.split('\r\n');
-      for (const line of lines) {
-        if (line.includes('FETCH')) {
-          // Extract UID
-          const uidMatch = line.match(/UID\s+(\d+)/);
-          const uid = uidMatch ? uidMatch[1] : Date.now().toString();
-          
-          // Extract flags
-          const flagsMatch = line.match(/FLAGS\s*\(([^)]*)\)/);
-          const flags = flagsMatch ? flagsMatch[1] : '';
-          const isRead = flags.includes('\\Seen');
-          
-          // Extract envelope data (simplified parsing)
-          const envelopeMatch = line.match(/ENVELOPE\s*\((.+)\)/);
-          if (envelopeMatch) {
-            const envData = envelopeMatch[1];
-            
-            // Extract date - first quoted string
-            const dateMatch = envData.match(/"([^"]+)"/);
-            const date = dateMatch ? dateMatch[1] : new Date().toISOString();
-            
-            // Extract subject - second quoted string
-            const allQuotes = envData.match(/"[^"]*"/g) || [];
-            const subject = allQuotes[1]?.replace(/"/g, '') || '(No Subject)';
-            
-            // Try to extract from address
-            const fromMatch = envData.match(/\(\("([^"]*)" NIL "([^"]*)" "([^"]*)"\)\)/);
-            const fromName = fromMatch?.[1] || 'Unknown';
-            const fromAddr = fromMatch ? `${fromMatch[2]}@${fromMatch[3]}` : 'unknown@unknown.com';
-            
-            emails.push({
-              id: uid,
-              from: fromAddr,
-              fromName: fromName || fromAddr.split('@')[0],
-              subject: decodeSubject(subject),
-              date: date,
-              preview: '',
-              isRead
-            });
+      // Parse the fetch response - split by FETCH boundaries
+      const fetchBlocks = fetchResp.split(/\* \d+ FETCH/).filter(b => b.trim());
+      
+      for (const block of fetchBlocks) {
+        // Extract UID
+        const uidMatch = block.match(/UID\s+(\d+)/);
+        const uid = uidMatch ? uidMatch[1] : Date.now().toString();
+        
+        // Extract flags
+        const flagsMatch = block.match(/FLAGS\s*\(([^)]*)\)/);
+        const flags = flagsMatch ? flagsMatch[1] : '';
+        const isRead = flags.includes('\\Seen');
+        
+        // Extract body text - look for literal string format {size}\r\n...content...
+        let bodyText = '';
+        const bodyLiteralMatch = block.match(/BODY\[TEXT\]<0>\s*\{(\d+)\}\r?\n([\s\S]*)/);
+        if (bodyLiteralMatch) {
+          const size = parseInt(bodyLiteralMatch[1]);
+          bodyText = bodyLiteralMatch[2].substring(0, Math.min(size, 500));
+        } else {
+          // Try quoted format
+          const bodyQuotedMatch = block.match(/BODY\[TEXT\]<0\.500>\s*"([^"]*)"/);
+          if (bodyQuotedMatch) {
+            bodyText = bodyQuotedMatch[1];
           }
+        }
+        
+        // Clean up body text - remove HTML tags and decode entities
+        bodyText = bodyText
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .substring(0, 300);
+        
+        // Extract envelope data (simplified parsing)
+        const envelopeMatch = block.match(/ENVELOPE\s*\((.+?)\)\s*(?:BODY|$)/s);
+        if (envelopeMatch) {
+          const envData = envelopeMatch[1];
+          
+          // Extract date - first quoted string
+          const dateMatch = envData.match(/"([^"]+)"/);
+          const date = dateMatch ? dateMatch[1] : new Date().toISOString();
+          
+          // Extract subject - second quoted string
+          const allQuotes = envData.match(/"[^"]*"/g) || [];
+          const subject = allQuotes[1]?.replace(/"/g, '') || '(No Subject)';
+          
+          // Try to extract from address
+          const fromMatch = envData.match(/\(\("([^"]*)" NIL "([^"]*)" "([^"]*)"\)\)/);
+          const fromName = fromMatch?.[1] || 'Unknown';
+          const fromAddr = fromMatch ? `${fromMatch[2]}@${fromMatch[3]}` : 'unknown@unknown.com';
+          
+          emails.push({
+            id: uid,
+            from: fromAddr,
+            fromName: fromName || fromAddr.split('@')[0],
+            subject: decodeSubject(subject),
+            date: date,
+            preview: bodyText || 'No preview available',
+            body: bodyText || 'No content available',
+            isRead
+          });
         }
       }
     }
