@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, BookOpen, CheckCircle, Sparkles, Target, Lightbulb, Download } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle, Sparkles, Target, Lightbulb, MessageCircle } from "lucide-react";
+import BookChatPanel from "@/components/book/BookChatPanel";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { addBookToRead, getBookUserProfile, saveBookSummary, getSavedSummary, type SavedBookSummary } from "@/lib/bookStorage";
@@ -26,6 +27,7 @@ const BookReader = () => {
   const [summary, setSummary] = useState<BookSummary | null>(null);
   const [isMarkedAsRead, setIsMarkedAsRead] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const decodedTitle = decodeURIComponent(bookTitle || "");
 
@@ -238,8 +240,41 @@ IMPORTANT: The summary must be COMPREHENSIVE - covering the entire book's conten
     );
   }
 
+  // Build book context for AI chat
+  const bookContextForChat = `
+Title: ${summary.title}
+Author: ${summary.author}
+Year: ${summary.year}
+About: ${summary.about}
+Full Overview: ${summary.summary}
+Key Points: ${summary.keyPoints.join(', ')}
+Moral: ${summary.moral}
+  `.trim();
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Floating AI Chat Button */}
+      <button
+        onClick={() => setIsChatOpen(true)}
+        className="fixed top-20 right-4 z-30 w-12 h-12 rounded-full 
+          bg-gradient-to-br from-primary to-secondary
+          border border-primary/30 shadow-lg shadow-primary/30
+          flex items-center justify-center
+          hover:scale-110 hover:shadow-primary/50 transition-all duration-300
+          animate-pulse-glow"
+        aria-label="Chat with AI about this book"
+      >
+        <MessageCircle className="w-6 h-6 text-primary-foreground" />
+      </button>
+
+      {/* AI Chat Panel */}
+      <BookChatPanel
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        bookTitle={summary.title}
+        bookContext={bookContextForChat}
+      />
+
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="p-4 flex items-center gap-3">
