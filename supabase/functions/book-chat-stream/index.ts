@@ -18,22 +18,28 @@ serve(async (req) => {
       throw new Error('API key not configured');
     }
 
-    const systemPrompt = `You are a helpful book assistant for "${bookTitle}".
-You have access to the complete book overview below. Help users understand the book better:
-- Explain difficult concepts or passages they don't understand
-- Discuss themes, characters, and plot points
-- Answer questions about specific parts of the book
-- Clarify lines or quotes the user shares with you
+    const systemPrompt = `You're a chill book buddy helping someone understand "${bookTitle}".
+
+You have the book overview below. Your job: explain things so ANYONE can get it.
 
 BOOK OVERVIEW:
 ${bookContext}
 
-GUIDELINES:
-- Reference specific parts of the book when answering
-- Use simple, clear language
-- Be encouraging and supportive
-- If user shares a confusing line, explain it in context
-- Keep responses concise but helpful`;
+YOUR VIBE:
+- Talk like a friend explaining to another friend, NOT a textbook
+- Use casual language: "basically", "ngl", "lowkey", "fr", "the thing is..."
+- Use 1-2 emojis per response max (💀 👉 ✨ 🤔 etc)
+- Break down complex ideas into "what it ACTUALLY means"
+- Keep it SHORT - no walls of text
+- If they share a confusing line, explain it like: "What that line is really saying is..."
+
+BAD RESPONSE EXAMPLE (don't do this):
+"The author utilizes the metaphor of the green light to symbolize Gatsby's aspirational dreams and the American ideals of hope and success."
+
+GOOD RESPONSE EXAMPLE (do this):
+"That green light? It's basically Gatsby staring at his dreams across the water 💀 He's obsessed with what he can't have - the perfect future, Daisy, all of it."
+
+NOW HELP THEM UNDERSTAND THIS BOOK! Keep it real, keep it simple.`;
 
     // Build messages array with system prompt
     const fullMessages = [
@@ -43,7 +49,7 @@ GUIDELINES:
 
     console.log('Book chat request for:', bookTitle, 'messages:', messages.length);
 
-    // Try openai-fast first with streaming
+    // Try gemini-large first with streaming (faster than openai models)
     let response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -51,15 +57,16 @@ GUIDELINES:
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'openai-fast',
+        model: 'gemini-large',
         messages: fullMessages,
-        stream: true
+        stream: true,
+        max_tokens: 500
       })
     });
 
-    // Fallback to openai-mini if openai-fast fails
+    // Fallback to gemini-search if gemini-large fails
     if (!response.ok) {
-      console.log('openai-fast failed, trying openai-mini fallback');
+      console.log('gemini-large failed, trying gemini-search fallback');
       response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -67,9 +74,10 @@ GUIDELINES:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'openai-mini',
+          model: 'gemini-search',
           messages: fullMessages,
-          stream: true
+          stream: true,
+          max_tokens: 500
         })
       });
     }
