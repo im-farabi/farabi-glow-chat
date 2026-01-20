@@ -10,19 +10,19 @@ const BookIntro = ({ onStart }: BookIntroProps) => {
     <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center relative overflow-hidden px-6">
 
       {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center text-center max-w-sm">
+      <div className="relative z-10 flex flex-col items-center text-center max-w-lg md:max-w-xl">
         {/* Logo */}
-        <div className="mb-6 p-4 rounded-2xl bg-primary/10 border border-primary/20">
-          <BookOpen className="w-16 h-16 text-primary" />
+        <div className="mb-6 md:mb-8 p-4 md:p-5 rounded-2xl md:rounded-3xl bg-primary/10 border border-primary/20">
+          <BookOpen className="w-16 h-16 md:w-20 md:h-20 text-primary" />
         </div>
 
         {/* Title */}
-        <h1 className="text-4xl font-bold text-foreground mb-3">
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3">
           Read<span className="text-primary">ME</span>
         </h1>
 
         {/* Tagline */}
-        <p className="text-muted-foreground text-lg mb-8">
+        <p className="text-muted-foreground text-lg md:text-xl mb-8">
           Your Smart Reading Companion
         </p>
 

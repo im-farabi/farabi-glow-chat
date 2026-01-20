@@ -49,22 +49,25 @@ const BookReader = () => {
     const profile = getBookUserProfile();
     const userAge = profile?.age || 18;
 
-    // Simplified prompt for faster response
+    // Comprehensive prompt for full book overview
     const prompt = `Book: "${decodedTitle}"
 Reader age: ${userAge}
+
+Generate a COMPLETE book overview that explains the ENTIRE book from START to END.
+This should help someone understand EVERYTHING the book covers without reading it.
 
 Return ONLY this JSON:
 {
   "title": "Book Title",
-  "author": "Author Name",
-  "year": "Year",
-  "about": "2 sentences about what this book covers",
-  "summary": "3-4 short paragraphs explaining the main ideas",
-  "keyPoints": ["point 1", "point 2", "point 3"],
-  "moral": "1-2 sentences - the main lesson"
+  "author": "Author Name", 
+  "year": "Publication Year",
+  "about": "2-3 sentences describing what this book is about and why it's popular",
+  "summary": "A DETAILED overview covering the ENTIRE book from beginning to end. This should be 8-12 paragraphs explaining:\\n\\n1. How the book begins (setting, initial situation)\\n2. The main characters or key concepts introduced\\n3. Key events and ideas as they develop through the book\\n4. Major turning points or revelations\\n5. How everything comes together\\n6. How the book concludes and what happens at the end\\n\\nMake it feel like a complete journey through the book. Use simple language appropriate for age ${userAge}.",
+  "keyPoints": ["Key takeaway 1", "Key takeaway 2", "Key takeaway 3", "Key takeaway 4", "Key takeaway 5"],
+  "moral": "The main lesson or message the book wants readers to understand (2-3 sentences)"
 }
 
-Keep language simple for age ${userAge}. Be concise.`;
+IMPORTANT: The summary must be COMPREHENSIVE - covering the entire book's content from beginning to end, not just a brief overview. Think of it as a detailed retelling that helps someone understand everything without reading the actual book.`;
 
     let responseText = '';
     let success = false;
@@ -117,7 +120,7 @@ Keep language simple for age ${userAge}. Be concise.`;
           year: parsed.year || parsed.publishedYear || "",
           about: parsed.about || "",
           summary: parsed.summary || parsed.detailed || "",
-          keyPoints: (parsed.keyPoints || []).slice(0, 3),
+          keyPoints: (parsed.keyPoints || []).slice(0, 5),
           moral: parsed.moral || "",
           coverUrl
         };
@@ -181,7 +184,7 @@ Keep language simple for age ${userAge}. Be concise.`;
           </div>
         </div>
 
-        <div className="p-4 pb-24 space-y-6 max-w-2xl mx-auto">
+        <div className="p-4 md:p-6 pb-24 space-y-6 max-w-4xl mx-auto">
           {/* Title skeleton */}
           <div className="text-center pt-4 space-y-3">
             <Skeleton className="h-8 w-64 mx-auto" />
@@ -196,11 +199,17 @@ Keep language simple for age ${userAge}. Be concise.`;
           </div>
 
           {/* Loading message */}
-          <div className="text-center py-4">
-            <p className="text-lg font-medium text-foreground animate-pulse">
-              Summarizing the book for you...
+          <div className="text-center py-6">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 
+              border border-primary/20 flex items-center justify-center animate-pulse">
+              <BookOpen className="w-8 h-8 text-primary" />
+            </div>
+            <p className="text-lg font-medium text-foreground">
+              Creating complete book overview...
             </p>
-            <p className="text-sm text-muted-foreground mt-1">This won't take long</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              This takes a moment as we summarize the entire book
+            </p>
           </div>
 
           {/* Content skeletons */}
@@ -243,7 +252,7 @@ Keep language simple for age ${userAge}. Be concise.`;
         </div>
       </div>
 
-      <div className="p-4 pb-24 space-y-6 max-w-2xl mx-auto">
+      <div className="p-4 md:p-6 pb-24 space-y-6 max-w-4xl mx-auto">
         {/* Book Title & Author */}
         <div className="text-center pt-4">
           <h1 className="text-3xl font-bold text-foreground">{summary.title}</h1>
@@ -261,42 +270,47 @@ Keep language simple for age ${userAge}. Be concise.`;
           <p className="text-muted-foreground leading-relaxed">{summary.about}</p>
         </div>
 
-        {/* Summary */}
-        <div className="bg-card border border-border rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
+        {/* Complete Book Overview */}
+        <div className="bg-card border border-border rounded-xl p-4 md:p-6">
+          <div className="flex items-center gap-2 mb-4">
             <BookOpen className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-foreground">Summary</h2>
+            <h2 className="font-semibold text-foreground text-lg">Complete Book Overview</h2>
           </div>
-          <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
-            {summary.summary}
-          </div>
-        </div>
-
-        {/* Key Points */}
-        <div className="bg-card border border-border rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Target className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-foreground">Key Points</h2>
-          </div>
-          <ul className="space-y-2">
-            {summary.keyPoints.map((point, index) => (
-              <li key={index} className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-sm flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {index + 1}
-                </span>
-                <span className="text-muted-foreground">{point}</span>
-              </li>
+          <div className="text-muted-foreground leading-relaxed text-base md:text-lg space-y-4">
+            {summary.summary.split('\n\n').map((paragraph, index) => (
+              <p key={index}>{paragraph}</p>
             ))}
-          </ul>
+          </div>
         </div>
 
-        {/* Moral / Summary */}
-        <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Lightbulb className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-foreground">The Moral</h2>
+        {/* Key Points & Moral - 2 column on desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          {/* Key Points */}
+          <div className="bg-card border border-border rounded-xl p-4 md:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="w-5 h-5 text-primary" />
+              <h2 className="font-semibold text-foreground">Key Points</h2>
+            </div>
+            <ul className="space-y-2">
+              {summary.keyPoints.map((point, index) => (
+                <li key={index} className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-sm flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {index + 1}
+                  </span>
+                  <span className="text-muted-foreground">{point}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <p className="text-foreground leading-relaxed">{summary.moral}</p>
+
+          {/* Moral / Summary */}
+          <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 md:p-5 h-fit">
+            <div className="flex items-center gap-2 mb-3">
+              <Lightbulb className="w-5 h-5 text-primary" />
+              <h2 className="font-semibold text-foreground">The Moral</h2>
+            </div>
+            <p className="text-foreground leading-relaxed">{summary.moral}</p>
+          </div>
         </div>
 
         {/* Mark as Read Button */}

@@ -144,7 +144,7 @@ Maximum 3 books. Be concise.`;
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="p-4 flex items-center gap-3">
+        <div className="p-4 flex items-center gap-3 max-w-4xl mx-auto">
           <Link to="/book">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="w-5 h-5" />
@@ -154,7 +154,7 @@ Maximum 3 books. Be concise.`;
         </div>
       </div>
 
-      <div className="p-4 space-y-6">
+      <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
         {/* Search Input */}
         <div className="flex gap-2">
           <Input
