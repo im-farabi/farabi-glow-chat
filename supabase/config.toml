@@ -53,3 +53,9 @@ verify_jwt = false
 
 [functions.book-chat-stream]
 verify_jwt = false
+
+[functions.fetch-emails]
+verify_jwt = false
+
+[functions.send-email-smtp]
+verify_jwt = false
