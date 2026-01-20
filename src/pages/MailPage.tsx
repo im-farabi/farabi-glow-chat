@@ -27,6 +27,36 @@ const EMAIL_ACCOUNTS = [
   { value: 'jones.smith@notez.fun', label: 'Jones Smith' }
 ];
 
+// Helper function to render email content with clickable links
+const renderEmailContent = (content: string): React.ReactNode => {
+  // URL regex pattern
+  const urlPattern = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+  
+  // Split content by URLs
+  const parts = content.split(urlPattern);
+  
+  return parts.map((part, index) => {
+    // Check if this part is a URL
+    if (urlPattern.test(part)) {
+      // Reset regex lastIndex
+      urlPattern.lastIndex = 0;
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:text-primary/80 underline break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
+
 const MailPage: React.FC = () => {
   const navigate = useNavigate();
   const [selectedAccount, setSelectedAccount] = useState<string>('');
@@ -279,9 +309,9 @@ const MailPage: React.FC = () => {
                     {/* Expanded content */}
                     {selectedEmail?.id === email.id && (
                       <div className="mt-4 pt-4 border-t border-border/50">
-                        <p className="text-sm text-foreground whitespace-pre-wrap">
-                          {email.preview || email.body || 'No content available'}
-                        </p>
+                        <div className="text-sm text-foreground whitespace-pre-wrap break-words">
+                          {renderEmailContent(email.body || email.preview || 'No content available')}
+                        </div>
                       </div>
                     )}
                   </div>
