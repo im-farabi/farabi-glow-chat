@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, BookOpen, CheckCircle, Sparkles, Target, Lightbulb, MessageCircle } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle, Sparkles, Target, Lightbulb, MessageCircle, StickyNote } from "lucide-react";
 import BookChatPanel from "@/components/book/BookChatPanel";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -266,6 +266,19 @@ Moral: ${summary.moral}
       >
         <MessageCircle className="w-6 h-6 text-primary-foreground" />
       </button>
+
+      {/* Floating Save Notes Button */}
+      <Link
+        to="/notes"
+        className="fixed top-36 right-4 z-30 w-12 h-12 rounded-full 
+          bg-gradient-to-br from-pink-500 to-purple-500
+          border border-pink-500/30 shadow-lg shadow-pink-500/30
+          flex items-center justify-center
+          hover:scale-110 hover:shadow-pink-500/50 transition-all duration-300"
+        aria-label="Save notes"
+      >
+        <StickyNote className="w-6 h-6 text-white" />
+      </Link>
 
       {/* AI Chat Panel */}
       <BookChatPanel

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, MessageSquare, X, MoreVertical, Edit2, Trash2, FileEdit, User, Settings, Image, BookCheck, SquareStack, Volume2, Globe, FileText, Sparkles } from 'lucide-react';
+import { Plus, Search, MessageSquare, X, MoreVertical, Edit2, Trash2, FileEdit, User, Settings, Image, BookCheck, SquareStack, Volume2, Globe, FileText, Sparkles, StickyNote } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getAllChats, truncateTitle, deleteChat, renameChat, getUserPreferences, type ChatSession } from '@/lib/storage';
 import UsageBanner from '@/components/UsageBanner';
@@ -146,8 +146,11 @@ const Sidebar = ({
           </Button>
         </Link>
 
-        <Link to="/web-gen" className="block">
-          
+        <Link to="/notes" className="block" onClick={() => onClose?.()}>
+          <Button variant="outline" className="w-full justify-start">
+            <StickyNote className="mr-2 h-4 w-4" />
+            My Notes
+          </Button>
         </Link>
 
         <Link to="/voice-explain" className="block">

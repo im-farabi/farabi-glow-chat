@@ -15,6 +15,7 @@ import NewsArticles from "./pages/NewsArticles";
 import BookLibrary from "./pages/BookLibrary";
 import BookSearch from "./pages/BookSearch";
 import BookReader from "./pages/BookReader";
+import NotesPage from "./pages/NotesPage";
 import HorizonRedirect from "./pages/HorizonRedirect";
 import LovableRedirect from "./pages/LovableRedirect";
 import AdRedirect from "./pages/AdRedirect";
@@ -68,6 +69,7 @@ const App = () => {
           <Route path="/book/library" element={<BookLibrary />} />
           <Route path="/book/search" element={<BookSearch />} />
           <Route path="/book/read/:bookTitle" element={<BookReader />} />
+          <Route path="/notes" element={<NotesPage />} />
           <Route path="/news" element={<NewsPage />} />
           <Route path="/news/category/:categoryId" element={<NewsCategory />} />
           <Route path="/news/articles/:categoryId/:timeFilter" element={<NewsArticles />} />
