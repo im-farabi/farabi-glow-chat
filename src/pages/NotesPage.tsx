@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { useToast } from "@/hooks/use-toast";
 import DOMPurify from "dompurify";
 import PremiumBackground from "@/components/PremiumBackground";
@@ -122,29 +123,29 @@ const NotesPage = () => {
       
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="p-4 flex items-center justify-between max-w-4xl mx-auto">
-          <div className="flex items-center gap-3">
+        <div className="p-4 md:p-6 flex items-center justify-between max-w-6xl mx-auto">
+          <div className="flex items-center gap-4">
             <Link to="/">
               <Button variant="ghost" size="icon" className="rounded-full">
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-6 h-6" />
               </Button>
             </Link>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+            <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
               My Notes
             </h1>
           </div>
           <Button
             onClick={handleOpenAddDialog}
-            className="bg-gradient-to-r from-pink-500 to-purple-500 hover:opacity-90 text-white"
+            className="bg-gradient-to-r from-pink-500 to-purple-500 hover:opacity-90 text-white font-bold px-6 py-3 text-base"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-5 h-5 mr-2" />
             Add Note
           </Button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-4 md:p-6 max-w-4xl mx-auto pb-24">
+      <div className="p-4 md:p-8 max-w-6xl mx-auto pb-24">
         {notes.length === 0 ? (
           // Empty State
           <div className="flex flex-col items-center justify-center py-20">
@@ -166,55 +167,78 @@ const NotesPage = () => {
           </div>
         ) : (
           // Notes List
-          <div className="space-y-4">
+          <div className="space-y-5">
             {notes.map((note) => (
-              <Card
-                key={note.id}
-                className="bg-card/60 backdrop-blur-xl border-border/50 p-4 
-                  shadow-[0_8px_32px_rgba(236,72,153,0.1)] hover:shadow-[0_8px_32px_rgba(236,72,153,0.2)]
-                  transition-all duration-300 group"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <StickyNote className="w-4 h-4 text-primary flex-shrink-0" />
-                      <h3 className="font-semibold text-foreground truncate">{note.heading}</h3>
+              <HoverCard key={note.id} openDelay={200} closeDelay={100}>
+                <HoverCardTrigger asChild>
+                  <Card
+                    className="bg-card/60 backdrop-blur-xl border-border/50 p-5 md:p-6
+                      shadow-[0_8px_32px_rgba(236,72,153,0.1)] hover:shadow-[0_8px_32px_rgba(236,72,153,0.25)]
+                      transition-all duration-300 group cursor-pointer hover:scale-[1.01]"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-3">
+                          <StickyNote className="w-5 h-5 text-primary flex-shrink-0" />
+                          <h3 className="font-bold text-lg md:text-xl text-foreground truncate">{note.heading}</h3>
+                        </div>
+                        <p className="text-muted-foreground text-base font-medium line-clamp-2">
+                          {getPreview(note.body, 150)}
+                        </p>
+                        <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground font-medium">
+                          <Clock className="w-4 h-4" />
+                          <span>{formatDate(note.updatedAt)}</span>
+                        </div>
+                      </div>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <MoreVertical className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleOpenEditDialog(note)} className="font-semibold">
+                            <Edit2 className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteClick(note.id)}
+                            className="text-destructive font-semibold"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <p className="text-muted-foreground text-sm line-clamp-2">
-                      {getPreview(note.body)}
-                    </p>
-                    <div className="flex items-center gap-1 mt-3 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
+                  </Card>
+                </HoverCardTrigger>
+                <HoverCardContent 
+                  className="w-[400px] md:w-[500px] max-h-[400px] overflow-y-auto bg-card/95 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.2)]"
+                  side="right"
+                  align="start"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <StickyNote className="w-5 h-5 text-primary" />
+                      <h4 className="font-bold text-lg text-foreground">{note.heading}</h4>
+                    </div>
+                    <div 
+                      className="text-foreground text-base whitespace-pre-wrap break-words leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(formatNoteText(note.body)) }}
+                    />
+                    <div className="flex items-center gap-2 pt-2 text-sm text-muted-foreground border-t border-border/50">
+                      <Clock className="w-4 h-4" />
                       <span>{formatDate(note.updatedAt)}</span>
                     </div>
                   </div>
-                  
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleOpenEditDialog(note)}>
-                        <Edit2 className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleDeleteClick(note.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </Card>
+                </HoverCardContent>
+              </HoverCard>
             ))}
           </div>
         )}
