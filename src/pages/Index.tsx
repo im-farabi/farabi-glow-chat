@@ -576,12 +576,31 @@ Format: [{"question":"...","answer":"..."}]`;
     } catch (error) {
       console.error('Error sending message:', error);
       
-      // Show specific error message
-      toast.error(`Failed to send message. Possible reasons can be either one from them:
-1. Server / API is Down,
-2. Prompt is Inappropiate,
-Check out other services and try again later. If still issue persists. Contact support@farabi.me`, {
-        duration: 8000,
+      // Specific error messages based on mode
+      let errorTitle = 'Failed to send message';
+      let errorDescription = 'An error occurred. Please try again later.';
+      
+      if (mode.startsWith('giyaat')) {
+        errorTitle = 'GIYAAT Error';
+        if (error instanceof Error) {
+          if (error.message.includes('timeout') || error.message.includes('timed out')) {
+            errorDescription = 'GIYAAT is taking too long to respond. Try a shorter prompt or different mode.';
+          } else if (error.message.includes('connection') || error.message.includes('reach')) {
+            errorDescription = 'Could not reach GIYAAT server. The service may be temporarily unavailable.';
+          } else {
+            errorDescription = error.message;
+          }
+        }
+      } else {
+        errorDescription = `Possible reasons:
+1. Server / API is Down
+2. Prompt is Inappropriate
+Check other services and try again. Contact support@farabi.me if issue persists.`;
+      }
+      
+      toast.error(errorTitle, {
+        description: errorDescription,
+        duration: 6000,
       });
       
       // Remove loading message on error
