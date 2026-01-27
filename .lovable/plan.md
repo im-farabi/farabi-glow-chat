@@ -1,195 +1,180 @@
 
-
-# Personal Notes Feature Implementation Plan
+# Giyaat AI Integration Plan
 
 ## Overview
 
-Create a personal note-taking feature at `/notes` with the premium glassmorphic theme matching the main chat interface. The feature will allow users to add, edit, delete notes with rich text formatting support. A "SAVE NOTES" button will be added to the `/book` section (specifically in `BookReader.tsx`) to redirect users to the notes page.
+Add a new "Giyaat" option to the ChatInput tool dropdown menu. When selected, users can choose between three Giyaat AI modes (Fast, Mid, Large) that use the external Giyaat API at `giyaaat.vercel.app`.
 
 ---
 
 ## Feature Details
 
-### Notes Structure
-- **Heading**: Title of the note (required, 3-100 characters)
-- **Body Text**: Note content with formatting support (required, 10-5000 characters)
-- **Timestamp**: Auto-generated on creation/update
-- **ID**: Unique identifier for each note
+### Giyaat Models
 
-### Text Formatting (Discord-like)
-| Syntax | Result |
-|--------|--------|
-| `**text**` | **Bold text** |
-| `__text__` | <u>Underlined text</u> |
-| `https://...` | Clickable link |
+| Mode | API Model | Description |
+|------|-----------|-------------|
+| **GIYAAT Fast** | `fast` | OpenAI-powered, speed-focused, fewer instructions |
+| **GIYAAT Mid** | `mid` | Grok-powered, balanced, great for chatbots |
+| **GIYAAT Large** | `large` | Gemini-powered, deep analysis, real-time info |
 
-### Storage
-Notes will be stored in **localStorage** (no database needed), consistent with other history features in the app (image history, MCQ history, flashcard history, voice history).
+### API Endpoint
 
----
-
-## Files to Create
-
-### 1. `src/pages/NotesPage.tsx` - Main Notes Page
-
-**Features:**
-- Premium glassmorphic UI matching the main chat theme
-- "ADD NOTE" floating action button
-- Notes list showing all saved notes with:
-  - Title preview
-  - Body preview (first 100 chars)
-  - Timestamp
-  - Edit/Delete actions
-- Add/Edit dialog with:
-  - Heading input field
-  - Body textarea with character count
-  - Preview of formatted text
-  - Save/Cancel buttons
-- Empty state when no notes exist
-- Confirmation dialog for delete
-
-**UI Components:**
-- PremiumBackground
-- Header with back navigation
-- Card components with glassmorphic styling
-- Dialog for add/edit
-- AlertDialog for delete confirmation
-
----
-
-### 2. `src/lib/notesStorage.ts` - Notes Storage Functions
-
-**Interfaces:**
-```typescript
-interface Note {
-  id: string;
-  heading: string;
-  body: string;
-  createdAt: number;
-  updatedAt: number;
-}
+```
+GET: https://giyaaat.vercel.app/[prompt]?model=[fast|mid|large]
 ```
 
-**Functions:**
-- `getAllNotes(): Note[]` - Get all notes sorted by updatedAt
-- `getNote(id: string): Note | null` - Get single note
-- `saveNote(note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>): Note` - Create new note
-- `updateNote(id: string, updates: Partial<Note>): Note | null` - Update existing note
-- `deleteNote(id: string): void` - Delete note by ID
-
-**Storage Key:** `farabi_personal_notes`
+Response: Plain text (not JSON)
 
 ---
 
 ## Files to Modify
 
-### 1. `src/App.tsx`
-- Add import for `NotesPage`
-- Add route: `<Route path="/notes" element={<NotesPage />} />`
+### 1. `src/components/ChatInput.tsx`
 
-### 2. `src/pages/BookReader.tsx`
-- Add "SAVE NOTES" button in the header or as a floating action button
-- Button navigates to `/notes` when clicked
-- Positioned alongside the existing chat button
+**Changes:**
+- Add 3 new mode types: `giyaatFast`, `giyaatMid`, `giyaatLarge`
+- Add a "G" button in the tool dropdown with a submenu for the 3 Giyaat modes
+- Add visual indicator when a Giyaat mode is active (orange/yellow gradient)
+- Import a suitable icon (using lucide's `Zap` for speed or custom "G" text)
 
-### 3. `src/components/Sidebar.tsx`
-- Add "Notes" navigation link in the sidebar quick actions section
-- Icon: `StickyNote` from lucide-react
+**New Mode Types:**
+```typescript
+type Mode = 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge';
+```
+
+**UI Addition (in tool dropdown):**
+```text
+┌──────────────────────┐
+│ 💻 Coder Mode        │
+│ 🧠 Deep Thinker      │
+│ ─────────────────    │
+│ G  GIYAAT Fast       │
+│ G  GIYAAT Mid        │
+│ G  GIYAAT Large      │
+└──────────────────────┘
+```
+
+---
+
+### 2. `src/lib/api.ts`
+
+**Changes:**
+- Add `sendGiyaat()` function that calls the Giyaat API directly
+- Handle plain text response (not JSON)
+- URL encode the prompt properly
+- Add error handling for API failures
+
+**New Function:**
+```typescript
+export async function sendGiyaat(
+  prompt: string, 
+  model: 'fast' | 'mid' | 'large' = 'fast'
+): Promise<string> {
+  const encodedPrompt = encodeURIComponent(prompt);
+  const url = `https://giyaaat.vercel.app/${encodedPrompt}?model=${model}`;
+  
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Giyaat API error: ${response.status}`);
+  }
+  
+  return await response.text();
+}
+```
+
+---
+
+### 3. `src/pages/Index.tsx`
+
+**Changes:**
+- Import `sendGiyaat` from api.ts
+- Update `handleSendMessage` function signature to include new mode types
+- Add switch cases for `giyaatFast`, `giyaatMid`, `giyaatLarge`
+- Add loading stage text for Giyaat modes
+
+**New Switch Cases:**
+```typescript
+case 'giyaatFast':
+  response = await sendGiyaat(message, 'fast');
+  break;
+case 'giyaatMid':
+  response = await sendGiyaat(message, 'mid');
+  break;
+case 'giyaatLarge':
+  response = await sendGiyaat(message, 'large');
+  break;
+```
+
+**Loading Stages for Giyaat:**
+```typescript
+const giyaatStages = [
+  { time: 500, text: 'Connecting to GIYAAT...' },
+  { time: 1500, text: 'Processing with GIYAAT AI...' },
+  { time: Infinity, text: 'Generating response...' }
+];
+```
 
 ---
 
 ## UI Design Specifications
 
-### Color Theme
-- Primary gradient: Pink (#EC4899) to Purple (#A855F7)
-- Cards: `bg-card/60 backdrop-blur-xl`
-- Shadows: `shadow-[0_8px_32px_rgba(236,72,153,0.15)]`
-- Border: `border-border/50` with pink/purple hover effects
+### G Icon Button
+- Display as a bold "G" letter or use `Zap` icon from lucide
+- Orange/yellow accent color to differentiate from other modes
+- Active state: gradient from orange (#F59E0B) to yellow (#EAB308)
 
-### Note Card Design
-```text
-┌────────────────────────────────────────┐
-│ 📝 Note Title                    ⋮     │
-│                                        │
-│ Preview of note body text...           │
-│                                        │
-│ 🕐 Jan 23, 2026 at 2:30 PM            │
-└────────────────────────────────────────┘
+### Dropdown Menu Item Styling
+```tsx
+<DropdownMenuItem className={activeMode.startsWith('giyaat') ? 'bg-orange-500/20' : ''}>
+  <span className="font-bold text-orange-500 mr-2">G</span>
+  GIYAAT Fast
+</DropdownMenuItem>
 ```
 
-### Add/Edit Dialog
-```text
-┌─────────────────────────────────────────┐
-│           Add New Note                  │
-├─────────────────────────────────────────┤
-│                                         │
-│  Heading *                              │
-│  ┌───────────────────────────────────┐  │
-│  │ Enter note title                  │  │
-│  └───────────────────────────────────┘  │
-│  3/100 characters                       │
-│                                         │
-│  Body *                                 │
-│  ┌───────────────────────────────────┐  │
-│  │                                   │  │
-│  │ Enter note content...             │  │
-│  │ Use **bold** __underline__        │  │
-│  │                                   │  │
-│  └───────────────────────────────────┘  │
-│  10/5000 characters                     │
-│                                         │
-│  Preview                                │
-│  ┌───────────────────────────────────┐  │
-│  │ Formatted preview of body text    │  │
-│  └───────────────────────────────────┘  │
-│                                         │
-│         [Cancel]    [Save Note]         │
-└─────────────────────────────────────────┘
+### Active Mode Indicator
+When any Giyaat mode is active, show a subtle orange glow on the tool button:
+```tsx
+className={`h-8 w-8 ${activeMode.startsWith('giyaat') ? 'text-orange-500 bg-orange-500/10' : ''}`}
 ```
-
-### Text Formatting Preview
-The preview section will render:
-- `**text**` as bold
-- `__text__` as underlined
-- URLs as clickable links (blue, underlined)
-
----
-
-## Technical Details
-
-### Text Formatting Function
-```typescript
-function formatNoteText(text: string): React.ReactNode {
-  // 1. Split by formatting patterns
-  // 2. Bold: /\*\*(.*?)\*\*/g → <strong>$1</strong>
-  // 3. Underline: /__(.*?)__/g → <u>$1</u>
-  // 4. Links: /(https?:\/\/[^\s]+)/g → <a href="$1">$1</a>
-  // 5. Preserve newlines with whitespace-pre-wrap
-}
-```
-
-### BookReader Integration
-The "SAVE NOTES" button will be placed:
-- As a second floating action button below the existing chat button
-- Or in the sticky header alongside the back button
 
 ---
 
 ## Implementation Order
 
-1. Create `src/lib/notesStorage.ts` - Storage layer
-2. Create `src/pages/NotesPage.tsx` - Main page with all UI
-3. Update `src/App.tsx` - Add route
-4. Update `src/pages/BookReader.tsx` - Add "SAVE NOTES" button
-5. Update `src/components/Sidebar.tsx` - Add navigation link
+1. **Update `src/lib/api.ts`**
+   - Add `sendGiyaat()` function with proper URL encoding
+   - Handle plain text response
+
+2. **Update `src/components/ChatInput.tsx`**
+   - Extend mode types to include Giyaat modes
+   - Add Giyaat options to tool dropdown with "G" icon
+   - Add visual feedback for active Giyaat mode
+
+3. **Update `src/pages/Index.tsx`**
+   - Import new Giyaat function
+   - Extend `handleSendMessage` type signature
+   - Add switch cases for Giyaat modes
+   - Add loading stage text
 
 ---
 
-## Accessibility & Mobile
+## Technical Considerations
 
-- Full mobile responsiveness with touch-friendly targets
-- Proper ARIA labels on all interactive elements
-- Keyboard navigation support in dialogs
-- Safe area padding for mobile devices
-- Swipe gestures consideration for delete actions
+### CORS
+The Giyaat API is a public API that should support CORS from browser requests. If CORS issues occur, we may need to proxy through a Supabase edge function.
 
+### Error Handling
+- Timeout after 30 seconds
+- Show toast on API failure
+- Fallback message if API is unavailable
+
+### No Conversation History
+Unlike the existing modes, Giyaat API is stateless (single prompt → response). Each message is independent without conversation context.
+
+---
+
+## Accessibility
+
+- Proper ARIA labels on new dropdown items
+- Keyboard navigation support in submenu
+- Clear visual distinction for active Giyaat mode
