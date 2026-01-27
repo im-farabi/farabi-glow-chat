@@ -274,34 +274,39 @@ export interface Message {
 export type ModelType = 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge';
 
 /**
- * Send message to Giyaat external API
+ * Send message to Giyaat external API via Supabase Edge Function proxy
  * Stateless API - each message is independent (no conversation history)
  */
 export async function sendGiyaat(
   prompt: string,
   model: 'fast' | 'mid' | 'large' = 'fast'
 ): Promise<string> {
-  const encodedPrompt = encodeURIComponent(prompt);
-  const url = `https://giyaaat.vercel.app/${encodedPrompt}?model=${model}`;
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-  
   try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
+    const { data, error } = await supabase.functions.invoke('giyaat-proxy', {
+      body: { prompt, model }
+    });
     
-    if (!response.ok) {
-      throw new Error(`Giyaat API error: ${response.status}`);
+    if (error) {
+      console.error('Giyaat edge function error:', error);
+      throw new Error(error.message || 'Failed to connect to GIYAAT');
     }
     
-    return await response.text();
+    if (data?.error) {
+      console.error('Giyaat API error:', data.error, data.code);
+      throw new Error(data.error);
+    }
+    
+    if (!data?.text) {
+      throw new Error('Empty response from GIYAAT');
+    }
+    
+    return data.text;
   } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Giyaat API request timed out');
+    console.error('sendGiyaat error:', error);
+    if (error instanceof Error) {
+      throw error;
     }
-    throw error;
+    throw new Error('Unknown error occurred with GIYAAT');
   }
 }
 
