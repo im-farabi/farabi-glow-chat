@@ -271,7 +271,39 @@ export interface Message {
   image?: string;
 }
 
-export type ModelType = 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think';
+export type ModelType = 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge';
+
+/**
+ * Send message to Giyaat external API
+ * Stateless API - each message is independent (no conversation history)
+ */
+export async function sendGiyaat(
+  prompt: string,
+  model: 'fast' | 'mid' | 'large' = 'fast'
+): Promise<string> {
+  const encodedPrompt = encodeURIComponent(prompt);
+  const url = `https://giyaaat.vercel.app/${encodedPrompt}?model=${model}`;
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+  
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`Giyaat API error: ${response.status}`);
+    }
+    
+    return await response.text();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Giyaat API request timed out');
+    }
+    throw error;
+  }
+}
 
 
 /**

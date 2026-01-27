@@ -7,7 +7,7 @@ import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
 import PremiumBackground from '@/components/PremiumBackground';
-import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage } from '@/lib/api';
+import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage, sendGiyaat } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 
@@ -204,7 +204,7 @@ const Index = () => {
 
   const handleSendMessage = async (
     message: string, 
-    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think',
+    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge',
     image?: File
   ) => {
     if (!message.trim() && !image) return;
@@ -257,7 +257,13 @@ const Index = () => {
     
     // Update loading text dynamically for non-imageGen modes
     let updateInterval: NodeJS.Timeout | null = null;
-    if (mode !== 'imageGen' && (mode === 'fast' || mode === 'normal' || mode === 'super' || mode === 'coder' || mode === 'think')) {
+    if (mode !== 'imageGen') {
+      const giyaatStages = [
+        { time: 500, text: 'Connecting to GIYAAT...' },
+        { time: 1500, text: 'Processing with GIYAAT AI...' },
+        { time: Infinity, text: 'Generating response...' }
+      ];
+      
       const stages = mode === 'fast' 
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Reading Instructions...' }, { time: 1500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }]
         : mode === 'normal'
@@ -266,6 +272,8 @@ const Index = () => {
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Reading Instructions...' }, { time: 1500, text: 'Analyzing Code Requirements...' }, { time: Infinity, text: 'Generating Code...' }]
         : mode === 'think'
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Deep Reasoning...' }, { time: 2000, text: 'Analyzing Multiple Angles...' }, { time: Infinity, text: image ? 'Analyzing image deeply...' : 'Thinking critically...' }]
+        : mode.startsWith('giyaat')
+        ? giyaatStages
         : [{ time: 500, text: 'Sending...' }, { time: 2000, text: 'Reading Instructions...' }, { time: 2500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }];
       
       const startTime = Date.now();
@@ -306,21 +314,30 @@ const Index = () => {
         case 'think':
           response = await sendThink(message, messages, image);
           break;
-      case 'imageGen':
-        const { imageUrl, imageBlob } = await generateImage(message, (status) => {
-          setMessages(prev => {
-            const updated = [...prev];
-            const lastMsg = updated[updated.length - 1];
-            if (lastMsg?.isLoading) {
-              lastMsg.loadingText = status;
-            }
-            return updated;
+        case 'giyaatFast':
+          response = await sendGiyaat(message, 'fast');
+          break;
+        case 'giyaatMid':
+          response = await sendGiyaat(message, 'mid');
+          break;
+        case 'giyaatLarge':
+          response = await sendGiyaat(message, 'large');
+          break;
+        case 'imageGen':
+          const { imageUrl, imageBlob } = await generateImage(message, (status) => {
+            setMessages(prev => {
+              const updated = [...prev];
+              const lastMsg = updated[updated.length - 1];
+              if (lastMsg?.isLoading) {
+                lastMsg.loadingText = status;
+              }
+              return updated;
+            });
           });
-        });
-        generatedImageUrl = imageUrl;
-        generatedImageBlob = imageBlob;
-        response = 'Successfully created image. Click here to download';
-        break;
+          generatedImageUrl = imageUrl;
+          generatedImageBlob = imageBlob;
+          response = 'Successfully created image. Click here to download';
+          break;
         default:
           response = await sendNormal(message, messages);
       }

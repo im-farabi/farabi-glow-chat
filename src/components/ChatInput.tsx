@@ -1,20 +1,22 @@
 import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Rocket, Scale, Sparkles, X, Code2, Eye, Image as ImageIcon, Brain, Wrench } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Send, Rocket, Scale, Sparkles, X, Code2, Eye, Image as ImageIcon, Brain, Wrench, Zap } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 
+type ChatMode = 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge';
+
 interface ChatInputProps {
-  onSendMessage: (message: string, mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think', image?: File) => void;
+  onSendMessage: (message: string, mode: ChatMode, image?: File) => void;
   disabled?: boolean;
   className?: string;
 }
 
 const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
   const [message, setMessage] = useState('');
-  const [activeMode, setActiveMode] = useState<'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think'>('normal');
+  const [activeMode, setActiveMode] = useState<ChatMode>('normal');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
@@ -110,15 +112,41 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent/50"><Wrench className="h-4 w-4" /></Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={`h-8 w-8 hover:bg-accent/50 ${activeMode.startsWith('giyaat') ? 'text-orange-500 bg-orange-500/10' : ''}`}
+                  >
+                    <Wrench className="h-4 w-4" />
+                  </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-40">
+                <DropdownMenuContent align="start" className="w-44">
                   <DropdownMenuItem onClick={() => setActiveMode('coder')} className={activeMode === 'coder' ? 'bg-accent' : ''}>
                     <Code2 className="h-4 w-4 mr-2" />Coder Mode
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setActiveMode('think')} className={activeMode === 'think' ? 'bg-accent' : ''}>
                     <Brain className="h-4 w-4 mr-2" />Deep Thinker
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className={activeMode.startsWith('giyaat') ? 'bg-orange-500/20' : ''}>
+                      <span className="font-bold text-orange-500 mr-2">G</span>
+                      GIYAAT AI
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent className="w-40">
+                        <DropdownMenuItem onClick={() => setActiveMode('giyaatFast')} className={activeMode === 'giyaatFast' ? 'bg-orange-500/20' : ''}>
+                          <Zap className="h-4 w-4 mr-2 text-orange-500" />Fast
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setActiveMode('giyaatMid')} className={activeMode === 'giyaatMid' ? 'bg-orange-500/20' : ''}>
+                          <span className="font-bold text-orange-500 mr-2 w-4 text-center">M</span>Mid
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setActiveMode('giyaatLarge')} className={activeMode === 'giyaatLarge' ? 'bg-orange-500/20' : ''}>
+                          <Rocket className="h-4 w-4 mr-2 text-orange-500" />Large
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
