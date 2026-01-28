@@ -26,7 +26,7 @@ serve(async (req) => {
     
     // Build Giyaat API URL
     const encodedPrompt = encodeURIComponent(prompt);
-    const url = `https://giyaaat.vercel.app/${encodedPrompt}?model=${selectedModel}`;
+    const url = `https://giyaaat.vercel.app/api/chat?prompt=${encodedPrompt}&model=${selectedModel}`;
     
     // Timeout handling (45 seconds)
     const controller = new AbortController();
