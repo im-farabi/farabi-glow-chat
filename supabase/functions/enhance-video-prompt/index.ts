@@ -34,6 +34,20 @@ Include:
 
 Keep response under 150 words. Output ONLY the enhanced prompt, no explanations or introductions.`;
 
+const WAN_SYSTEM_PROMPT = `You are an expert video prompt engineer for Alibaba Wan 2.6. Transform basic prompts into multi-shot cinematic video descriptions using this formula:
+
+[Shot Type] + [Subject Details] + [Motion/Action] + [Scene/Environment] + [Lighting/Style]
+
+Key techniques for Wan 2.6:
+- Use multi-shot syntax for longer videos: "Shot 1 [0-5s]: ..., Shot 2 [5-10s]: ..."
+- Include camera movements: tracking, pan, zoom, close-up, wide shot, dolly
+- Describe motion with adverbs: gracefully, rapidly, slowly, powerfully
+- Specify scene transitions if multi-shot
+{audioNote}
+{imageNote}
+
+Keep response under 200 words. Output ONLY the enhanced prompt, no explanations or introductions.`;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -70,6 +84,17 @@ serve(async (req) => {
         : '';
       
       systemPrompt = VEO_SYSTEM_PROMPT
+        .replace('{audioNote}', audioNote)
+        .replace('{imageNote}', imageNote);
+    } else if (model === 'wan') {
+      const audioNote = hasAudio 
+        ? '- Since audio is enabled: Add dialogue in quotes, describe sounds, ambient audio, or music' 
+        : '';
+      const imageNote = hasImages 
+        ? '- Since a reference image is provided: Focus on animating the image content with smooth motion' 
+        : '';
+      
+      systemPrompt = WAN_SYSTEM_PROMPT
         .replace('{audioNote}', audioNote)
         .replace('{imageNote}', imageNote);
     } else {
