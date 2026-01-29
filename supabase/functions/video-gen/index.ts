@@ -212,25 +212,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get video as blob and convert to base64
+    // Get video as blob and store in Supabase Storage
     const videoBlob = await response.blob();
     const arrayBuffer = await videoBlob.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
     
-    // Convert to base64
-    let binary = '';
-    const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      const chunk = bytes.slice(i, i + chunkSize);
-      binary += String.fromCharCode(...chunk);
-    }
-    const base64 = btoa(binary);
-    
-    const videoUrl = `data:video/mp4;base64,${base64}`;
-    
     console.log(`Video generated successfully! Size: ${(bytes.length / 1024 / 1024).toFixed(2)}MB`);
     
-    // Cleanup uploaded images after successful generation
+    // Upload video to Supabase Storage
+    const videoFilename = `generated-video-${Date.now()}.mp4`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('video-temp-images')
+      .upload(videoFilename, bytes, {
+        contentType: 'video/mp4',
+        upsert: false
+      });
+    
+    if (uploadError) {
+      console.error('Failed to upload video to storage:', uploadError);
+      throw new Error('Failed to store generated video');
+    }
+    
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('video-temp-images')
+      .getPublicUrl(videoFilename);
+    
+    const videoUrl = urlData?.publicUrl;
+    
+    if (!videoUrl) {
+      throw new Error('Failed to get video URL');
+    }
+    
+    console.log(`Video stored at: ${videoUrl}`);
+    
+    // Cleanup uploaded reference images after successful generation
     if (uploadedFilePaths.length > 0) {
       console.log('Cleaning up temporary images...');
       const { error: deleteError } = await supabase.storage.from('video-temp-images').remove(uploadedFilePaths);
