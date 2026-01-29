@@ -1,4 +1,4 @@
-import { Menu, MessageSquareDashed } from 'lucide-react';
+import { Menu, MessageSquareDashed, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import {
@@ -39,8 +39,31 @@ const Header = ({ onMenuClick, isTemporaryChat, onToggleTemporaryChat, showTempo
           </h1>
         </div>
 
-        {showTemporaryToggle && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link to="/video-gen">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="hidden md:flex items-center gap-1.5 hover:bg-accent/50"
+                  >
+                    <Video className="h-4 w-4" />
+                    <span>Video</span>
+                    <span className="bg-gradient-to-r from-violet-500 to-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                      BETA
+                    </span>
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>AI Video Generator</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {showTemporaryToggle && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -59,8 +82,8 @@ const Header = ({ onMenuClick, isTemporaryChat, onToggleTemporaryChat, showTempo
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </header>
     </>
