@@ -257,9 +257,10 @@ const VideoGen = () => {
         <Card className="mb-6 border-amber-500/50 bg-amber-500/10">
           <CardContent className="flex items-center gap-3 py-3">
             <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-            <p className="text-sm text-amber-200">
-              <strong>Experimental Feature:</strong> Video generation may take 1-3 minutes. Results may vary based on prompt complexity and model.
-            </p>
+            <div className="text-sm text-amber-200">
+              <p><strong>Experimental Feature:</strong> Video generation may take 1-3 minutes.</p>
+              <p className="text-xs mt-1 opacity-80">Tip: Avoid prompts with specific people names, brands, or inappropriate content to prevent moderation blocks.</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -314,8 +315,8 @@ const VideoGen = () => {
               </CardTitle>
               <CardDescription>
                 {model === 'veo' 
-                  ? 'Add up to 2 images for first/last frame interpolation'
-                  : 'Add 1 reference image for style guidance'}
+                  ? 'Veo supports text-to-video with optional audio. Image reference is experimental.'
+                  : 'Add 1 reference image to guide the video style and content'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
