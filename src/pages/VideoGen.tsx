@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Video, Upload, X, AlertTriangle, Download, RefreshCw, Loader2, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { ArrowLeft, Video, Upload, X, AlertTriangle, Download, RefreshCw, Loader2, Image as ImageIcon, Sparkles, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
+import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PremiumBackground from '@/components/PremiumBackground';
@@ -31,11 +32,14 @@ const VideoGen = () => {
   const [seed, setSeed] = useState('');
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState('');
+  const [progress, setProgress] = useState(0);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const progressIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const generationCompleteRef = useRef(false);
 
   // Model-specific configurations
   const modelConfigs = {
@@ -60,6 +64,71 @@ const VideoGen = () => {
       setDuration(currentConfig.durations[Math.floor(currentConfig.durations.length / 2)]);
     }
   }, [model]);
+
+  // Cleanup progress interval on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearTimeout(progressIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const startProgress = useCallback(() => {
+    setProgress(0);
+    generationCompleteRef.current = false;
+
+    const tick = () => {
+      if (generationCompleteRef.current) return;
+
+      setProgress(prev => {
+        if (prev >= 99) return 99;
+
+        // Variable increment: larger early, smaller late
+        const remaining = 99 - prev;
+        const baseIncrement = Math.random() * (remaining > 50 ? 8 : remaining > 20 ? 4 : 2);
+        const increment = Math.max(0.5, baseIncrement);
+
+        return Math.min(99, prev + increment);
+      });
+
+      // Random interval between 800ms and 2000ms
+      const nextDelay = 800 + Math.random() * 1200;
+      progressIntervalRef.current = setTimeout(tick, nextDelay);
+    };
+
+    progressIntervalRef.current = setTimeout(tick, 500);
+  }, []);
+
+  const completeProgress = useCallback(() => {
+    generationCompleteRef.current = true;
+    if (progressIntervalRef.current) {
+      clearTimeout(progressIntervalRef.current);
+    }
+
+    // Animate to 100% quickly
+    const animateTo100 = (currentValue: number) => {
+      if (currentValue >= 100) {
+        setProgress(100);
+        return;
+      }
+      setProgress(Math.min(100, currentValue + 5));
+      requestAnimationFrame(() => animateTo100(currentValue + 5));
+    };
+
+    setProgress(prev => {
+      animateTo100(prev);
+      return prev;
+    });
+  }, []);
+
+  const resetProgress = useCallback(() => {
+    generationCompleteRef.current = true;
+    if (progressIntervalRef.current) {
+      clearTimeout(progressIntervalRef.current);
+    }
+    setProgress(0);
+  }, []);
 
   const convertToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -155,6 +224,38 @@ const VideoGen = () => {
     });
   };
 
+  const handleEnhancePrompt = async () => {
+    if (!prompt.trim()) {
+      toast.error('Please enter a prompt first');
+      return;
+    }
+
+    setIsEnhancing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('enhance-video-prompt', {
+        body: {
+          prompt,
+          model,
+          hasAudio: audio && model === 'veo',
+          hasImages: images.length > 0,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.enhancedPrompt) {
+        setPrompt(data.enhancedPrompt);
+        toast.success('Prompt enhanced!');
+      }
+    } catch (error) {
+      console.error('Error enhancing prompt:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to enhance prompt');
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       toast.error('Please enter a prompt');
@@ -163,21 +264,7 @@ const VideoGen = () => {
 
     setIsGenerating(true);
     setGeneratedVideo(null);
-    setLoadingStatus('Initializing...');
-
-    const statusInterval = setInterval(() => {
-      setLoadingStatus(prev => {
-        const statuses = [
-          'Sending request...',
-          'Processing prompt...',
-          'Generating video frames...',
-          'Rendering video...',
-          'Almost there...',
-        ];
-        const currentIndex = statuses.indexOf(prev);
-        return statuses[Math.min(currentIndex + 1, statuses.length - 1)];
-      });
-    }, 3000);
+    startProgress();
 
     try {
       // Prepare image URLs (using data URLs for now)
@@ -195,12 +282,11 @@ const VideoGen = () => {
         },
       });
 
-      clearInterval(statusInterval);
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       if (data?.videoUrl) {
+        completeProgress();
         setGeneratedVideo(data.videoUrl);
         toast.success('Video generated successfully!');
       } else {
@@ -208,11 +294,10 @@ const VideoGen = () => {
       }
     } catch (error) {
       console.error('Video generation error:', error);
+      resetProgress();
       toast.error(error instanceof Error ? error.message : 'Failed to generate video');
     } finally {
-      clearInterval(statusInterval);
       setIsGenerating(false);
-      setLoadingStatus('');
     }
   };
 
@@ -296,13 +381,27 @@ const VideoGen = () => {
               <CardTitle className="text-lg">Describe your video</CardTitle>
               <CardDescription>Be specific about motion, scene, and style</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <Textarea
                 placeholder="A cat playing piano in a jazz club, cinematic lighting, smooth camera movement..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 className="min-h-[100px] resize-none"
               />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEnhancePrompt}
+                disabled={isEnhancing || !prompt.trim()}
+                className="gap-2"
+              >
+                {isEnhancing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4" />
+                )}
+                Enhance Prompt
+              </Button>
             </CardContent>
           </Card>
 
@@ -455,23 +554,27 @@ const VideoGen = () => {
           </Card>
 
           {/* Generate Button */}
-          <Button
-            onClick={handleGenerate}
-            disabled={isGenerating || !prompt.trim()}
-            className="w-full h-14 text-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                {loadingStatus}
-              </>
-            ) : (
-              <>
-                <Video className="mr-2 h-5 w-5" />
-                Generate Video
-              </>
-            )}
-          </Button>
+          {isGenerating ? (
+            <div className="w-full space-y-3">
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-lg font-medium">Generating... {Math.floor(progress)}%</span>
+              </div>
+              <Progress value={progress} className="w-full h-3" />
+              <p className="text-center text-sm text-muted-foreground">
+                This may take 1-3 minutes. Please don't close this page.
+              </p>
+            </div>
+          ) : (
+            <Button
+              onClick={handleGenerate}
+              disabled={!prompt.trim()}
+              className="w-full h-14 text-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+            >
+              <Video className="mr-2 h-5 w-5" />
+              Generate Video
+            </Button>
+          )}
 
           {/* Generated Video */}
           {generatedVideo && (
