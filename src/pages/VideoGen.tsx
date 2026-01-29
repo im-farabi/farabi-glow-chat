@@ -14,7 +14,7 @@ import PremiumBackground from '@/components/PremiumBackground';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-type ModelType = 'veo' | 'seedance' | 'seedance-pro';
+type ModelType = 'veo' | 'seedance' | 'seedance-pro' | 'wan';
 
 interface UploadedImage {
   id: string;
@@ -46,6 +46,7 @@ const VideoGen = () => {
     veo: { maxImages: 2, durations: [4, 6, 8], hasAudio: true, label: 'Veo 3.1 Fast' },
     seedance: { maxImages: 1, durations: [2, 3, 4, 5, 6, 7, 8, 9, 10], hasAudio: false, label: 'Seedance' },
     'seedance-pro': { maxImages: 1, durations: [2, 3, 4, 5, 6, 7, 8, 9, 10], hasAudio: false, label: 'Seedance Pro' },
+    wan: { maxImages: 1, durations: [5, 10, 15], hasAudio: true, label: 'Wan 2.6' },
   };
 
   const currentConfig = modelConfigs[model];
@@ -236,7 +237,7 @@ const VideoGen = () => {
         body: {
           prompt,
           model,
-          hasAudio: audio && model === 'veo',
+          hasAudio: audio && (model === 'veo' || model === 'wan'),
           hasImages: images.length > 0,
         },
       });
@@ -276,7 +277,7 @@ const VideoGen = () => {
           model,
           duration,
           aspectRatio,
-          audio: audio && model === 'veo',
+          audio: audio && (model === 'veo' || model === 'wan'),
           images: imageUrls.length > 0 ? imageUrls : undefined,
           seed: seed || undefined,
         },
@@ -366,9 +367,14 @@ const VideoGen = () => {
                     key={m}
                     variant={model === m ? 'default' : 'outline'}
                     onClick={() => setModel(m)}
-                    className={model === m ? 'bg-primary' : ''}
+                    className={`${model === m ? 'bg-primary' : ''} relative`}
                   >
                     {modelConfigs[m].label}
+                    {m === 'wan' && (
+                      <span className="absolute -top-2 -right-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                        NEW
+                      </span>
+                    )}
                   </Button>
                 ))}
               </div>
@@ -413,7 +419,9 @@ const VideoGen = () => {
                 Reference Images (Optional)
               </CardTitle>
               <CardDescription>
-                {model === 'veo' 
+                {model === 'wan' 
+                  ? 'Wan 2.6 supports image-to-video animation with native audio sync (up to 15s)'
+                  : model === 'veo' 
                   ? 'Veo supports text-to-video with optional audio. Image reference is experimental.'
                   : 'Add 1 reference image to guide the video style and content'}
               </CardDescription>
@@ -524,6 +532,8 @@ const VideoGen = () => {
                     <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
                     <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
                     <SelectItem value="1:1">1:1 (Square)</SelectItem>
+                    <SelectItem value="4:3">4:3 (Classic)</SelectItem>
+                    <SelectItem value="3:4">3:4 (Portrait Classic)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

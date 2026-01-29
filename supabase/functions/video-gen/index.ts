@@ -154,8 +154,8 @@ Deno.serve(async (req) => {
     // Add aspect ratio
     url += `&aspectRatio=${aspectRatio}`;
     
-    // Add audio for Veo model
-    if (audio && model === 'veo') {
+    // Add audio for Veo and Wan models
+    if (audio && (model === 'veo' || model === 'wan')) {
       url += `&audio=true`;
     }
     
