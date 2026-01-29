@@ -84,30 +84,56 @@ serve(async (req) => {
     console.log(`Enhancing prompt for model: ${model}, hasAudio: ${hasAudio}, hasImages: ${hasImages}`);
     console.log(`Original prompt: ${prompt}`);
 
-    const response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Transform this basic prompt into an optimized video prompt: "${prompt}"` }
+    ];
+
+    // Try openai first
+    console.log('Trying openai model...');
+    let response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'openai-fast',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Transform this basic prompt into an optimized video prompt: "${prompt}"` }
-        ],
-        max_tokens: 500,
+        model: 'openai',
+        messages,
         temperature: 0.7,
       }),
     });
 
+    // Fallback to grok if openai fails
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI API error:', response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: 'Failed to enhance prompt' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('openai failed:', response.status, errorText);
+      console.log('Trying grok fallback...');
+      
+      response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'grok',
+          messages,
+          temperature: 0.7,
+        }),
+      });
+      
+      if (!response.ok) {
+        const grokError = await response.text();
+        console.error('grok also failed:', response.status, grokError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to enhance prompt' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log('grok fallback succeeded');
+    } else {
+      console.log('openai succeeded');
     }
 
     const data = await response.json();
