@@ -1,176 +1,96 @@
 
-# Video Generator Feature Implementation
+# Fix Video Generation - Image Upload and Model Issues
 
-## Overview
-Create a new Video Generator page accessible from the main Index page, with support for multiple AI models (Veo, Seedance, Seedance Pro), text-to-video and image-to-video generation, customizable aspect ratios, durations, and an intuitive image upload interface.
+## Problem Analysis
 
----
+After investigating the edge function logs, I've identified these issues:
 
-## Research Findings
+1. **Image upload fails** - When users add images, the frontend sends base64 data URLs (like `data:image/png;base64,/9j/4AAQ...`) directly to the Pollinations API. The API expects **public HTTP URLs**, not base64 data, causing "Invalid URL" errors.
 
-### Available Video Models (from Pollinations API)
-| Model | Features | Duration | Cost |
-|-------|----------|----------|------|
-| **veo** | Text-to-video, Image-to-video (2 images for interpolation), Audio support | 4, 6, 8 sec | 0.150 pollen/sec |
-| **seedance** | Text-to-video, Image-to-video (single image reference) | 2-10 sec | 1.8M pollen |
-| **seedance-pro** | Higher quality version of Seedance | 2-10 sec | 1.0M pollen |
+2. **Video generation actually works** - The logs show successful generation at 10:00:34 with seedance-pro (3.3MB video). Text-only generation is functional.
 
-### API Endpoint Structure
-```
-GET https://gen.pollinations.ai/image/{prompt}?model=veo&key=API_KEY
-  &duration=6           # veo: 4,6,8 | seedance: 2-10
-  &aspectRatio=16:9     # 16:9 or 9:16
-  &audio=true           # veo only
-  &image=url1,url2      # veo: first/last frame interpolation
-                        # seedance: single reference image
-  &seed=12345
-  &nologo=true
-```
+3. **Some prompts blocked** - Content moderation rejected prompts containing "ishowspeed" due to Vertex AI guidelines.
 
-### Key Features to Implement
-1. Image-to-video with Veo (2 images = first frame + last frame interpolation)
-2. Image-to-video with Seedance (single reference image)
-3. Audio toggle for Veo
-4. Model-specific duration ranges
-5. Drag-and-drop/paste image upload
+4. **Documentation clarification**:
+   - `veo`: Text-to-video, supports audio, durations 4/6/8s. Image parameter is for frame interpolation (first/last frame)
+   - `seedance`/`seedance-pro`: Text-to-video AND image-to-video, durations 2-10s
 
 ---
 
-## Files to Create
+## Solution
 
-### 1. `src/pages/VideoGen.tsx`
-New video generator page with:
-- Prompt textarea
-- Image upload zone (up to 2 images for Veo, 1 for Seedance)
-  - Supports drag-and-drop, click-to-upload, and paste
-  - Image preview with remove button
-- Model selector (Veo 3.1 Fast, Seedance, Seedance Pro)
-- Aspect ratio selector (16:9, 9:16, 1:1)
-- Duration selector (dynamic based on model)
-- Audio toggle (Veo only)
-- Seed input (optional)
-- Generate button with loading state
-- Video preview with download/regenerate buttons
-- Experimental warning banner
+### 1. Option A: Upload Images to Temporary Storage (Recommended)
+Upload user images to a temporary public storage (like Supabase Storage), then pass the public URL to Pollinations.
 
-### 2. `supabase/functions/video-gen/index.ts`
-New edge function that:
-- Accepts prompt, model, duration, aspectRatio, audio, images, seed
-- Uses existing `NEW_POLLINATIONS_APIKEY_1` secret
-- Builds correct GET URL for Pollinations API
-- Handles image URLs for image-to-video
-- Returns video as base64 data URL
-- Proper error handling and logging
+**Changes:**
+- Create a Supabase Storage bucket for temporary video reference images
+- Modify edge function to upload base64 images to storage first
+- Get public URLs and pass those to Pollinations
+- Clean up images after generation
+
+### 2. Option B: Remove Image Feature for Now
+Since image-to-video is complex and requires storage setup, we could:
+- Disable image upload for `veo` model (docs say text-to-video only)
+- Show clearer messaging about image limitations
+- Focus on text-to-video which is working
+
+### 3. Improve Error Handling
+- Parse Pollinations error responses properly and show user-friendly messages
+- Handle content moderation errors with a clear message
 
 ---
 
-## Files to Modify
+## Recommended Implementation Plan
 
-### 3. `src/pages/Index.tsx`
-Add Video Gen button in the top action bar area (similar to Grammify placement):
-- Add Video icon import from lucide-react
-- Add Link to `/video-gen` with NEW badge
+### Files to Modify
 
-### 4. `src/components/Sidebar.tsx`
-Add Video Generator link after Grammify in the sidebar:
-- Add Video icon import
-- Add Link button to `/video-gen` with NEW badge
+**1. `supabase/functions/video-gen/index.ts`**
+- Add better error parsing to show actual Pollinations error messages
+- Handle base64 images by either:
+  - Option A: Upload to Supabase Storage, get public URL, then call API
+  - Option B: Skip images for now with clear error message
+- Add specific handling for content moderation errors
 
-### 5. `src/App.tsx`
-Add route for the new page:
-- Import VideoGen component
-- Add route `/video-gen`
-
-### 6. `supabase/config.toml`
-Register the new edge function:
-- Add `[functions.video-gen]` with `verify_jwt = false`
+**2. `src/pages/VideoGen.tsx`**
+- Update UI to show clearer messaging:
+  - Veo: "Text-to-video with optional audio" (remove 2-image claim if not working)
+  - Seedance: "Text-to-video and image-to-video"
+- Better error display for content moderation blocks
+- Add a note about prompt guidelines
 
 ---
 
 ## Technical Details
 
-### Image Upload Component
-```text
-+------------------------------------------+
-|  +  Add Images (max 2 for Veo, 1 other)  |
-|                                          |
-|   Drag & drop, paste, or click           |
-+------------------------------------------+
-| [img1 preview] [X]  [img2 preview] [X]   |
-+------------------------------------------+
+### Error Parsing Improvement
+The current error format from Pollinations is:
+```json
+{
+  "success": false,
+  "error": {
+    "message": "{\"error\":\"Bad Request\",\"message\":\"Video generation failed: ...\"}"
+  }
+}
 ```
 
-### Model-Specific UI Logic
-- **Veo selected**: Show audio toggle, duration options (4/6/8), allow 2 images
-- **Seedance/Pro selected**: Hide audio toggle, duration slider (2-10), allow 1 image
+Need to parse this nested JSON structure to extract the real error message.
 
-### Edge Function Flow
+### For Image Upload (Option A)
 ```text
-1. Parse request body
-2. Get API key from secrets
-3. Build URL with model, prompt, params
-4. If images provided: upload to temp storage or use base64 URLs
-5. Fetch video from Pollinations
-6. Convert to base64
-7. Return as JSON { videoUrl: "data:video/mp4;base64,..." }
+Flow:
+1. Frontend sends base64 images
+2. Edge function uploads to Supabase Storage
+3. Get signed public URL (valid for 1 hour)
+4. Pass URL to Pollinations API
+5. After video generation, delete temp image
 ```
-
-### Error Handling
-- 402: Insufficient pollen balance
-- 403: Model access denied
-- 500: Generation failed
-- Display user-friendly error messages
-
----
-
-## UI Design
-
-### Page Layout
-```text
-+--------------------------------------------------+
-| [Back] [Video icon] AI Video Generator           |
-+--------------------------------------------------+
-| [!] Experimental - Results may vary              |
-+--------------------------------------------------+
-| Model: [Veo 3.1 Fast v] [Seedance] [Seedance Pro]|
-+--------------------------------------------------+
-| Describe your video:                             |
-| +----------------------------------------------+ |
-| | A cat playing piano in a jazz club...        | |
-| +----------------------------------------------+ |
-+--------------------------------------------------+
-| Reference Images (optional):                     |
-| +----------------------------------------------+ |
-| | [+] Drag, paste or click to add images       | |
-| |     (2 max for Veo frame interpolation)      | |
-| +----------------------------------------------+ |
-| | [img1] [X]    [img2] [X]                     | |
-+--------------------------------------------------+
-| Duration: [6 sec v]  Aspect: [16:9 v]  Seed: [] |
-| [ ] Generate with audio (Veo only)               |
-+--------------------------------------------------+
-| [=== Generate Video ===]                         |
-+--------------------------------------------------+
-| [Video Player]                                   |
-| [Download] [Regenerate]                          |
-+--------------------------------------------------+
-```
-
-### Styling
-- Match existing Grammify/ImageGen aesthetic
-- Purple/violet gradient theme (consistent with NewVideo.tsx)
-- PremiumBackground component
-- Card components with backdrop blur
 
 ---
 
 ## Summary
 
-| Component | Action |
-|-----------|--------|
-| `src/pages/VideoGen.tsx` | Create - Full video gen page with image upload |
-| `supabase/functions/video-gen/index.ts` | Create - Edge function for video generation |
-| `src/pages/Index.tsx` | Modify - Add Video Gen button in header area |
-| `src/components/Sidebar.tsx` | Modify - Add Video Gen link with NEW badge |
-| `src/App.tsx` | Modify - Add `/video-gen` route |
-| `supabase/config.toml` | Modify - Register video-gen function |
+| File | Changes |
+|------|---------|
+| `supabase/functions/video-gen/index.ts` | Better error parsing, handle images properly |
+| `src/pages/VideoGen.tsx` | Update model descriptions, better error display |
+| (Optional) Create storage bucket | For temporary image hosting |
