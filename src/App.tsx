@@ -28,6 +28,7 @@ import YoutubeExplain from "./pages/YoutubeExplain";
 import NotesShare from "./pages/NotesShare";
 import ViewNote from "./pages/ViewNote";
 import Grammify from "./pages/Grammify";
+import VideoGen from "./pages/VideoGen";
 import Owner from "./pages/Owner";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
@@ -80,6 +81,7 @@ const App = () => {
           <Route path="/notes-share" element={<NotesShare />} />
           <Route path="/notes/:slug" element={<ViewNote />} />
           <Route path="/grammify" element={<Grammify />} />
+          <Route path="/video-gen" element={<VideoGen />} />
           <Route path="/owner" element={<Owner />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
