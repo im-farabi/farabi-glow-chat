@@ -99,29 +99,63 @@ const WebGen = () => {
     setLoading(true);
     setGeneratedCode('');
     
-    // Cleanup previous blob URL
     if (blobUrl) {
       URL.revokeObjectURL(blobUrl);
       setBlobUrl(null);
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('web-gen', {
-        body: { prompt: prompt.trim() }
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-gen`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ prompt: prompt.trim(), stream: true })
+        }
+      );
 
-      if (error) throw error;
-      
-      if (!data?.code) {
-        throw new Error('No code generated');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate');
       }
 
-      let code = data.code;
-      
-      // Clean up any markdown wrappers if present
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response stream');
+
+      const decoder = new TextDecoder();
+      let accumulatedCode = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                accumulatedCode += parsed.content;
+                setGeneratedCode(accumulatedCode);
+              }
+            } catch {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+
+      // Clean up markdown wrappers
+      let code = accumulatedCode;
       code = code.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
       
-      // Ensure it starts with DOCTYPE
       if (!code.startsWith('<!DOCTYPE')) {
         const doctypeIndex = code.indexOf('<!DOCTYPE');
         if (doctypeIndex > 0) {
@@ -131,7 +165,6 @@ const WebGen = () => {
       
       setGeneratedCode(code);
       
-      // Create blob URL for preview
       const blob = new Blob([code], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       setBlobUrl(url);
