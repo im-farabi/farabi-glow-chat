@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.web-gen]
 verify_jwt = false
+
+[functions.apifree-chat]
+verify_jwt = false
