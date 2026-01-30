@@ -139,8 +139,8 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setActiveMode('gpt52')} className={activeMode === 'gpt52' ? 'bg-emerald-500/20' : ''}>
-                    <img src={gpt52Icon} alt="GPT 5.2" className="h-4 w-4 mr-2" />
-                    <span className="font-medium">GPT 5.2</span>
+                    <img src={gpt52Icon} alt="Claude 4.5" className="h-4 w-4 mr-2" />
+                    <span className="font-medium">Claude 4.5</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuSub>
