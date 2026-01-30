@@ -35,6 +35,15 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
 
   const handleSend = () => {
     if (!message.trim() && !selectedImage) return;
+    
+    // Warn users about long prompts in GIYAAT mode
+    if (activeMode.startsWith('giyaat') && message.length > 2000) {
+      toast({
+        title: "Long prompt detected",
+        description: "For best results with code generation, try 'Coder' mode instead.",
+      });
+    }
+    
     onSendMessage(message, activeMode, selectedImage || undefined);
     setMessage('');
     setSelectedImage(null);

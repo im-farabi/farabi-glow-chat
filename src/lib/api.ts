@@ -288,25 +288,25 @@ export async function sendGiyaat(
     
     if (error) {
       console.error('Giyaat edge function error:', error);
-      throw new Error(error.message || 'Failed to connect to GIYAAT');
+      console.warn('GIYAAT failed, falling back to normal mode');
+      return await sendNormal(prompt, []);
     }
     
     if (data?.error) {
       console.error('Giyaat API error:', data.error, data.code);
-      throw new Error(data.error);
+      console.warn('GIYAAT failed, falling back to normal mode');
+      return await sendNormal(prompt, []);
     }
     
     if (!data?.text) {
-      throw new Error('Empty response from GIYAAT');
+      console.warn('Empty GIYAAT response, falling back to normal mode');
+      return await sendNormal(prompt, []);
     }
     
     return data.text;
   } catch (error) {
-    console.error('sendGiyaat error:', error);
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Unknown error occurred with GIYAAT');
+    console.error('sendGiyaat error, using fallback:', error);
+    return await sendNormal(prompt, []);
   }
 }
 
