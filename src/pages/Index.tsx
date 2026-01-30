@@ -7,7 +7,7 @@ import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
 import PremiumBackground from '@/components/PremiumBackground';
-import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage, sendGiyaat } from '@/lib/api';
+import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage, sendGiyaat, sendGPT52 } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 
@@ -204,7 +204,7 @@ const Index = () => {
 
   const handleSendMessage = async (
     message: string, 
-    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge',
+    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52',
     image?: File
   ) => {
     if (!message.trim() && !image) return;
@@ -263,6 +263,13 @@ const Index = () => {
         { time: 1500, text: 'Processing with GIYAAT AI...' },
         { time: Infinity, text: 'Generating response...' }
       ];
+
+      const gpt52Stages = [
+        { time: 500, text: 'Connecting to GPT-5.2...' },
+        { time: 1500, text: 'Processing with GPT-5.2...' },
+        { time: 3000, text: 'Generating response...' },
+        { time: Infinity, text: 'Thinking deeply...' }
+      ];
       
       const stages = mode === 'fast' 
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Reading Instructions...' }, { time: 1500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }]
@@ -272,6 +279,8 @@ const Index = () => {
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Reading Instructions...' }, { time: 1500, text: 'Analyzing Code Requirements...' }, { time: Infinity, text: 'Generating Code...' }]
         : mode === 'think'
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Deep Reasoning...' }, { time: 2000, text: 'Analyzing Multiple Angles...' }, { time: Infinity, text: image ? 'Analyzing image deeply...' : 'Thinking critically...' }]
+        : mode === 'gpt52'
+        ? gpt52Stages
         : mode.startsWith('giyaat')
         ? giyaatStages
         : [{ time: 500, text: 'Sending...' }, { time: 2000, text: 'Reading Instructions...' }, { time: 2500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }];
@@ -322,6 +331,19 @@ const Index = () => {
           break;
         case 'giyaatLarge':
           response = await sendGiyaat(message, 'large');
+          break;
+        case 'gpt52':
+          response = await sendGPT52(message, messages, (chunk) => {
+            // Update message content with streaming chunks
+            setMessages(prev => {
+              const updated = [...prev];
+              const lastMsg = updated[updated.length - 1];
+              if (lastMsg?.isLoading) {
+                lastMsg.content = (lastMsg.content || '') + chunk;
+              }
+              return updated;
+            });
+          });
           break;
         case 'imageGen':
           const { imageUrl, imageBlob } = await generateImage(message, (status) => {

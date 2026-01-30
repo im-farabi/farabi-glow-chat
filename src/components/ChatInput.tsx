@@ -5,8 +5,9 @@ import { Send, Rocket, Scale, Sparkles, X, Code2, Eye, Image as ImageIcon, Brain
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
+import gpt52Icon from '@/assets/gpt52-icon.png';
 
-type ChatMode = 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge';
+type ChatMode = 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52';
 
 interface ChatInputProps {
   onSendMessage: (message: string, mode: ChatMode, image?: File) => void;
@@ -124,17 +125,22 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className={`h-8 w-8 hover:bg-accent/50 ${activeMode.startsWith('giyaat') ? 'text-orange-500 bg-orange-500/10' : ''}`}
+                    className={`h-8 w-8 hover:bg-accent/50 ${activeMode.startsWith('giyaat') ? 'text-orange-500 bg-orange-500/10' : ''} ${activeMode === 'gpt52' ? 'text-emerald-500 bg-emerald-500/10' : ''}`}
                   >
                     <Wrench className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-44">
+                <DropdownMenuContent align="start" className="w-48">
                   <DropdownMenuItem onClick={() => setActiveMode('coder')} className={activeMode === 'coder' ? 'bg-accent' : ''}>
                     <Code2 className="h-4 w-4 mr-2" />Coder Mode
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setActiveMode('think')} className={activeMode === 'think' ? 'bg-accent' : ''}>
                     <Brain className="h-4 w-4 mr-2" />Deep Thinker
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setActiveMode('gpt52')} className={activeMode === 'gpt52' ? 'bg-emerald-500/20' : ''}>
+                    <img src={gpt52Icon} alt="GPT 5.2" className="h-4 w-4 mr-2" />
+                    <span className="font-medium">GPT 5.2</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuSub>

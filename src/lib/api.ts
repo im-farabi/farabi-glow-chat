@@ -271,7 +271,97 @@ export interface Message {
   image?: string;
 }
 
-export type ModelType = 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge';
+export type ModelType = 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52';
+
+const GPT52_SYSTEM_PROMPT = `You are FARABI-GPT5.2, a powerful AI assistant powered by OpenAI's GPT-5.2 model.
+Be helpful, accurate, and conversational. Provide clear, well-structured responses.
+Use markdown formatting when appropriate. Be concise but thorough.
+Talk in Gen Z-friendly style but still clear and professional.`;
+
+/**
+ * Send message to GPT 5.2 via apifree-chat edge function with streaming
+ */
+export async function sendGPT52(
+  prompt: string,
+  messages: Message[] = [],
+  onChunk?: (chunk: string) => void
+): Promise<string> {
+  try {
+    // Build conversation history for context
+    const conversationMessages = messages
+      .filter(msg => msg.content.trim() && msg.role)
+      .slice(-6) // Last 3 exchanges
+      .map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+    
+    // Add current user message
+    conversationMessages.push({ role: 'user', content: prompt });
+
+    const response = await fetch(
+      `https://gjlxuvcfoqjhwzcmpaju.supabase.co/functions/v1/apifree-chat`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqbHh1dmNmb3FqaHd6Y21wYWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3OTI5NjEsImV4cCI6MjA3ODM2ODk2MX0.5QgFtSCjSbwzudA8iz2-laO1st46ekY_tJIE2a41Vms`
+        },
+        body: JSON.stringify({
+          messages: conversationMessages,
+          systemPrompt: GPT52_SYSTEM_PROMPT
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    // Handle streaming response
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body');
+    }
+
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.content || '';
+            if (content) {
+              fullText += content;
+              if (onChunk) onChunk(content);
+            }
+          } catch {
+            // Skip invalid JSON
+          }
+        }
+      }
+    }
+
+    return fullText || 'No response received';
+  } catch (error) {
+    console.error('sendGPT52 error:', error);
+    throw error;
+  }
+}
 
 /**
  * Send message to Giyaat external API via Supabase Edge Function proxy
