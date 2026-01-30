@@ -39,6 +39,7 @@ import NewChat from "./pages/NewChat";
 import NewImage from "./pages/NewImage";
 import NewVideo from "./pages/NewVideo";
 import MailPage from "./pages/MailPage";
+import WebGen from "./pages/WebGen";
 import { getCursorPreference } from "./lib/storage";
 import { useCursorEffects } from "./hooks/useCursorEffects";
 
@@ -95,6 +96,7 @@ const App = () => {
           <Route path="/ad" element={<AdRedirect />} />
           <Route path="/donate" element={<DonateRedirect />} />
           <Route path="/mail" element={<MailPage />} />
+          <Route path="/web" element={<WebGen />} />
           <Route path="/support" element={<Support />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
