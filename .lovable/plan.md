@@ -1,83 +1,83 @@
 
-# Fix GPT 5.2 Streaming - Immutable State Update
+# Switch from GPT 5.2 to Claude Sonnet 4.5
 
-## The Problem
-The streaming chunks are arriving correctly from the API, but the UI doesn't update in real-time. The text only appears once the entire response is complete.
-
-## Root Cause
-In `Index.tsx`, the streaming callback **mutates** the message object directly:
-```typescript
-lastMsg.isLoading = false;
-lastMsg.content = (lastMsg.content || '') + chunk;
-```
-
-This breaks React's change detection because:
-1. `ChatMessage` uses `React.memo` with a custom equality check
-2. The comparison `prevProps.content === nextProps.content` returns `true` because both point to the same mutated string
-3. React skips re-rendering since it thinks nothing changed
-
-## The Fix
-Create **new objects** instead of mutating existing ones. This ensures React detects the change and re-renders.
+## Summary
+Replace the GPT 5.2 model with Claude Sonnet 4.5 (`anthropic/claude-sonnet-4.5`) for better streaming performance. The API endpoint and key rotation system stay the same - only the model and some parameters change.
 
 ---
 
 ## Changes Required
 
-### File: `src/pages/Index.tsx`
+### 1. Update Edge Function: `supabase/functions/apifree-chat/index.ts`
 
-Update the GPT 5.2 `onChunk` callback to create new array and message objects:
+| Change | From | To |
+|--------|------|-----|
+| Model | `openai/gpt-5.2` | `anthropic/claude-sonnet-4.5` |
+| Max tokens | `4096` | `8192` |
+| System prompt name | `FARABI-GPT5.2` | `FARABI-Claude` |
+| Log prefix | `[GPT-5.2]` | `[Claude]` |
+| Temperature | (not set) | `1` (Claude default) |
 
-**Before (broken - mutates in place):**
-```typescript
-case 'gpt52':
-  response = await sendGPT52(message, messages, (chunk) => {
-    setMessages(prev => {
-      const updated = [...prev];
-      const lastMsg = updated[updated.length - 1];
-      if (lastMsg) {
-        lastMsg.isLoading = false;  // Mutation!
-        lastMsg.content = (lastMsg.content || '') + chunk;  // Mutation!
-      }
-      return updated;
-    });
-  });
-```
+The streaming format is identical - both use SSE with `choices[0].delta.content`.
 
-**After (fixed - creates new objects):**
-```typescript
-case 'gpt52':
-  response = await sendGPT52(message, messages, (chunk) => {
-    setMessages(prev => {
-      const updated = [...prev];
-      const lastIndex = updated.length - 1;
-      const lastMsg = updated[lastIndex];
-      if (lastMsg) {
-        // Create NEW object to trigger React re-render
-        updated[lastIndex] = {
-          ...lastMsg,
-          isLoading: false,
-          content: (lastMsg.content || '') + chunk
-        };
-      }
-      return updated;
-    });
-  });
-```
+### 2. Update API Library: `src/lib/api.ts`
+
+| Change | From | To |
+|--------|------|-----|
+| System prompt | References GPT-5.2 | References Claude Sonnet 4.5 |
+| Function name | Keep as `sendGPT52` or rename | Keep same for simplicity |
+
+### 3. Update UI Labels: `src/components/ChatInput.tsx`
+
+| Change | From | To |
+|--------|------|-----|
+| Menu label | "GPT 5.2" | "Claude 4.5" or keep same |
+
+The icon stays the same (the colorful flower logo works for both).
 
 ---
 
-## Why This Works
-1. Spreading `...lastMsg` creates a new message object
-2. New object has a new reference
-3. React's memo comparison sees `prevProps.content !== nextProps.content`
-4. Component re-renders with each chunk, showing real-time streaming
+## Technical Details
+
+### Edge Function Changes
+
+```text
+- const MODEL = 'openai/gpt-5.2';
+- const MAX_TOKENS = 4096;
++ const MODEL = 'anthropic/claude-sonnet-4.5';
++ const MAX_TOKENS = 8192;
+```
+
+Add temperature parameter to API request:
+```text
+body: JSON.stringify({
+  model: MODEL,
+  max_tokens: MAX_TOKENS,
+  messages,
+  stream: true,
+  temperature: 1  // Claude default
+})
+```
+
+### Why Claude Streams Better
+Claude's streaming implementation sends smaller, more frequent chunks compared to some other models. The SSE format is OpenAI-compatible, so no changes needed to the parsing logic.
 
 ---
 
-## Summary
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/Index.tsx` | Fix immutability in GPT 5.2 streaming callback |
+| `supabase/functions/apifree-chat/index.ts` | Switch model to Claude, update max_tokens to 8192, add temperature |
+| `src/lib/api.ts` | Update system prompt to reference Claude |
+| `src/components/ChatInput.tsx` | Optionally update label (or keep as "GPT 5.2") |
 
-This is **our fault** (the frontend code), not the API's fault. The API is streaming correctly.
+---
+
+## Summary of Key Points
+
+1. Same API endpoint (`api.apifree.ai`)
+2. Same 3-key rotation strategy
+3. Same streaming SSE format
+4. Only model name, max_tokens, and temperature change
+5. Better streaming reliability with Claude
