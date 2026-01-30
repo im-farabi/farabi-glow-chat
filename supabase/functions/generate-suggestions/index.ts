@@ -21,15 +21,20 @@ serve(async (req) => {
       throw new Error('POLLINATIONS_API_KEY not configured');
     }
 
-    const systemPrompt = `You are a smart suggestion generator. Based on the AI's response, generate exactly 2 relevant follow-up questions that a curious student might ask next.
+    const systemPrompt = `You are a JSON-only suggestion generator. Based on the AI's response, generate exactly 2 relevant follow-up questions.
 
-Rules:
-- Generate EXACTLY 2 questions
-- Each question must be 5-10 words maximum
-- Questions should dig deeper into the topic or explore related concepts
-- Questions should be natural and conversational
-- Return ONLY a JSON array of 2 strings, nothing else
-- Example format: ["What are the main features?", "How does it compare to alternatives?"]`;
+CRITICAL RULES:
+- Output ONLY a valid JSON array - NO explanatory text, NO markdown
+- Do NOT write anything before or after the JSON array
+- Format: ["Question 1?", "Question 2?"]
+- Each question: 5-10 words maximum
+- Questions should explore the topic deeper
+
+CORRECT OUTPUT EXAMPLE:
+["What are the main features?", "How does it compare?"]
+
+WRONG OUTPUT (DO NOT DO THIS):
+Here are two questions: ["...", "..."]`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -102,19 +107,32 @@ Rules:
       console.log('Cleaned JSON (removed markdown):', cleanedText);
     }
     
+    // Try to extract JSON array from response (handles cases where AI adds text before/after)
+    const jsonArrayMatch = cleanedText.match(/\[[\s\S]*?\]/);
+    if (jsonArrayMatch) {
+      cleanedText = jsonArrayMatch[0];
+      console.log('Extracted JSON array:', cleanedText);
+    }
+    
     // Parse JSON from response
     let suggestions;
     try {
       suggestions = JSON.parse(cleanedText);
+      // Validate it's an array of strings
+      if (!Array.isArray(suggestions) || !suggestions.every(s => typeof s === 'string')) {
+        console.error('Parsed result is not an array of strings:', suggestions);
+        suggestions = null;
+      }
     } catch (parseError) {
       console.error('Failed to parse suggestions JSON:', parseError);
       console.error('Attempted to parse:', cleanedText);
-      throw new Error('Invalid JSON response from AI');
+      // Don't throw - use fallback instead
+      suggestions = null;
     }
     
-    // Ensure we have exactly 2 suggestions
+    // Ensure we have exactly 2 valid string suggestions
     const finalSuggestions = Array.isArray(suggestions) && suggestions.length > 0
-      ? suggestions.slice(0, 2) 
+      ? suggestions.filter(s => typeof s === 'string' && s.length > 0).slice(0, 2) 
       : ["Tell me more", "What else?"];
 
     console.log('Final suggestions:', finalSuggestions);
