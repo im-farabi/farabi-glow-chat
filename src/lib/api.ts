@@ -310,6 +310,101 @@ export async function sendGiyaat(
   }
 }
 
+/**
+ * Send message to Giyaat with streaming support
+ * Uses raw fetch to read SSE stream and calls onChunk for live updates
+ */
+export async function sendGiyaatStream(
+  prompt: string,
+  model: 'fast' | 'mid' | 'large',
+  onChunk: (text: string, done: boolean) => void
+): Promise<string> {
+  const SUPABASE_URL = 'https://gjlxuvcfoqjhwzcmpaju.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqbHh1dmNmb3FqaHd6Y21wYWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3OTI5NjEsImV4cCI6MjA3ODM2ODk2MX0.5QgFtSCjSbwzudA8iz2-laO1st46ekY_tJIE2a41Vms';
+  
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/giyaat-proxy`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ prompt, model })
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Giyaat stream error:', response.status, errorText);
+      throw new Error(`GIYAAT request failed: ${response.status}`);
+    }
+
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const payload = line.replace(/^data: ?/, '').trim();
+        if (payload === '[DONE]') {
+          onChunk(fullText, true);
+          return fullText;
+        }
+        
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.content) {
+            fullText += parsed.content;
+            onChunk(fullText, false);
+          }
+          if (parsed.error) {
+            throw new Error(parsed.error);
+          }
+        } catch (parseError) {
+          // Partial JSON or parse error, continue
+          if (parseError instanceof Error && parseError.message !== 'Unexpected end of JSON input') {
+            console.warn('SSE parse warning:', parseError);
+          }
+        }
+      }
+    }
+    
+    // Handle any remaining buffer
+    if (buffer.trim() && buffer.startsWith('data:')) {
+      const payload = buffer.replace(/^data: ?/, '').trim();
+      if (payload !== '[DONE]') {
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.content) {
+            fullText += parsed.content;
+          }
+        } catch {}
+      }
+    }
+    
+    onChunk(fullText, true);
+    return fullText;
+  } catch (error) {
+    console.error('sendGiyaatStream error:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Unknown error occurred with GIYAAT streaming');
+  }
+}
+
 
 /**
  * Build conversation history from recent messages
