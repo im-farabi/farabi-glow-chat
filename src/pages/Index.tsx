@@ -334,11 +334,13 @@ const Index = () => {
           break;
         case 'gpt52':
           response = await sendGPT52(message, messages, (chunk) => {
-            // Update message content with streaming chunks
+            // Update message content with streaming chunks and turn off loading to show content
             setMessages(prev => {
               const updated = [...prev];
               const lastMsg = updated[updated.length - 1];
-              if (lastMsg?.isLoading) {
+              if (lastMsg) {
+                // Turn off loading so content renders immediately
+                lastMsg.isLoading = false;
                 lastMsg.content = (lastMsg.content || '') + chunk;
               }
               return updated;
