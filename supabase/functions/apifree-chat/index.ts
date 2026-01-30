@@ -6,10 +6,10 @@ const corsHeaders = {
 };
 
 const API_URL = 'https://api.apifree.ai/v1/chat/completions';
-const MODEL = 'openai/gpt-5.2';
-const MAX_TOKENS = 4096;
+const MODEL = 'anthropic/claude-sonnet-4.5';
+const MAX_TOKENS = 8192;
 
-const DEFAULT_SYSTEM_PROMPT = `You are FARABI-GPT5.2, a powerful AI assistant powered by OpenAI's GPT-5.2 model.
+const DEFAULT_SYSTEM_PROMPT = `You are FARABI-Claude, a powerful AI assistant powered by Claude Sonnet 4.5.
 Be helpful, accurate, and conversational. Provide clear, well-structured responses.
 Use markdown formatting when appropriate. Be concise but thorough.`;
 
@@ -24,7 +24,8 @@ async function callAPIStream(apiKey: string, messages: any[]): Promise<ReadableS
       model: MODEL,
       max_tokens: MAX_TOKENS,
       messages,
-      stream: true
+      stream: true,
+      temperature: 1
     })
   });
 
@@ -78,7 +79,7 @@ serve(async (req) => {
     // Try each key in order
     for (let i = 0; i < shuffledKeys.length; i++) {
       const apiKey = shuffledKeys[i];
-      console.log(`[GPT-5.2] Trying key ${i + 1}`);
+      console.log(`[Claude] Trying key ${i + 1}`);
       
       try {
         const upstreamStream = await callAPIStream(apiKey, fullMessages);
@@ -110,7 +111,7 @@ serve(async (req) => {
           }
         });
 
-        console.log(`[GPT-5.2] Success with key ${i + 1}`);
+        console.log(`[Claude] Success with key ${i + 1}`);
         
         return new Response(upstreamStream.pipeThrough(transformStream), {
           headers: {
@@ -121,7 +122,7 @@ serve(async (req) => {
           }
         });
       } catch (error) {
-        console.error(`[GPT-5.2] Key ${i + 1} failed:`, error);
+        console.error(`[Claude] Key ${i + 1} failed:`, error);
         lastError = error instanceof Error ? error : new Error(String(error));
       }
     }
