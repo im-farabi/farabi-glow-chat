@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.enhance-video-prompt]
 verify_jwt = false
+
+[functions.web-gen]
+verify_jwt = false
