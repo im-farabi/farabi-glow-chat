@@ -7,7 +7,7 @@ import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
 import PremiumBackground from '@/components/PremiumBackground';
-import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage, sendGiyaatStream } from '@/lib/api';
+import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage, sendGiyaat } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 
@@ -315,31 +315,14 @@ const Index = () => {
           response = await sendThink(message, messages, image);
           break;
         case 'giyaatFast':
-        case 'giyaatMid':
-        case 'giyaatLarge': {
-          // Clear loading message and add empty streaming message
-          const giyaatModel = mode === 'giyaatFast' ? 'fast' : mode === 'giyaatMid' ? 'mid' : 'large';
-          
-          // Replace loading message with streaming assistant message
-          setMessages([...newMessages, { role: 'assistant', content: '', isLoading: false }]);
-          
-          response = await sendGiyaatStream(
-            message,
-            giyaatModel,
-            (text, done) => {
-              setMessages(prev => {
-                const updated = [...prev];
-                const lastMsg = updated[updated.length - 1];
-                if (lastMsg?.role === 'assistant') {
-                  lastMsg.content = text;
-                  lastMsg.isLoading = !done;
-                }
-                return [...updated]; // Force re-render
-              });
-            }
-          );
+          response = await sendGiyaat(message, 'fast');
           break;
-        }
+        case 'giyaatMid':
+          response = await sendGiyaat(message, 'mid');
+          break;
+        case 'giyaatLarge':
+          response = await sendGiyaat(message, 'large');
+          break;
         case 'imageGen':
           const { imageUrl, imageBlob } = await generateImage(message, (status) => {
             setMessages(prev => {

@@ -1,207 +1,166 @@
 
 
-# Add Live Streaming to GIYAAT AI Chat
+# Add Wan 2.6 Model to Video Generator
 
-## Problem
+## Research Findings: Wan 2.6 Capabilities
 
-Currently GIYAAT responses appear all at once because:
+Based on Pollinations API documentation and official Wan 2.6 specs:
 
-1. **Edge Function buffers everything**: The `giyaat-proxy` collects ALL chunks from Giyaat's SSE stream before returning
-2. **Frontend waits for complete response**: `sendGiyaat()` uses `supabase.functions.invoke()` which waits for full JSON response
+### Wan 2.6 Key Features (from Alibaba)
+| Feature | Description |
+|---------|-------------|
+| **Duration** | Up to 15 seconds (industry-leading) |
+| **Resolution** | 720p, 1080p |
+| **Native AV Sync** | Audio generation with lip-sync |
+| **Multi-shot Narrative** | Smart storyboard from prompts (auto scene segmentation) |
+| **Video Roleplay** | Character consistency from reference video |
+| **Aspect Ratios** | 16:9, 9:16, 1:1, 4:3, 3:4 |
 
-The user expects live typing like other chat apps where text appears word-by-word.
+### Wan 2.6 Three Modes
+1. **Text-to-Video (T2V)**: Pure text prompts to video
+2. **Image-to-Video (I2V)**: Animate static images (5-15 seconds)
+3. **Reference-to-Video (R2V)**: Maintain character consistency using 1-3 reference videos
+
+### What Pollinations Supports for `wan`
+From the GitHub announcement (2026-01-26):
+> "Generate videos from images with audio support using the new `wan` model"
+
+Based on Pollinations `/image/{prompt}` endpoint documentation:
+- Model: `wan` (similar to veo, seedance)
+- Duration: Likely 5-15 seconds
+- Audio: Supported
+- Image: Supported (image-to-video)
+- Aspect Ratio: 16:9, 9:16, etc.
 
 ---
 
-## Solution Architecture
+## Implementation Plan
 
-```text
-Current (broken):
-┌───────────┐    ┌────────────────┐    ┌──────────────┐
-│ Giyaat API├───►│ Edge Function  ├───►│ Frontend     │
-│ (SSE)     │    │ (buffers ALL)  │    │ (shows once) │
-└───────────┘    └────────────────┘    └──────────────┘
+### 1. Add Wan Model to `ModelType` and Config
 
-Fixed (streaming):
-┌───────────┐    ┌────────────────┐    ┌──────────────┐
-│ Giyaat API├───►│ Edge Function  ├───►│ Frontend     │
-│ (SSE)     │    │ (forwards SSE) │    │ (live typing)│
-└───────────┘    └────────────────┘    └──────────────┘
+**File: `src/pages/VideoGen.tsx`**
+
+Add "wan" to the model type and configuration:
+
+```typescript
+type ModelType = 'veo' | 'seedance' | 'seedance-pro' | 'wan';
+
+const modelConfigs = {
+  veo: { maxImages: 2, durations: [4, 6, 8], hasAudio: true, label: 'Veo 3.1 Fast' },
+  seedance: { maxImages: 1, durations: [2, 3, 4, 5, 6, 7, 8, 9, 10], hasAudio: false, label: 'Seedance' },
+  'seedance-pro': { maxImages: 1, durations: [2, 3, 4, 5, 6, 7, 8, 9, 10], hasAudio: false, label: 'Seedance Pro' },
+  wan: { maxImages: 1, durations: [5, 10, 15], hasAudio: true, label: 'Wan 2.6' },
+};
 ```
+
+### 2. Add More Aspect Ratio Options
+
+Wan 2.6 supports 5 aspect ratios. Add 4:3 and 3:4 options:
+
+```tsx
+<SelectContent>
+  <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
+  <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
+  <SelectItem value="1:1">1:1 (Square)</SelectItem>
+  <SelectItem value="4:3">4:3 (Classic)</SelectItem>
+  <SelectItem value="3:4">3:4 (Portrait Classic)</SelectItem>
+</SelectContent>
+```
+
+### 3. Update Edge Function for Wan Model
+
+**File: `supabase/functions/video-gen/index.ts`**
+
+The edge function should already work since it passes the `model` param dynamically. However, add audio support for Wan:
+
+```typescript
+// Add audio for Veo and Wan models
+if (audio && (model === 'veo' || model === 'wan')) {
+  url += `&audio=true`;
+}
+```
+
+### 4. Update Enhance Prompt Function for Wan
+
+**File: `supabase/functions/enhance-video-prompt/index.ts`**
+
+Add Wan-specific system prompt formula:
+
+**Wan 2.6 Prompt Formula** (based on research):
+```
+[Shot Type] + [Subject with Details] + [Motion/Action] + [Scene/Environment] + [Lighting/Style]
+```
+
+Wan excels at:
+- Multi-shot narratives with temporal markers
+- Cinematic language (close-up, wide shot, tracking)
+- Audio descriptions when audio is enabled
+
+### 5. Update UI Descriptions
+
+**File: `src/pages/VideoGen.tsx`**
+
+Add description for Wan model in the Reference Images card:
+```tsx
+{model === 'wan' 
+  ? 'Wan 2.6 supports image-to-video animation with native audio sync'
+  : model === 'veo' 
+  ? 'Veo supports text-to-video with optional audio...'
+  : 'Add 1 reference image to guide the video style...'}
+```
+
+### 6. Add "NEW" Badge for Wan
+
+Show a badge next to the Wan button since it's a new addition.
 
 ---
 
 ## Files to Modify
 
-### 1. Edge Function: Forward SSE Stream
-
-**File: `supabase/functions/giyaat-proxy/index.ts`**
-
-Instead of buffering all chunks, forward the SSE stream directly to the frontend using `TransformStream`:
-
-```typescript
-// Create a transform stream to forward SSE data
-const { readable, writable } = new TransformStream();
-const writer = writable.getWriter();
-
-// Return streaming response immediately
-const streamResponse = new Response(readable, {
-  headers: {
-    ...corsHeaders,
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
-  }
-});
-
-// Read from Giyaat and forward chunks
-(async () => {
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    // Forward raw SSE data to frontend
-    await writer.write(value);
-  }
-  await writer.close();
-})();
-
-return streamResponse;
-```
-
-### 2. Frontend: Add Streaming Handler
-
-**File: `src/lib/api.ts`**
-
-Create a new `sendGiyaatStream()` function that:
-- Uses raw `fetch()` instead of `supabase.functions.invoke()`
-- Reads SSE chunks with `response.body.getReader()`
-- Calls an `onChunk` callback to update UI in real-time
-
-```typescript
-export async function sendGiyaatStream(
-  prompt: string,
-  model: 'fast' | 'mid' | 'large',
-  onChunk: (text: string, done: boolean) => void
-): Promise<string> {
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/giyaat-proxy`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
-      },
-      body: JSON.stringify({ prompt, model })
-    }
-  );
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let fullText = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    
-    buffer += decoder.decode(value, { stream: true });
-    // Parse SSE chunks and call onChunk
-    // ...accumulate fullText and call onChunk(fullText, false)
-  }
-  
-  onChunk(fullText, true); // Final call
-  return fullText;
-}
-```
-
-### 3. Index.tsx: Update GIYAAT Message Handling
-
-**File: `src/pages/Index.tsx`**
-
-Update the GIYAAT cases to:
-1. Add an empty assistant message immediately
-2. Update message content as chunks arrive (like BookChatPanel does)
-
-```typescript
-case 'giyaatFast':
-case 'giyaatMid':
-case 'giyaatLarge':
-  // Add empty assistant message for streaming
-  const streamingMessages = [...newMessages, { role: 'assistant', content: '', isStreaming: true }];
-  setMessages(streamingMessages);
-  
-  // Stream with live updates
-  response = await sendGiyaatStream(
-    message, 
-    mode === 'giyaatFast' ? 'fast' : mode === 'giyaatMid' ? 'mid' : 'large',
-    (text, done) => {
-      setMessages(prev => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (last?.isStreaming) {
-          last.content = text;
-          if (done) last.isStreaming = false;
-        }
-        return updated;
-      });
-    }
-  );
-  break;
-```
+| File | Changes |
+|------|---------|
+| `src/pages/VideoGen.tsx` | Add Wan model type, config, aspect ratios, UI descriptions |
+| `supabase/functions/video-gen/index.ts` | Add audio support for Wan model |
+| `supabase/functions/enhance-video-prompt/index.ts` | Add Wan-specific prompt optimization |
 
 ---
 
 ## Technical Details
 
-### SSE Format from Giyaat API
+### Wan Model Configuration
+```typescript
+wan: { 
+  maxImages: 1,        // I2V supports single image
+  durations: [5, 10, 15],  // Up to 15 seconds!
+  hasAudio: true,      // Native AV sync
+  label: 'Wan 2.6'
+}
+```
+
+### Wan Prompt System (for enhance function)
 ```text
-data: {"content":"Hello"}
+You are an expert video prompt engineer for Alibaba Wan 2.6. Transform basic prompts using:
 
-data: {"content":" world"}
+[Shot Type] + [Subject Details] + [Motion/Action] + [Scene] + [Style]
 
-data: [DONE]
-```
+Key techniques for Wan:
+- Use multi-shot syntax: "Shot 1 [0-5s]: ..., Shot 2 [5-10s]: ..."
+- Include camera movements: tracking, pan, zoom, close-up, wide shot
+- Describe motion with adverbs: gracefully, rapidly, slowly
+- For audio: describe sounds, dialogue in quotes, ambient audio
+{If image provided: Focus on animating the image content}
 
-### Edge Function Headers for Streaming
-```typescript
-{
-  'Content-Type': 'text/event-stream',
-  'Cache-Control': 'no-cache',
-  'Connection': 'keep-alive'
-}
-```
-
-### Frontend SSE Parsing
-```typescript
-for (const line of lines) {
-  if (!line.startsWith('data:')) continue;
-  const payload = line.replace(/^data: ?/, '').trim();
-  if (payload === '[DONE]') break;
-  
-  const parsed = JSON.parse(payload);
-  if (parsed.content) {
-    fullText += parsed.content;
-    onChunk(fullText, false);
-  }
-}
+Keep under 200 words. Output ONLY the enhanced prompt.
 ```
 
 ---
 
-## Summary of Changes
+## Summary
 
-| File | Change |
-|------|--------|
-| `supabase/functions/giyaat-proxy/index.ts` | Forward SSE stream instead of buffering |
-| `src/lib/api.ts` | Add `sendGiyaatStream()` with `onChunk` callback |
-| `src/pages/Index.tsx` | Update GIYAAT cases to use streaming + live UI updates |
-
----
-
-## Result
-
-After these changes, GIYAAT responses will appear character-by-character in real-time, just like the Book Chat feature does.
+| Addition | Description |
+|----------|-------------|
+| Wan 2.6 model | New model option with 5-15s duration and audio |
+| Extended aspect ratios | 4:3 and 3:4 options |
+| Wan prompt optimization | Model-specific enhancement in edge function |
+| Updated UI | Descriptions and NEW badge for Wan |
 
