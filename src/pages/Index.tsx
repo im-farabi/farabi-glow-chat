@@ -264,9 +264,9 @@ const Index = () => {
         { time: Infinity, text: 'Generating response...' }
       ];
 
-      const gpt52Stages = [
-        { time: 500, text: 'Connecting to GPT-5.2...' },
-        { time: 1500, text: 'Processing with GPT-5.2...' },
+      const claudeStages = [
+        { time: 500, text: 'Connecting to Claude...' },
+        { time: 1500, text: 'Processing with Claude 4.5...' },
         { time: 3000, text: 'Generating response...' },
         { time: Infinity, text: 'Thinking deeply...' }
       ];
@@ -280,7 +280,7 @@ const Index = () => {
         : mode === 'think'
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Deep Reasoning...' }, { time: 2000, text: 'Analyzing Multiple Angles...' }, { time: Infinity, text: image ? 'Analyzing image deeply...' : 'Thinking critically...' }]
         : mode === 'gpt52'
-        ? gpt52Stages
+        ? claudeStages
         : mode.startsWith('giyaat')
         ? giyaatStages
         : [{ time: 500, text: 'Sending...' }, { time: 2000, text: 'Reading Instructions...' }, { time: 2500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }];
@@ -334,6 +334,11 @@ const Index = () => {
           break;
         case 'gpt52':
           response = await sendGPT52(message, messages, (chunk) => {
+            // Clear loading interval on first chunk
+            if (updateInterval) {
+              clearInterval(updateInterval);
+              updateInterval = null;
+            }
             setMessages(prev => {
               const updated = [...prev];
               const lastIndex = updated.length - 1;
