@@ -346,6 +346,8 @@ export async function sendGiyaatStream(
     const decoder = new TextDecoder();
     let buffer = '';
     let fullText = '';
+    let lastUpdateTime = 0;
+    const UPDATE_INTERVAL = 50; // Update UI every 50ms for smooth typing effect
 
     while (true) {
       const { done, value } = await reader.read();
@@ -367,14 +369,26 @@ export async function sendGiyaatStream(
           const parsed = JSON.parse(payload);
           if (parsed.content) {
             fullText += parsed.content;
-            onChunk(fullText, false);
+            
+            // Throttle UI updates for smoother rendering
+            const now = Date.now();
+            if (now - lastUpdateTime >= UPDATE_INTERVAL) {
+              lastUpdateTime = now;
+              // Use setTimeout to break out of React's batching
+              await new Promise<void>(resolve => {
+                setTimeout(() => {
+                  onChunk(fullText, false);
+                  resolve();
+                }, 0);
+              });
+            }
           }
           if (parsed.error) {
             throw new Error(parsed.error);
           }
         } catch (parseError) {
           // Partial JSON or parse error, continue
-          if (parseError instanceof Error && parseError.message !== 'Unexpected end of JSON input') {
+          if (parseError instanceof Error && !parseError.message.includes('JSON')) {
             console.warn('SSE parse warning:', parseError);
           }
         }
