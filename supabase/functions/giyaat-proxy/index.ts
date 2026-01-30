@@ -6,7 +6,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -14,9 +13,12 @@ serve(async (req) => {
   try {
     const { prompt, model } = await req.json();
     
-    // Validate input
     if (!prompt || typeof prompt !== 'string') {
       throw new Error('Prompt is required');
+    }
+    
+    if (prompt.length > 1000) {
+      throw new Error('Prompt too long (max 1000 characters)');
     }
     
     const validModels = ['fast', 'mid', 'large'];
@@ -24,26 +26,74 @@ serve(async (req) => {
     
     console.log('Giyaat proxy request:', { model: selectedModel, promptLength: prompt.length });
     
-    // Build Giyaat API URL
-    const encodedPrompt = encodeURIComponent(prompt);
-    const url = `https://giyaaat.vercel.app/api/chat?prompt=${encodedPrompt}&model=${selectedModel}`;
-    
-    // Timeout handling (45 seconds)
+    // Timeout handling (60 seconds for streaming)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
     
-    const response = await fetch(url, { signal: controller.signal });
+    // POST request with JSON body (matching Giyaat API)
+    const response = await fetch('https://giyaaat.vercel.app/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, model: selectedModel }),
+      signal: controller.signal
+    });
+    
     clearTimeout(timeoutId);
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Giyaat API error:', response.status, errorText);
       throw new Error(`Giyaat API error: ${response.status}`);
     }
     
-    const text = await response.text();
+    // Parse SSE streaming response
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
     
-    console.log('Giyaat proxy success:', { model: selectedModel, responseLength: text.length });
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const payload = line.replace(/^data: ?/, '').trim();
+        if (payload === '[DONE]') break;
+        
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.content) {
+            fullText += parsed.content;
+          }
+        } catch {
+          // Partial JSON, continue
+        }
+      }
+    }
     
-    return new Response(JSON.stringify({ text }), {
+    // Handle any remaining buffer
+    if (buffer.trim() && buffer.startsWith('data:')) {
+      const payload = buffer.replace(/^data: ?/, '').trim();
+      if (payload !== '[DONE]') {
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.content) fullText += parsed.content;
+        } catch {}
+      }
+    }
+    
+    if (!fullText) {
+      throw new Error('Empty response from GIYAAT');
+    }
+    
+    console.log('Giyaat proxy success:', { model: selectedModel, responseLength: fullText.length });
+    
+    return new Response(JSON.stringify({ text: fullText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
     
@@ -56,7 +106,7 @@ serve(async (req) => {
       if (error.name === 'AbortError') {
         errorMessage = 'Request timed out. GIYAAT server may be slow.';
         errorCode = 'TIMEOUT';
-      } else if (error.message.includes('fetch')) {
+      } else if (error.message.includes('fetch') || error.message.includes('network')) {
         errorMessage = 'Could not reach GIYAAT server. Please try again.';
         errorCode = 'CONNECTION_ERROR';
       } else {
