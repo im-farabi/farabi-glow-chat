@@ -24,15 +24,17 @@ serve(async (req) => {
     
     console.log('Giyaat proxy request:', { model: selectedModel, promptLength: prompt.length });
     
-    // Build Giyaat API URL
-    const encodedPrompt = encodeURIComponent(prompt);
-    const url = `https://giyaaat.vercel.app/api/chat?prompt=${encodedPrompt}&model=${selectedModel}`;
-    
-    // Timeout handling (45 seconds)
+    // Timeout handling (90 seconds for code generation)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
     
-    const response = await fetch(url, { signal: controller.signal });
+    // Use POST method to avoid URL length limits for long prompts
+    const response = await fetch('https://giyaaat.vercel.app/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, model: selectedModel }),
+      signal: controller.signal
+    });
     clearTimeout(timeoutId);
     
     if (!response.ok) {
