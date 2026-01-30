@@ -2,12 +2,13 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -24,11 +25,11 @@ serve(async (req) => {
     const validModels = ['fast', 'mid', 'large'];
     const selectedModel = validModels.includes(model) ? model : 'fast';
     
-    console.log('Giyaat proxy request:', { model: selectedModel, promptLength: prompt.length });
+    console.log('Giyaat proxy streaming request:', { model: selectedModel, promptLength: prompt.length });
     
-    // Timeout handling (60 seconds for streaming)
+    // Timeout handling (90 seconds for streaming)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
     
     // POST request with JSON body (matching Giyaat API)
     const response = await fetch('https://giyaaat.vercel.app/api/chat', {
@@ -46,56 +47,45 @@ serve(async (req) => {
       throw new Error(`Giyaat API error: ${response.status}`);
     }
     
-    // Parse SSE streaming response
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullText = '';
+    // Forward SSE stream directly to frontend using TransformStream
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
     
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const payload = line.replace(/^data: ?/, '').trim();
-        if (payload === '[DONE]') break;
-        
-        try {
-          const parsed = JSON.parse(payload);
-          if (parsed.content) {
-            fullText += parsed.content;
-          }
-        } catch {
-          // Partial JSON, continue
-        }
+    // Start streaming response immediately
+    const streamResponse = new Response(readable, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
       }
-    }
-    
-    // Handle any remaining buffer
-    if (buffer.trim() && buffer.startsWith('data:')) {
-      const payload = buffer.replace(/^data: ?/, '').trim();
-      if (payload !== '[DONE]') {
-        try {
-          const parsed = JSON.parse(payload);
-          if (parsed.content) fullText += parsed.content;
-        } catch {}
-      }
-    }
-    
-    if (!fullText) {
-      throw new Error('Empty response from GIYAAT');
-    }
-    
-    console.log('Giyaat proxy success:', { model: selectedModel, responseLength: fullText.length });
-    
-    return new Response(JSON.stringify({ text: fullText }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+    
+    // Read from Giyaat and forward chunks in background
+    (async () => {
+      try {
+        const reader = response.body!.getReader();
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          // Forward raw SSE data to frontend
+          await writer.write(value);
+        }
+        
+        console.log('Giyaat proxy streaming completed');
+      } catch (error) {
+        console.error('Giyaat streaming error:', error);
+        // Send error event to client
+        const errorEvent = `data: ${JSON.stringify({ error: 'Stream interrupted' })}\n\n`;
+        await writer.write(encoder.encode(errorEvent));
+      } finally {
+        await writer.close();
+      }
+    })();
+    
+    return streamResponse;
     
   } catch (error) {
     console.error('Giyaat proxy error:', error);
