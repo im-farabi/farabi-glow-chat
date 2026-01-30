@@ -1,242 +1,207 @@
 
 
-# Fix Giyaat API Integration - Switch to POST with Streaming
+# Add Live Streaming to GIYAAT AI Chat
 
-## Problem Identified
+## Problem
 
-The current `giyaat-proxy` Edge Function uses **GET requests with query parameters**:
-```typescript
-const url = `https://giyaaat.vercel.app/api/chat?prompt=${encodedPrompt}&model=${selectedModel}`;
-const response = await fetch(url, { signal: controller.signal });
-```
+Currently GIYAAT responses appear all at once because:
 
-But the actual Giyaat API (from your code) requires **POST requests with JSON body** and returns **SSE streaming**:
-```javascript
-// Giyaat expects:
-POST https://giyaaat.vercel.app/api/chat
-Body: { prompt: "...", model: "fast" }
-Returns: SSE stream with `data: {"content": chunk}\n\n`
-```
+1. **Edge Function buffers everything**: The `giyaat-proxy` collects ALL chunks from Giyaat's SSE stream before returning
+2. **Frontend waits for complete response**: `sendGiyaat()` uses `supabase.functions.invoke()` which waits for full JSON response
 
-This is why you're getting `400 Bad Request` errors.
+The user expects live typing like other chat apps where text appears word-by-word.
 
 ---
 
-## Solution
+## Solution Architecture
 
-Update the edge function to:
-1. Use **POST** method with JSON body
-2. Handle **SSE streaming** response
-3. Collect chunks and return full text
+```text
+Current (broken):
+┌───────────┐    ┌────────────────┐    ┌──────────────┐
+│ Giyaat API├───►│ Edge Function  ├───►│ Frontend     │
+│ (SSE)     │    │ (buffers ALL)  │    │ (shows once) │
+└───────────┘    └────────────────┘    └──────────────┘
+
+Fixed (streaming):
+┌───────────┐    ┌────────────────┐    ┌──────────────┐
+│ Giyaat API├───►│ Edge Function  ├───►│ Frontend     │
+│ (SSE)     │    │ (forwards SSE) │    │ (live typing)│
+└───────────┘    └────────────────┘    └──────────────┘
+```
 
 ---
 
-## File Changes
+## Files to Modify
 
-### `supabase/functions/giyaat-proxy/index.ts`
+### 1. Edge Function: Forward SSE Stream
 
-**Current (broken):**
+**File: `supabase/functions/giyaat-proxy/index.ts`**
+
+Instead of buffering all chunks, forward the SSE stream directly to the frontend using `TransformStream`:
+
 ```typescript
-// GET request with query params
-const encodedPrompt = encodeURIComponent(prompt);
-const url = `https://giyaaat.vercel.app/api/chat?prompt=${encodedPrompt}&model=${selectedModel}`;
-const response = await fetch(url, { signal: controller.signal });
-const text = await response.text();
-```
+// Create a transform stream to forward SSE data
+const { readable, writable } = new TransformStream();
+const writer = writable.getWriter();
 
-**Fixed:**
-```typescript
-// POST request with JSON body
-const response = await fetch('https://giyaaat.vercel.app/api/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ prompt, model: selectedModel }),
-  signal: controller.signal
+// Return streaming response immediately
+const streamResponse = new Response(readable, {
+  headers: {
+    ...corsHeaders,
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  }
 });
 
-// Parse SSE stream
-const reader = response.body.getReader();
-const decoder = new TextDecoder();
-let buffer = '';
-let fullText = '';
+// Read from Giyaat and forward chunks
+(async () => {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    // Forward raw SSE data to frontend
+    await writer.write(value);
+  }
+  await writer.close();
+})();
 
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-  
-  buffer += decoder.decode(value, { stream: true });
-  const lines = buffer.split('\n');
-  buffer = lines.pop() || '';
-  
-  for (const line of lines) {
-    if (!line.startsWith('data:')) continue;
-    const payload = line.replace(/^data: ?/, '').trim();
-    if (payload === '[DONE]') break;
+return streamResponse;
+```
+
+### 2. Frontend: Add Streaming Handler
+
+**File: `src/lib/api.ts`**
+
+Create a new `sendGiyaatStream()` function that:
+- Uses raw `fetch()` instead of `supabase.functions.invoke()`
+- Reads SSE chunks with `response.body.getReader()`
+- Calls an `onChunk` callback to update UI in real-time
+
+```typescript
+export async function sendGiyaatStream(
+  prompt: string,
+  model: 'fast' | 'mid' | 'large',
+  onChunk: (text: string, done: boolean) => void
+): Promise<string> {
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/giyaat-proxy`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+      },
+      body: JSON.stringify({ prompt, model })
+    }
+  );
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
     
-    try {
-      const parsed = JSON.parse(payload);
-      if (parsed.content) fullText += parsed.content;
-    } catch {}
+    buffer += decoder.decode(value, { stream: true });
+    // Parse SSE chunks and call onChunk
+    // ...accumulate fullText and call onChunk(fullText, false)
+  }
+  
+  onChunk(fullText, true); // Final call
+  return fullText;
+}
+```
+
+### 3. Index.tsx: Update GIYAAT Message Handling
+
+**File: `src/pages/Index.tsx`**
+
+Update the GIYAAT cases to:
+1. Add an empty assistant message immediately
+2. Update message content as chunks arrive (like BookChatPanel does)
+
+```typescript
+case 'giyaatFast':
+case 'giyaatMid':
+case 'giyaatLarge':
+  // Add empty assistant message for streaming
+  const streamingMessages = [...newMessages, { role: 'assistant', content: '', isStreaming: true }];
+  setMessages(streamingMessages);
+  
+  // Stream with live updates
+  response = await sendGiyaatStream(
+    message, 
+    mode === 'giyaatFast' ? 'fast' : mode === 'giyaatMid' ? 'mid' : 'large',
+    (text, done) => {
+      setMessages(prev => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last?.isStreaming) {
+          last.content = text;
+          if (done) last.isStreaming = false;
+        }
+        return updated;
+      });
+    }
+  );
+  break;
+```
+
+---
+
+## Technical Details
+
+### SSE Format from Giyaat API
+```text
+data: {"content":"Hello"}
+
+data: {"content":" world"}
+
+data: [DONE]
+```
+
+### Edge Function Headers for Streaming
+```typescript
+{
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  'Connection': 'keep-alive'
+}
+```
+
+### Frontend SSE Parsing
+```typescript
+for (const line of lines) {
+  if (!line.startsWith('data:')) continue;
+  const payload = line.replace(/^data: ?/, '').trim();
+  if (payload === '[DONE]') break;
+  
+  const parsed = JSON.parse(payload);
+  if (parsed.content) {
+    fullText += parsed.content;
+    onChunk(fullText, false);
   }
 }
-
-return new Response(JSON.stringify({ text: fullText }), {
-  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-});
-```
-
----
-
-## Complete Updated Edge Function
-
-```typescript
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const { prompt, model } = await req.json();
-    
-    if (!prompt || typeof prompt !== 'string') {
-      throw new Error('Prompt is required');
-    }
-    
-    if (prompt.length > 1000) {
-      throw new Error('Prompt too long (max 1000 characters)');
-    }
-    
-    const validModels = ['fast', 'mid', 'large'];
-    const selectedModel = validModels.includes(model) ? model : 'fast';
-    
-    console.log('Giyaat proxy request:', { model: selectedModel, promptLength: prompt.length });
-    
-    // Timeout handling (60 seconds for streaming)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-    
-    // POST request with JSON body (matching Giyaat API)
-    const response = await fetch('https://giyaaat.vercel.app/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, model: selectedModel }),
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Giyaat API error:', response.status, errorText);
-      throw new Error(`Giyaat API error: ${response.status}`);
-    }
-    
-    // Parse SSE streaming response
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullText = '';
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const payload = line.replace(/^data: ?/, '').trim();
-        if (payload === '[DONE]') break;
-        
-        try {
-          const parsed = JSON.parse(payload);
-          if (parsed.content) {
-            fullText += parsed.content;
-          }
-        } catch {
-          // Partial JSON, continue
-        }
-      }
-    }
-    
-    // Handle any remaining buffer
-    if (buffer.trim() && buffer.startsWith('data:')) {
-      const payload = buffer.replace(/^data: ?/, '').trim();
-      if (payload !== '[DONE]') {
-        try {
-          const parsed = JSON.parse(payload);
-          if (parsed.content) fullText += parsed.content;
-        } catch {}
-      }
-    }
-    
-    if (!fullText) {
-      throw new Error('Empty response from GIYAAT');
-    }
-    
-    console.log('Giyaat proxy success:', { model: selectedModel, responseLength: fullText.length });
-    
-    return new Response(JSON.stringify({ text: fullText }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-    
-  } catch (error) {
-    console.error('Giyaat proxy error:', error);
-    let errorMessage = 'Unknown error';
-    let errorCode = 'UNKNOWN_ERROR';
-    
-    if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        errorMessage = 'Request timed out. GIYAAT server may be slow.';
-        errorCode = 'TIMEOUT';
-      } else if (error.message.includes('fetch') || error.message.includes('network')) {
-        errorMessage = 'Could not reach GIYAAT server. Please try again.';
-        errorCode = 'CONNECTION_ERROR';
-      } else {
-        errorMessage = error.message;
-        errorCode = 'API_ERROR';
-      }
-    }
-    
-    return new Response(JSON.stringify({ error: errorMessage, code: errorCode }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-});
 ```
 
 ---
 
 ## Summary of Changes
 
-| Aspect | Before (broken) | After (fixed) |
-|--------|-----------------|---------------|
-| HTTP Method | GET | POST |
-| Request Format | Query params (`?prompt=...`) | JSON body (`{ prompt, model }`) |
-| Response Handling | `response.text()` | SSE stream parsing |
-| Stream Format | Not handled | `data: {"content": chunk}\n\n` |
-| Timeout | 45 seconds | 60 seconds (streaming needs more time) |
-| Max prompt | No limit | 1000 characters (matches API) |
+| File | Change |
+|------|--------|
+| `supabase/functions/giyaat-proxy/index.ts` | Forward SSE stream instead of buffering |
+| `src/lib/api.ts` | Add `sendGiyaatStream()` with `onChunk` callback |
+| `src/pages/Index.tsx` | Update GIYAAT cases to use streaming + live UI updates |
 
 ---
 
-## Why This Fixes It
+## Result
 
-The Giyaat API code you shared shows:
-1. It only accepts **POST** requests (GET returns 400)
-2. It expects `{ prompt, model }` in the request body
-3. It returns SSE stream with `data: {"content": chunk}\n\n` format
-4. It ends with `data: [DONE]\n\n`
-
-The current edge function was using GET with URL-encoded prompt, which the API rejects with 400.
+After these changes, GIYAAT responses will appear character-by-character in real-time, just like the Book Chat feature does.
 
