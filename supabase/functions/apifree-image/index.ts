@@ -7,22 +7,26 @@ const corsHeaders = {
 
 const APIFREE_BASE = 'https://api.apifree.ai';
 
-// Get a random API key from the 3 available
-function getRandomApiKey(): string {
-  const keys = [
+// Get all available API keys
+function getAllApiKeys(): string[] {
+  return [
     Deno.env.get('APIFREE_API_KEY_1'),
     Deno.env.get('APIFREE_API_KEY_2'),
     Deno.env.get('APIFREE_API_KEY_3'),
   ].filter(Boolean) as string[];
-  
-  if (keys.length === 0) {
-    throw new Error('No APIFREE API keys configured');
-  }
-  
-  return keys[Math.floor(Math.random() * keys.length)];
 }
 
-// Model-specific payload builder
+// Shuffle array for random starting point
+function shuffle<T>(arr: T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+// Model-specific payload builder - FIXED per API docs
 function buildPayload(model: string, prompt: string, options: Record<string, unknown> = {}) {
   const base = { model, prompt };
   
@@ -34,22 +38,54 @@ function buildPayload(model: string, prompt: string, options: Record<string, unk
         quality: options.quality || 'high',
         num_images: 1
       };
+      
     case 'google/nano-banana-pro':
       return {
         ...base,
         aspect_ratio: options.aspect_ratio || '1:1',
         resolution: options.resolution || '1K'
       };
+      
     case 'black-forest-labs/flux-2-dev':
+      return {
+        ...base,
+        width: 1024,
+        height: 1024,
+        num_inference_steps: 28,
+        num_images: 1
+      };
+      
     case 'qwen/qwen-image-2512':
+      return {
+        ...base,
+        width: 1024,
+        height: 1024,
+        num_inference_steps: 50,
+        num_images: 1
+      };
+      
     case 'tongyi-mai/z-image-turbo':
       return {
         ...base,
-        aspect_ratio: options.aspect_ratio || '1:1'
+        width: 1024,
+        height: 1024,
+        num_inference_steps: 8,
+        num_images: 1
       };
+      
     default:
       return base;
   }
+}
+
+// Convert ArrayBuffer to base64 (Deno compatible)
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 async function generateImage(apiKey: string, model: string, prompt: string, options: Record<string, unknown> = {}) {
@@ -109,9 +145,28 @@ async function generateImage(apiKey: string, model: string, prompt: string, opti
       if (!imageList || imageList.length === 0) {
         throw new Error('No images in result');
       }
-      console.log(`[APIFree] Success! Image URL: ${imageList[0].substring(0, 50)}...`);
+      
+      const imageUrl = imageList[0];
+      console.log(`[APIFree] Success! Image URL: ${imageUrl.substring(0, 50)}...`);
+      
+      // Proxy the image: fetch and convert to base64 data URL
+      console.log(`[APIFree] Fetching image to proxy...`);
+      const imageResponse = await fetch(imageUrl);
+      
+      if (!imageResponse.ok) {
+        console.error(`[APIFree] Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+        throw new Error('Failed to fetch generated image for proxying');
+      }
+      
+      const imageArrayBuffer = await imageResponse.arrayBuffer();
+      const base64 = arrayBufferToBase64(imageArrayBuffer);
+      const contentType = imageResponse.headers.get('content-type') || 'image/png';
+      const dataUrl = `data:${contentType};base64,${base64}`;
+      
+      console.log(`[APIFree] Image proxied successfully (${Math.round(imageArrayBuffer.byteLength / 1024)}KB)`);
+      
       return {
-        imageUrl: imageList[0],
+        imageUrl: dataUrl, // Return base64 data URL instead of external URL
         usage: resultData.resp_data?.usage
       };
     }
@@ -144,22 +199,52 @@ serve(async (req) => {
       throw new Error('Prompt is required');
     }
 
-    const apiKey = getRandomApiKey();
+    const keys = shuffle(getAllApiKeys());
     
-    const result = await generateImage(apiKey, model, prompt.trim(), {
-      size,
-      quality,
-      aspect_ratio,
-      resolution
-    });
-
-    return new Response(JSON.stringify({
-      success: true,
-      imageUrl: result.imageUrl,
-      usage: result.usage
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    if (keys.length === 0) {
+      throw new Error('No APIFREE API keys configured');
+    }
+    
+    console.log(`[APIFree] Trying ${keys.length} API keys for model: ${model}`);
+    
+    let lastError: Error | null = null;
+    
+    // Try all keys before failing
+    for (const apiKey of keys) {
+      try {
+        const result = await generateImage(apiKey, model, prompt.trim(), {
+          size,
+          quality,
+          aspect_ratio,
+          resolution
+        });
+        
+        return new Response(JSON.stringify({
+          success: true,
+          imageUrl: result.imageUrl,
+          usage: result.usage
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        const errMsg = lastError.message.toLowerCase();
+        
+        // Only retry on rate limit / concurrency errors
+        if (errMsg.includes('429') || errMsg.includes('concurrency') || errMsg.includes('rate') || errMsg.includes('exceeded')) {
+          console.log(`[APIFree] Key rate limited, trying next key...`);
+          continue;
+        }
+        
+        // For other errors, don't retry - throw immediately
+        throw lastError;
+      }
+    }
+    
+    // All keys exhausted
+    console.error(`[APIFree] All ${keys.length} API keys failed`);
+    throw lastError || new Error('All API keys failed');
 
   } catch (error) {
     console.error('[APIFree] Error:', error);
