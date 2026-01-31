@@ -233,13 +233,25 @@ serve(async (req) => {
         lastError = error instanceof Error ? error : new Error(String(error));
         const errMsg = lastError.message.toLowerCase();
         
-        // Only retry on rate limit / concurrency errors
-        if (errMsg.includes('429') || errMsg.includes('concurrency') || errMsg.includes('rate') || errMsg.includes('exceeded')) {
-          console.log(`[APIFree] Key rate limited, trying next key...`);
+        console.log(`[APIFree] Error caught: "${lastError.message}"`);
+        
+        // Retry on ANY rate limit / concurrency / quota errors
+        const isRateLimitError = 
+          errMsg.includes('429') || 
+          errMsg.includes('concurrency') || 
+          errMsg.includes('rate') || 
+          errMsg.includes('exceeded') ||
+          errMsg.includes('quota') ||
+          errMsg.includes('limit') ||
+          errMsg.includes('too many');
+        
+        if (isRateLimitError) {
+          console.log(`[APIFree] Key ${keys.indexOf(apiKey) + 1}/${keys.length} rate limited, trying next...`);
           continue;
         }
         
         // For other errors, don't retry - throw immediately
+        console.log(`[APIFree] Non-retryable error, failing immediately`);
         throw lastError;
       }
     }
