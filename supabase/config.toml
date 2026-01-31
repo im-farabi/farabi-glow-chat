@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.apifree-chat]
 verify_jwt = false
+
+[functions.image-gen-multi]
+verify_jwt = false

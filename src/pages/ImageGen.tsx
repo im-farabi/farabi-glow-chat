@@ -1,255 +1,286 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Loader2, Download, RefreshCw, ArrowLeft, Edit, History, Trash2, Clock, Wand2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Download, RefreshCw, ArrowLeft, History, Trash2, Clock, Sparkles, Image as ImageIcon, Plus, X, Copy, Check } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { sendNormal } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
-import { ImageEditor } from '@/components/ImageEditor';
 import { getImageHistory, saveImageToHistory, deleteImageFromHistory, ImageHistoryItem } from '@/lib/storage';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-import PremiumBackground from '@/components/PremiumBackground';
+import GreenBackground from '@/components/GreenBackground';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const MODELS = [
+  { id: 'seedream-pro', name: 'Seedream 4.5 Pro', description: 'Premium quality' },
+  { id: 'klein-large', name: 'FLUX.2 Klein 9B', description: 'High detail' },
+  { id: 'gptimage-large', name: 'GPT Image 1.5', description: 'Transparency support' },
+  { id: 'seedream', name: 'Seedream 4.0', description: 'Good balance' },
+  { id: 'klein', name: 'FLUX.2 Klein 4B', description: 'Faster generation' },
+];
+
+interface GeneratedImage {
+  id: number;
+  imageUrl: string | null;
+  loading: boolean;
+  error: string | null;
+  seed: number;
+}
 
 const ImageGen = () => {
-  useEffect(() => {
-    document.title = "AI Image Generator - Farabi's AI Chatbot | Free Image Generation";
-    
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute('content', 'Generate AI images from text prompts for free. Create banners, logos, and custom images using advanced AI models. No signup required.');
-    }
-  }, []);
   const [prompt, setPrompt] = useState('');
-  const [image, setImage] = useState<string>('');
-  const [currentSeed, setCurrentSeed] = useState<number>(0);
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
-  const [status, setStatus] = useState('');
-  const [sizePreset, setSizePreset] = useState<'banner' | 'logo' | 'custom'>('banner');
-  const [customWidth, setCustomWidth] = useState('1024');
-  const [customHeight, setCustomHeight] = useState('1024');
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('seedream-pro');
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [history, setHistory] = useState<ImageHistoryItem[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [enhancing, setEnhancing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = "AI Image Generator - Farabi's AI | Free Multi-Model Image Generation";
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'Generate 5 AI images simultaneously with multiple models. Seedream, FLUX Klein, GPT Image - all free. Drag & drop reference images.');
+    }
+  }, []);
 
   useEffect(() => {
     setHistory(getImageHistory());
   }, []);
 
-  const enhancePrompt = async () => {
-    const trimmedPrompt = prompt.trim();
-    
-    if (trimmedPrompt.length < 3) {
-      toast({
-        title: 'Error',
-        description: 'Prompt must be at least 3 characters',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setLoading(true);
-    setStatus('Enhancing prompt...');
-    try {
-      const enhanced = await sendNormal(
-        `CRITICAL INSTRUCTION: Respond with ONLY the enhanced image prompt. NO greetings, NO explanations, NO markdown formatting (**, etc), NO emojis, NO extra text, NO {image:...} tags whatsoever.
-
-Task: Transform this image prompt into a detailed, vivid description with rich visual details (lighting, setting, mood, camera angle, style). Keep it under 500 characters and maintain natural language flow.
-
-Input: "${trimmedPrompt}"
-
-Output ONLY the enhanced prompt text (no {image:...} tags):`
-      );
+  // Paste handler for images
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
       
-      // Clean up response: remove markdown, quotes, conversational fluff, and {image:...} tags
-      let cleaned = enhanced
-        .replace(/\*\*/g, '') // Remove bold markdown
-        .replace(/^["']|["']$/g, '') // Remove surrounding quotes
-        .replace(/^.*?(?:prompt|version|here|output):\s*/im, '') // Remove prefixes
-        .replace(/[🤙💀😉👇📸✨]/g, '') // Remove emojis
-        .replace(/\{image:[^}]+\}/g, '') // Remove {image:...} tags
-        .trim();
-      
-      // Extract text between quotes if present
-      const quotedMatch = cleaned.match(/"([^"]+)"/);
-      if (quotedMatch) {
-        cleaned = quotedMatch[1];
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) handleFileUpload(file);
+        }
       }
-      
-      setPrompt(cleaned);
-      toast({
-        title: 'Prompt Enhanced!',
-        description: 'Your prompt has been improved',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to enhance prompt',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-      setStatus('');
-    }
-  };
-
-  const generateImage = async (useNewSeed = false) => {
-    const trimmedPrompt = prompt.trim();
-    
-    if (trimmedPrompt.length < 3) {
-      toast({
-        title: 'Error',
-        description: 'Prompt must be at least 3 characters',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (trimmedPrompt.length > 500) {
-      toast({
-        title: 'Error',
-        description: 'Prompt must be less than 500 characters',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    let width = 1280;
-    let height = 720;
-
-    if (sizePreset === 'banner') {
-      width = 1280;
-      height = 720;
-    } else if (sizePreset === 'logo') {
-      width = 500;
-      height = 500;
-    } else {
-      width = parseInt(customWidth) || 1024;
-      height = parseInt(customHeight) || 1024;
-    }
-
-    setLoading(true);
-    setStatus('Generating image...');
-
-    const fetchImageAsBlob = async (url: string): Promise<string> => {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch image');
-      const blob = await response.blob();
-      
-      // Revoke old blob URL if exists
-      if (image.startsWith('blob:')) {
-        URL.revokeObjectURL(image);
-      }
-      
-      return URL.createObjectURL(blob);
     };
     
-    try {
-      const encoded = encodeURIComponent(trimmedPrompt);
-      const seed = useNewSeed ? Date.now() + Math.floor(Math.random() * 1000000) : currentSeed || Date.now();
-      
-      if (!useNewSeed && !currentSeed) {
-        setCurrentSeed(seed);
-      } else if (useNewSeed) {
-        setCurrentSeed(seed);
-      }
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, []);
 
-      const url = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${seed}&enhance=false&nologo=true&key=plln_pk_DSf8DvxaLKn2LbP9QQAlA5hFpQGXePYiSY1AHZQn2CiKgtO7VBKQ1FNw1xCEpRYK`;
-      
-      const blobUrl = await fetchImageAsBlob(url);
-      setImage(blobUrl);
-      
-      // Save to history
-      saveImageToHistory({
-        prompt: trimmedPrompt,
-        imageUrl: blobUrl,
-        sizePreset: sizePreset === 'custom' ? `${width}x${height}` : sizePreset
-      });
-      setHistory(getImageHistory());
-      
-      toast({
-        title: 'Success!',
-        description: 'Image generated successfully',
-      });
-    } catch (error) {
-      // Try fallback without enhance and different seed
-      try {
-        const encoded = encodeURIComponent(trimmedPrompt);
-        const fallbackSeed = Date.now() + Math.floor(Math.random() * 9999999);
-        const fallbackUrl = `https://enter.pollinations.ai/api/generate/image/${encoded}?model=flux&width=${width}&height=${height}&seed=${fallbackSeed}&enhance=true&nologo=true`;
-        const blobUrl = await fetchImageAsBlob(fallbackUrl);
-        setImage(blobUrl);
+  const handleFileUpload = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Error', description: 'Please upload an image file', variant: 'destructive' });
+      return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'Error', description: 'Image must be less than 10MB', variant: 'destructive' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setUploadedImage(e.target?.result as string);
+      toast({ title: 'Image uploaded', description: 'Reference image ready' });
+    };
+    reader.readAsDataURL(file);
+  }, [toast]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  }, [handleFileUpload]);
+
+  const enhancePrompt = async () => {
+    if (prompt.length < 3) {
+      toast({ title: 'Error', description: 'Prompt must be at least 3 characters', variant: 'destructive' });
+      return;
+    }
+
+    setEnhancing(true);
+    try {
+      const enhanced = await sendNormal(
+        `CRITICAL: Respond with ONLY the enhanced image prompt. NO greetings, NO explanations, NO markdown.
         
-        toast({
-          title: 'Success!',
-          description: 'Image generated successfully (fallback)',
-        });
-      } catch (fallbackError) {
-        toast({
-          title: 'Error',
-          description: 'Failed to generate. Try refreshing page and editing the prompt!',
-          variant: 'destructive'
-        });
-      }
+Task: Transform this into a vivid, detailed image description with lighting, mood, style, and composition. Keep under 400 characters.
+
+Input: "${prompt}"
+
+Output ONLY the enhanced prompt:`
+      );
+      
+      let cleaned = enhanced
+        .replace(/\*\*/g, '')
+        .replace(/^["']|["']$/g, '')
+        .replace(/^.*?(?:prompt|version|here|output):\s*/im, '')
+        .replace(/\{image:[^}]+\}/g, '')
+        .trim();
+      
+      setPrompt(cleaned);
+      toast({ title: 'Prompt Enhanced!', description: 'Your prompt has been improved' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to enhance prompt', variant: 'destructive' });
     } finally {
-      setLoading(false);
-      setStatus('');
+      setEnhancing(false);
     }
   };
 
-  const downloadImage = () => {
-    if (!image) return;
+  const generateImages = async () => {
+    if (prompt.length < 3) {
+      toast({ title: 'Error', description: 'Prompt must be at least 3 characters', variant: 'destructive' });
+      return;
+    }
+
+    setIsGenerating(true);
     
+    // Initialize 5 image slots with loading state
+    const initialImages: GeneratedImage[] = Array.from({ length: 5 }, (_, i) => ({
+      id: i,
+      imageUrl: null,
+      loading: true,
+      error: null,
+      seed: Math.floor(Date.now() % 1000000) + i * 1000
+    }));
+    setGeneratedImages(initialImages);
+
+    // Generate 5 images in parallel
+    const promises = initialImages.map(async (img) => {
+      try {
+        const { data, error } = await supabase.functions.invoke('image-gen-multi', {
+          body: {
+            prompt,
+            model: selectedModel,
+            seed: img.seed,
+            imageUrl: uploadedImage || undefined,
+            width: 1024,
+            height: 1024
+          }
+        });
+
+        if (error) throw error;
+        if (!data.success) throw new Error(data.error);
+
+        setGeneratedImages(prev => prev.map(p => 
+          p.id === img.id 
+            ? { ...p, imageUrl: data.imageUrl, loading: false }
+            : p
+        ));
+
+        return { success: true, id: img.id, imageUrl: data.imageUrl };
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Generation failed';
+        setGeneratedImages(prev => prev.map(p => 
+          p.id === img.id 
+            ? { ...p, loading: false, error: errorMsg }
+            : p
+        ));
+        return { success: false, id: img.id };
+      }
+    });
+
+    const results = await Promise.allSettled(promises);
+    const successCount = results.filter(r => r.status === 'fulfilled' && (r.value as { success: boolean }).success).length;
+    
+    if (successCount > 0) {
+      // Save first successful image to history
+      const firstSuccess = generatedImages.find(img => img.imageUrl);
+      if (firstSuccess?.imageUrl) {
+        saveImageToHistory({
+          prompt,
+          imageUrl: firstSuccess.imageUrl,
+          sizePreset: selectedModel
+        });
+        setHistory(getImageHistory());
+      }
+      
+      toast({ title: 'Success!', description: `Generated ${successCount}/5 images` });
+    } else {
+      toast({ title: 'Error', description: 'All generations failed', variant: 'destructive' });
+    }
+
+    setIsGenerating(false);
+  };
+
+  const regenerateSingle = async (index: number) => {
+    setGeneratedImages(prev => prev.map((p, i) => 
+      i === index ? { ...p, loading: true, error: null } : p
+    ));
+
+    try {
+      const newSeed = Math.floor(Date.now() % 1000000) + Math.floor(Math.random() * 10000);
+      
+      const { data, error } = await supabase.functions.invoke('image-gen-multi', {
+        body: {
+          prompt,
+          model: selectedModel,
+          seed: newSeed,
+          imageUrl: uploadedImage || undefined,
+          width: 1024,
+          height: 1024
+        }
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      setGeneratedImages(prev => prev.map((p, i) => 
+        i === index ? { ...p, imageUrl: data.imageUrl, loading: false, seed: newSeed } : p
+      ));
+      
+      toast({ title: 'Regenerated!', description: 'New image generated' });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Regeneration failed';
+      setGeneratedImages(prev => prev.map((p, i) => 
+        i === index ? { ...p, loading: false, error: errorMsg } : p
+      ));
+      toast({ title: 'Error', description: errorMsg, variant: 'destructive' });
+    }
+  };
+
+  const downloadImage = (imageUrl: string, index: number) => {
     const link = document.createElement('a');
-    link.href = image;
-    link.download = `generated-image-${Date.now()}.png`;
+    link.href = imageUrl;
+    link.download = `generated-${index + 1}-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    toast({
-      title: 'Downloaded!',
-      description: 'Image saved to your downloads',
-    });
+    toast({ title: 'Downloaded!', description: 'Image saved' });
   };
 
-  const regenerateImage = () => {
-    generateImage(true);
+  const copyImage = async (imageUrl: string, index: number) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob })
+      ]);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+      toast({ title: 'Copied!', description: 'Image copied to clipboard' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to copy image', variant: 'destructive' });
+    }
   };
 
   const loadFromHistory = (item: ImageHistoryItem) => {
     setPrompt(item.prompt);
-    setImage(item.imageUrl);
-    if (item.sizePreset.includes('x')) {
-      const [w, h] = item.sizePreset.split('x');
-      setSizePreset('custom');
-      setCustomWidth(w);
-      setCustomHeight(h);
-    } else {
-      setSizePreset(item.sizePreset as 'banner' | 'logo' | 'custom');
-    }
     setIsHistoryOpen(false);
-    toast({
-      title: 'Loaded from history',
-      description: 'Image and settings restored'
-    });
-  };
-
-  const deleteHistoryItem = (id: string) => {
-    deleteImageFromHistory(id);
-    setHistory(getImageHistory());
-    toast({
-      title: 'Deleted',
-      description: 'History item removed'
-    });
+    toast({ title: 'Loaded', description: 'Prompt restored from history' });
   };
 
   const formatDate = (timestamp: number) => {
@@ -259,317 +290,307 @@ Output ONLY the enhanced prompt text (no {image:...} tags):`
 
   return (
     <div className="min-h-screen bg-black relative">
-      <PremiumBackground />
+      <GreenBackground />
       <div className="relative z-10">
-        {/* Breadcrumb Schema */}
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Home",
-                "item": "https://farabi.me/"
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": "Image Generator",
-                "item": "https://farabi.me/image-gen"
-              }
-            ]
-          })}
-        </script>
-        
         <Header showTemporaryToggle={false} />
         
         <main className="container mx-auto px-4 py-8 space-y-8">
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-4">
-                <button
-                  onClick={() => navigate('/')}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-pink-500/10 to-purple-500/10 border-2 border-pink-500/40 hover:border-pink-500/70 hover:shadow-[0_0_30px_rgba(236,72,153,0.4)] transition-all duration-300 group backdrop-blur-md"
-                >
-                  <ArrowLeft className="w-5 h-5 text-pink-400 group-hover:text-pink-300 transition-colors" />
-                  <span className="text-gray-200 group-hover:text-white transition-colors font-semibold">Back to Chat</span>
-                </button>
-                <div className="space-y-4 animate-fade-in">
-                  <div className="inline-flex items-center justify-center p-4 rounded-full bg-gradient-to-br from-pink-500/30 to-purple-500/30 backdrop-blur-sm border-2 border-pink-500/50 mb-3 shadow-[0_0_40px_rgba(236,72,153,0.3)]">
-                    <ImageIcon className="w-14 h-14 text-pink-300" />
-                  </div>
-                  <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-pink-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(236,72,153,0.5)]">
-                    AI Image Generator
-                  </h1>
-                  <p className="text-xl text-gray-200 font-medium">
-                    Generate stunning AI images from your prompts
-                  </p>
+          {/* Header section */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-4">
+              <button
+                onClick={() => navigate('/')}
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-2 border-green-500/40 hover:border-green-500/70 hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] transition-all duration-300 group backdrop-blur-md"
+              >
+                <ArrowLeft className="w-5 h-5 text-green-400 group-hover:text-green-300 transition-colors" />
+                <span className="text-gray-200 group-hover:text-white transition-colors font-semibold">Back to Chat</span>
+              </button>
+              <div className="space-y-4 animate-fade-in">
+                <div className="inline-flex items-center justify-center p-4 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 backdrop-blur-sm border-2 border-green-500/50 mb-3 shadow-[0_0_40px_rgba(34,197,94,0.3)]">
+                  <ImageIcon className="w-14 h-14 text-green-300" />
                 </div>
+                <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-green-500 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(34,197,94,0.5)]">
+                  AI Image Generator
+                </h1>
+                <p className="text-xl text-gray-200 font-medium">
+                  Generate 5 stunning AI images simultaneously
+                </p>
               </div>
-              <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-                <SheetTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    className="border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] transition-all"
-                  >
-                    <History className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent className="w-[400px] sm:w-[540px] bg-black/95 backdrop-blur-xl border-pink-500/20">
-                  <SheetHeader>
-                    <SheetTitle className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">Image History</SheetTitle>
-                    <SheetDescription className="text-muted-foreground">
-                      Your recent image generations
-                    </SheetDescription>
-                  </SheetHeader>
-                  <ScrollArea className="h-[calc(100vh-120px)] mt-6">
-                    <div className="space-y-4 pr-4">
-                      {history.length === 0 ? (
-                        <Card className="bg-card/50 backdrop-blur-xl border-pink-500/20 p-8 text-center">
-                          <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3 opacity-50" />
-                          <p className="text-muted-foreground">No history yet</p>
-                        </Card>
-                      ) : (
-                        history.map((item, index) => (
-                          <Card 
-                            key={item.id} 
-                            className="bg-card/60 backdrop-blur-xl border-pink-500/20 hover:border-pink-500/40 shadow-[0_4px_16px_rgba(236,72,153,0.1)] hover:shadow-[0_4px_24px_rgba(236,72,153,0.2)] p-4 space-y-3 transition-all duration-300 hover:scale-[1.02] animate-fade-in"
-                            style={{ animationDelay: `${index * 0.05}s` }}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 space-y-2">
-                                <p className="text-sm font-semibold line-clamp-2 text-foreground">{item.prompt}</p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Clock className="h-3 w-3 text-pink-400" />
-                                  {formatDate(item.timestamp)}
-                                </div>
-                                <p className="text-xs text-muted-foreground bg-muted/30 px-2 py-1 rounded inline-block">Size: {item.sizePreset}</p>
-                              </div>
-                              <div className="flex gap-1 shrink-0">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 hover:bg-pink-500/10 hover:text-pink-400 transition-colors"
-                                  onClick={() => loadFromHistory(item)}
-                                >
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:bg-destructive/10 transition-colors"
-                                  onClick={() => deleteHistoryItem(item.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+            </div>
+            
+            <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+              <SheetTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className="border-green-500/30 hover:border-green-500/50 hover:bg-green-500/10 hover:shadow-[0_0_20px_rgba(34,197,94,0.2)] transition-all"
+                >
+                  <History className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-[400px] sm:w-[540px] bg-black/95 backdrop-blur-xl border-green-500/20">
+                <SheetHeader>
+                  <SheetTitle className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">Image History</SheetTitle>
+                  <SheetDescription className="text-muted-foreground">
+                    Your recent image generations
+                  </SheetDescription>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-120px)] mt-6">
+                  <div className="space-y-4 pr-4">
+                    {history.length === 0 ? (
+                      <Card className="bg-card/50 backdrop-blur-xl border-green-500/20 p-8 text-center">
+                        <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3 opacity-50" />
+                        <p className="text-muted-foreground">No history yet</p>
+                      </Card>
+                    ) : (
+                      history.map((item, index) => (
+                        <Card 
+                          key={item.id} 
+                          className="bg-card/60 backdrop-blur-xl border-green-500/20 hover:border-green-500/40 shadow-[0_4px_16px_rgba(34,197,94,0.1)] hover:shadow-[0_4px_24px_rgba(34,197,94,0.2)] p-4 space-y-3 transition-all duration-300 hover:scale-[1.02] animate-fade-in cursor-pointer"
+                          style={{ animationDelay: `${index * 0.05}s` }}
+                          onClick={() => loadFromHistory(item)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 space-y-2">
+                              <p className="text-sm font-semibold line-clamp-2 text-foreground">{item.prompt}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3 text-green-400" />
+                                {formatDate(item.timestamp)}
                               </div>
                             </div>
-                            {item.imageUrl && (
-                              <img 
-                                src={item.imageUrl} 
-                                alt="Generated" 
-                                className="w-full h-32 object-cover rounded-lg border-2 border-pink-500/20"
-                              />
-                            )}
-                          </Card>
-                        ))
-                      )}
-                    </div>
-                  </ScrollArea>
-                </SheetContent>
-              </Sheet>
-            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteImageFromHistory(item.id);
+                                setHistory(getImageHistory());
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {item.imageUrl && (
+                            <img 
+                              src={item.imageUrl} 
+                              alt="Generated" 
+                              className="w-full h-32 object-cover rounded-lg border-2 border-green-500/20"
+                            />
+                          )}
+                        </Card>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
+          </div>
 
-          <Card className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-2xl border-2 border-pink-500/40 shadow-[0_8px_32px_rgba(236,72,153,0.25),0_0_60px_rgba(168,85,247,0.15)] hover:shadow-[0_12px_48px_rgba(236,72,153,0.35),0_0_80px_rgba(168,85,247,0.25)] hover:border-pink-500/60 transition-all duration-500 p-8 space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          {/* Main input card */}
+          <Card className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-2xl border-2 border-green-500/40 shadow-[0_8px_32px_rgba(34,197,94,0.25),0_0_60px_rgba(16,185,129,0.15)] hover:shadow-[0_12px_48px_rgba(34,197,94,0.35),0_0_80px_rgba(16,185,129,0.25)] hover:border-green-500/60 transition-all duration-500 p-8 space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            {/* Model selector */}
             <div className="space-y-3">
-              <Label htmlFor="prompt" className="text-sm font-semibold text-foreground">Prompt (3-500 characters)</Label>
-              <Textarea
-                id="prompt"
-                placeholder="Describe the image you want to generate..."
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[120px] resize-none bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20 transition-all"
-                disabled={loading}
-                maxLength={500}
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {prompt.length}/500 characters
-                </p>
-                {prompt.length > 0 && (
-                  <p className={`text-xs font-medium ${prompt.length >= 3 ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {prompt.length >= 3 ? '✓ Ready' : 'Too short'}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label htmlFor="size" className="text-sm font-semibold text-foreground">Image Size</Label>
-              <Select value={sizePreset} onValueChange={(value: 'banner' | 'logo' | 'custom') => setSizePreset(value)}>
-                <SelectTrigger id="size" className="bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20">
-                  <SelectValue placeholder="Select size" />
+              <Label className="text-sm font-semibold text-foreground">AI Model</Label>
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <SelectTrigger className="bg-background/50 border-green-500/30 focus:border-green-500/50 focus:ring-2 focus:ring-green-500/20">
+                  <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-popover/95 backdrop-blur-xl border-pink-500/20 z-50">
-                  <SelectItem value="banner" className="focus:bg-pink-500/10">Banner (1280x720)</SelectItem>
-                  <SelectItem value="logo" className="focus:bg-pink-500/10">Logo (500x500)</SelectItem>
-                  <SelectItem value="custom" className="focus:bg-pink-500/10">Custom Size</SelectItem>
+                <SelectContent className="bg-black/95 border-green-500/30">
+                  {MODELS.map(model => (
+                    <SelectItem key={model.id} value={model.id} className="focus:bg-green-500/20">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{model.name}</span>
+                        <span className="text-xs text-muted-foreground">• {model.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {sizePreset === 'custom' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="width" className="text-sm font-semibold text-foreground">Width (px)</Label>
-                  <Input
-                    id="width"
-                    type="number"
-                    value={customWidth}
-                    onChange={(e) => setCustomWidth(e.target.value)}
-                    placeholder="1024"
-                    min="256"
-                    max="2048"
-                    disabled={loading}
-                    className="bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="height" className="text-sm font-semibold text-foreground">Height (px)</Label>
-                  <Input
-                    id="height"
-                    type="number"
-                    value={customHeight}
-                    onChange={(e) => setCustomHeight(e.target.value)}
-                    placeholder="1024"
-                    min="256"
-                    max="2048"
-                    disabled={loading}
-                    className="bg-background/50 border-border/50 focus:border-pink-500/50 focus:ring-2 focus:ring-pink-500/20"
-                  />
-                </div>
+            {/* Image upload zone */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-foreground">Reference Image (Optional)</Label>
+              <div
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
+                  dragActive 
+                    ? 'border-green-500 bg-green-500/10' 
+                    : 'border-green-500/30 hover:border-green-500/50 bg-background/30'
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={handleDrop}
+              >
+                {uploadedImage ? (
+                  <div className="relative inline-block">
+                    <img 
+                      src={uploadedImage} 
+                      alt="Uploaded" 
+                      className="max-h-40 rounded-lg border-2 border-green-500/30"
+                    />
+                    <button
+                      onClick={() => setUploadedImage(null)}
+                      className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex justify-center">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-4 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-2 border-green-500/40 hover:border-green-500/60 hover:shadow-[0_0_20px_rgba(34,197,94,0.3)] transition-all"
+                      >
+                        <Plus className="w-8 h-8 text-green-400" />
+                      </button>
+                    </div>
+                    <p className="text-muted-foreground">
+                      Drop image here, paste (Ctrl+V), or click +
+                    </p>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                />
               </div>
-            )}
-            
-            <div className="flex gap-4">
-              <Button
-                onClick={enhancePrompt}
-                disabled={loading}
-                variant="outline"
-                className="flex-1 h-14 border-2 border-purple-500/40 hover:border-purple-500/70 bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] transition-all font-semibold text-base"
-              >
-                {loading && status.includes('Enhancing') ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    <span>Enhancing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="mr-2 h-5 w-5" />
-                    <span>Enhance Prompt</span>
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => generateImage(false)}
-                disabled={loading}
-                className="flex-1 h-14 bg-gradient-to-r from-pink-500 via-purple-500 to-pink-500 hover:from-pink-400 hover:via-purple-400 hover:to-pink-400 shadow-[0_8px_32px_rgba(236,72,153,0.4)] hover:shadow-[0_12px_48px_rgba(236,72,153,0.6),0_0_60px_rgba(236,72,153,0.3)] hover:scale-[1.02] transition-all font-bold text-base border-2 border-pink-400/50"
-              >
-                {loading && !status.includes('Enhancing') ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    <span>Generating...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-5 w-5 animate-pulse" />
-                    <span>Generate Image</span>
-                  </>
-                )}
-              </Button>
             </div>
-            {status && (
-              <div className="flex items-center justify-center gap-2 bg-pink-500/10 backdrop-blur-sm border border-pink-500/20 rounded-lg p-3">
-                <Loader2 className="h-4 w-4 animate-spin text-pink-400" />
-                <p className="text-sm font-medium text-pink-400">{status}</p>
-              </div>
-            )}
-          </Card>
 
-          {image && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-              <Card className="lg:col-span-2 overflow-hidden bg-card/60 backdrop-blur-xl border-pink-500/20 shadow-[0_8px_32px_rgba(236,72,153,0.15)] hover:shadow-[0_8px_48px_rgba(236,72,153,0.25)] transition-all duration-300">
-                <div className="aspect-video relative group">
-                  <img
-                    src={image}
-                    alt={prompt ? `AI generated image: ${prompt.slice(0, 100)}` : "AI generated image"}
-                    className="w-full h-full object-contain bg-black/50 transition-transform duration-300 group-hover:scale-[1.02]"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </div>
-              </Card>
-              
-              <Card className="p-6 bg-card/50 backdrop-blur-xl border-pink-500/20 shadow-[0_8px_32px_rgba(236,72,153,0.15)] flex flex-col gap-4">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">Actions</h3>
+            {/* Prompt input */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-foreground">Prompt</Label>
                 <Button
-                  onClick={downloadImage}
-                  variant="outline"
-                  className="w-full border-pink-500/30 hover:border-pink-500/50 hover:bg-pink-500/10 hover:shadow-[0_0_10px_rgba(236,72,153,0.2)] transition-all"
+                  variant="ghost"
+                  size="sm"
+                  onClick={enhancePrompt}
+                  disabled={enhancing || prompt.length < 3}
+                  className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
                 >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
+                  {enhancing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                  Enhance
                 </Button>
+              </div>
+              <Textarea
+                placeholder="Describe the image you want to generate..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="min-h-[120px] resize-none bg-background/50 border-green-500/30 focus:border-green-500/50 focus:ring-2 focus:ring-green-500/20 transition-all"
+                disabled={isGenerating}
+                maxLength={500}
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">{prompt.length}/500 characters</p>
                 <Button
-                  onClick={() => setIsEditorOpen(true)}
-                  className="w-full bg-gradient-to-r from-pink-500/10 to-purple-500/10 hover:from-pink-500/20 hover:to-purple-500/20 border border-pink-500/30 hover:border-pink-500/50 shadow-[0_0_20px_rgba(236,72,153,0.2)] hover:shadow-[0_0_30px_rgba(236,72,153,0.4)] transition-all"
+                  onClick={generateImages}
+                  disabled={isGenerating || prompt.length < 3}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)] transition-all"
                 >
-                  <Edit className="mr-2 h-4 w-4 text-pink-500" />
-                  <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent font-semibold">
-                    Edit
-                  </span>
-                </Button>
-                <Button
-                  onClick={regenerateImage}
-                  disabled={loading}
-                  variant="outline"
-                  className="w-full border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 hover:shadow-[0_0_10px_rgba(168,85,247,0.2)] transition-all"
-                >
-                  {loading ? (
+                  {isGenerating ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Regenerating...
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
                     </>
                   ) : (
                     <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Regen
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate 5 Images
                     </>
                   )}
                 </Button>
-                <p className="text-xs text-muted-foreground bg-muted/30 backdrop-blur-sm border border-border/30 rounded-lg p-3 leading-relaxed">
-                  Use Regen to generate a new variation with a different seed
-                </p>
-              </Card>
+              </div>
+            </div>
+          </Card>
+
+          {/* Generated images grid */}
+          {generatedImages.length > 0 && (
+            <div className="space-y-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                Generated Images
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {generatedImages.map((img, index) => (
+                  <Card 
+                    key={img.id} 
+                    className="group relative bg-card/60 backdrop-blur-xl border-2 border-green-500/20 hover:border-green-500/40 overflow-hidden transition-all duration-300 hover:shadow-[0_8px_32px_rgba(34,197,94,0.2)]"
+                  >
+                    <div className="aspect-square relative">
+                      {img.loading ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-green-500/5 to-emerald-500/5">
+                          <div className="text-center space-y-3">
+                            <Loader2 className="w-8 h-8 animate-spin text-green-400 mx-auto" />
+                            <p className="text-xs text-muted-foreground">Generating #{index + 1}</p>
+                          </div>
+                        </div>
+                      ) : img.error ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-red-500/5 p-4">
+                          <div className="text-center space-y-2">
+                            <p className="text-xs text-red-400">{img.error}</p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => regenerateSingle(index)}
+                              className="border-green-500/30 hover:border-green-500/50"
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                              Retry
+                            </Button>
+                          </div>
+                        </div>
+                      ) : img.imageUrl ? (
+                        <>
+                          <img 
+                            src={img.imageUrl} 
+                            alt={`Generated ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Hover overlay with actions */}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => downloadImage(img.imageUrl!, index)}
+                              className="h-10 w-10 bg-white/10 hover:bg-white/20 text-white"
+                            >
+                              <Download className="w-5 h-5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => copyImage(img.imageUrl!, index)}
+                              className="h-10 w-10 bg-white/10 hover:bg-white/20 text-white"
+                            >
+                              {copiedIndex === index ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => regenerateSingle(index)}
+                              className="h-10 w-10 bg-white/10 hover:bg-white/20 text-white"
+                            >
+                              <RefreshCw className="w-5 h-5" />
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <Skeleton className="w-full h-full" />
+                      )}
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                      <p className="text-xs text-white/70 text-center">Image #{index + 1}</p>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
-        </div>
-      </main>
+        </main>
       </div>
-
-      {image && (
-        <ImageEditor 
-          image={image}
-          isOpen={isEditorOpen}
-          onClose={() => setIsEditorOpen(false)}
-          onSave={(editedImage) => {
-            setImage(editedImage);
-          }}
-        />
-      )}
     </div>
   );
 };
