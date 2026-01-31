@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/card';
 import { Loader2, Download, RefreshCw, ArrowLeft, History, Trash2, Clock, Sparkles, Image as ImageIcon, Plus, X, Copy, Check } from 'lucide-react';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { sendNormal } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import GreenBackground from '@/components/GreenBackground';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const MODELS = [
   { id: 'seedream-pro', name: 'Seedream 4.5 Pro', description: 'Premium quality' },
@@ -46,6 +46,7 @@ const ImageGen = () => {
   const [enhancing, setEnhancing] = useState(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -625,40 +626,12 @@ Enhanced prompt:`
                           </div>
                         </div>
                       ) : img.imageUrl ? (
-                        <>
-                          <img 
-                            src={img.imageUrl} 
-                            alt={`Generated ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          {/* Hover overlay with actions */}
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => downloadImage(img.imageUrl!, index)}
-                              className="h-10 w-10 bg-white/10 hover:bg-white/20 text-white"
-                            >
-                              <Download className="w-5 h-5" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => copyImage(img.imageUrl!, index)}
-                              className="h-10 w-10 bg-white/10 hover:bg-white/20 text-white"
-                            >
-                              {copiedIndex === index ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => regenerateSingle(index)}
-                              className="h-10 w-10 bg-white/10 hover:bg-white/20 text-white"
-                            >
-                              <RefreshCw className="w-5 h-5" />
-                            </Button>
-                          </div>
-                        </>
+                        <img 
+                          src={img.imageUrl} 
+                          alt={`Generated ${index + 1}`}
+                          className="w-full h-full object-cover cursor-pointer transition-transform duration-300 group-hover:scale-105"
+                          onClick={() => setSelectedImage(img)}
+                        />
                       ) : (
                         <Skeleton className="w-full h-full" />
                       )}
@@ -671,6 +644,59 @@ Enhanced prompt:`
               </div>
             </div>
           )}
+
+          {/* Full-screen image preview lightbox */}
+          <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+            <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-green-500/30 overflow-hidden">
+              <div className="relative flex flex-col items-center justify-center min-h-[60vh] p-6">
+                {/* Model badge */}
+                <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/40 z-10">
+                  <span className="text-sm text-green-300 font-medium">{selectedImage?.modelName}</span>
+                </div>
+
+                {/* Image */}
+                <img 
+                  src={selectedImage?.imageUrl || ''} 
+                  alt="Preview"
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
+                />
+
+                {/* Actions */}
+                <div className="flex gap-3 mt-6">
+                  <Button 
+                    onClick={() => selectedImage?.imageUrl && downloadImage(selectedImage.imageUrl, selectedImage.id)}
+                    className="bg-green-500 hover:bg-green-600 text-white"
+                  >
+                    <Download className="w-4 h-4 mr-2" /> Download
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => selectedImage?.imageUrl && copyImage(selectedImage.imageUrl, selectedImage.id)}
+                    className="border-green-500/50 text-green-300 hover:bg-green-500/10"
+                  >
+                    <Copy className="w-4 h-4 mr-2" /> Copy
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      if (selectedImage) {
+                        regenerateSingle(selectedImage.id);
+                        setSelectedImage(null);
+                      }
+                    }}
+                    className="border-green-500/50 text-green-300 hover:bg-green-500/10"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" /> Regenerate
+                  </Button>
+                </div>
+
+                {/* Prompt */}
+                <p className="text-sm text-gray-400 mt-4 text-center max-w-2xl italic">
+                  "{prompt}"
+                </p>
+              </div>
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>
