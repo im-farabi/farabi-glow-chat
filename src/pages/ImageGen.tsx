@@ -4,7 +4,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Loader2, Download, RefreshCw, ArrowLeft, History, Trash2, Clock, Sparkles, Image as ImageIcon, Plus, X, Copy, Check, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { sendNormal } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import { getImageHistory, saveImageToHistory, deleteImageFromHistory, ImageHistoryItem } from '@/lib/storage';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -15,10 +14,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const MODELS = [
-  { id: 'flux', name: 'Flux Schnell', description: 'Fast & high quality' },
-  { id: 'klein-large', name: 'FLUX.2 Klein 9B', description: 'High detail editing' },
-  { id: 'gptimage-large', name: 'GPT Image 1.5', description: 'OpenAI quality' },
-  { id: 'seedream', name: 'Seedream 4.0', description: 'Good balance' },
+  { id: 'openai/gpt-image-1.5', name: 'GPT Image 1.5', description: 'Best quality', api: 'apifree' },
+  { id: 'google/nano-banana-pro', name: 'Nano Banana Pro', description: '4K + text', api: 'apifree' },
+  { id: 'black-forest-labs/flux-2-dev', name: 'FLUX 2 DEV', description: 'Fast realism', api: 'apifree' },
+  { id: 'qwen/qwen-image-2512', name: 'Qwen Image', description: 'Cheapest', api: 'apifree' },
+  { id: 'tongyi-mai/z-image-turbo', name: 'Z Image Turbo', description: 'Fastest', api: 'apifree' },
 ];
 
 interface GeneratedImage {
@@ -144,63 +144,74 @@ const ImageGen = () => {
       const hasReferenceImage = !!uploadedImage;
       
       const systemPrompt = hasReferenceImage
-        ? `You are an expert prompt writer for image-to-image AI models (Seedream, FLUX, GPT Image).
+        ? `You are an expert prompt writer for image-to-image AI models.
 
 CRITICAL: The user has uploaded a REFERENCE IMAGE. Any pronouns like "him", "her", "them", "the person", "this", "it" refer to the SUBJECT IN THE REFERENCE IMAGE.
 
 Rules for image-to-image prompts:
-1. PRESERVE references to the original image - use phrases like "the subject from the reference image", "the person in the photo", "maintain the original subject"
+1. PRESERVE references to the original image - use phrases like "the subject from the reference image", "the person in the photo"
 2. Start with the subject and what transformation/action should happen
 3. Add environment, background, lighting, mood
-4. Include style details: photorealistic, cinematic lighting, color palette, lens info (85mm, shallow depth of field)
-5. Be specific with colors, textures, lighting (e.g., warm golden hour, soft bokeh)
+4. Include style details: photorealistic, cinematic lighting, color palette, lens info
+5. Be specific with colors, textures, lighting
 6. Use complete natural sentences, not keyword lists
 7. Keep prompts 30-100 words
-8. Optional: add what to avoid (no blurry details, no extra limbs)
 
-Example transformations:
-- "make him meet ronaldo" → "The subject from the reference image meets Cristiano Ronaldo on a professional football field, both smiling, stadium lights in background, photorealistic, cinematic lighting, 85mm lens"
-- "put her in paris" → "The person from the reference photo stands in front of the Eiffel Tower in Paris, daytime, soft natural lighting, travel photography style, vibrant colors"
-- "make it cyberpunk" → "Transform the reference image into cyberpunk style with neon lights, rain-slicked streets, holographic advertisements, moody purple and cyan lighting"
+Examples:
+- "make him meet ronaldo" → "The subject from the reference image meets Cristiano Ronaldo on a professional football field, both smiling, stadium lights, photorealistic, cinematic lighting, 85mm lens"
+- "put her in paris" → "The person from the reference photo stands in front of the Eiffel Tower, daytime, soft natural lighting, travel photography style"
 
-RESPOND WITH ONLY THE ENHANCED PROMPT. No explanations.`
+Return ONLY the enhanced prompt. No explanations, no quotes, no prefixes.`
         : `You are an expert prompt writer for text-to-image AI models.
 
-Rules for image generation prompts:
-1. Start with the main subject and describe it clearly
+Rules:
+1. Start with the main subject
 2. Add action or pose if relevant
-3. Define the environment, background, lighting, mood
+3. Define environment, background, lighting, mood
 4. Include style: photorealistic, cinematic, artistic, etc.
 5. Add technical details: lens info, depth of field, color palette
 6. Be specific with colors, textures, lighting
-7. Use complete natural sentences, not keyword lists
+7. Use complete natural sentences
 8. Keep prompts 30-100 words
 
-RESPOND WITH ONLY THE ENHANCED PROMPT. No explanations.`;
+Return ONLY the enhanced prompt. No explanations, no quotes, no prefixes.`;
 
-      const enhanced = await sendNormal(
-        `${systemPrompt}
+      // Call pollinations-chat directly WITHOUT the FARABI persona
+      const { data, error } = await supabase.functions.invoke('pollinations-chat', {
+        body: {
+          prompt: `${systemPrompt}\n\nOriginal prompt: "${prompt}"\n\nEnhanced prompt:`,
+          model: 'gemini-2.5-flash',
+          seed: Math.floor(Math.random() * 1000000),
+          systemPrompt: 'You are a helpful assistant that enhances image generation prompts. Return ONLY the enhanced prompt text, nothing else.'
+        }
+      });
 
-Original prompt: "${prompt}"
-
-Enhanced prompt:`
-      );
+      if (error) throw error;
       
+      let enhanced = data?.text || '';
+      
+      // Clean up the response
       let cleaned = enhanced
         .replace(/\*\*/g, '')
         .replace(/^["']|["']$/g, '')
-        .replace(/^.*?(?:Enhanced prompt|prompt|version|here|output):\s*/im, '')
+        .replace(/^.*?(?:Enhanced prompt|prompt|version|here|output|Here's|Here is):\s*/im, '')
         .replace(/\{image:[^}]+\}/g, '')
+        .replace(/^(Alright|Okay|Sure|Here|Got it)[,!.]?\s*/i, '')
         .trim();
       
-      setPrompt(cleaned);
-      toast({ 
-        title: 'Prompt Enhanced!', 
-        description: hasReferenceImage 
-          ? 'Optimized for image-to-image editing' 
-          : 'Your prompt has been improved' 
-      });
-    } catch {
+      if (cleaned.length > 10) {
+        setPrompt(cleaned);
+        toast({ 
+          title: 'Prompt Enhanced!', 
+          description: hasReferenceImage 
+            ? 'Optimized for image-to-image editing' 
+            : 'Your prompt has been improved' 
+        });
+      } else {
+        throw new Error('Enhancement returned empty result');
+      }
+    } catch (err) {
+      console.error('Enhance error:', err);
       toast({ title: 'Error', description: 'Failed to enhance prompt', variant: 'destructive' });
     } finally {
       setEnhancing(false);
@@ -249,14 +260,14 @@ Enhanced prompt:`
 
     const promises = initialImages.map(async (img) => {
       try {
-        const { data, error } = await supabase.functions.invoke('image-gen-multi', {
+        // Use new APIFree edge function for all models
+        const { data, error } = await supabase.functions.invoke('apifree-image', {
           body: {
             prompt: currentPrompt,
             model: img.modelId,
-            seed: img.seed,
-            imageUrl: currentImageUrl || undefined,
-            width: 1024,
-            height: 1024
+            aspect_ratio: '1:1',
+            size: '1024x1024',
+            quality: 'high'
           }
         });
 
@@ -316,9 +327,14 @@ Enhanced prompt:`
     if (!currentImage) return;
 
     try {
-      const newSeed = Math.floor(Date.now() % 1000000) + Math.floor(Math.random() * 10000);
-      const { data, error } = await supabase.functions.invoke('image-gen-multi', {
-        body: { prompt: currentPrompt, model: currentImage.modelId, seed: newSeed, width: 1024, height: 1024 }
+      const { data, error } = await supabase.functions.invoke('apifree-image', {
+        body: { 
+          prompt: currentPrompt, 
+          model: currentImage.modelId, 
+          aspect_ratio: '1:1',
+          size: '1024x1024',
+          quality: 'high'
+        }
       });
 
       if (error) throw error;
@@ -326,7 +342,7 @@ Enhanced prompt:`
 
       setMessages(prev => prev.map(msg => {
         if (msg.id === messageId && msg.images) {
-          return { ...msg, images: msg.images.map(i => i.id === imageId ? { ...i, imageUrl: data.imageUrl, loading: false, seed: newSeed } : i) };
+          return { ...msg, images: msg.images.map(i => i.id === imageId ? { ...i, imageUrl: data.imageUrl, loading: false } : i) };
         }
         return msg;
       }));
@@ -399,7 +415,7 @@ Enhanced prompt:`
             </div>
             <div className="text-center">
               <span className="font-semibold">AI Image</span>
-              <p className="text-xs text-muted-foreground">4 Models</p>
+              <p className="text-xs text-muted-foreground">5 Models</p>
             </div>
           </div>
           <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>

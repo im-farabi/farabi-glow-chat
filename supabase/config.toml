@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.image-gen-multi]
 verify_jwt = false
+
+[functions.apifree-image]
+verify_jwt = false
