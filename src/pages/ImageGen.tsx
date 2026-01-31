@@ -185,7 +185,7 @@ Return ONLY the enhanced prompt. No explanations, no quotes, no prefixes.`;
       const { data, error } = await supabase.functions.invoke('pollinations-chat', {
         body: {
           prompt: `${systemPrompt}\n\nOriginal prompt: "${prompt}"\n\nEnhanced prompt:`,
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3-flash',
           seed: Math.floor(Math.random() * 1000000),
           systemPrompt: 'You are a helpful assistant that enhances image generation prompts. Return ONLY the enhanced prompt text, nothing else.'
         }
