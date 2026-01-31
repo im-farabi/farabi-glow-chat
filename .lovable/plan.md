@@ -1,249 +1,165 @@
 
 
-# Complete Rebuild: AI Image Generator
+# Auto-Upload Images to Supabase Storage
 
 ## Summary
-Remove the existing `/image-gen` page and build a new modern image generator from scratch with:
-- Green/black premium theme matching the main chat (`/`)
-- 5 AI models to choose from
-- 5 parallel image generations per prompt
-- Image upload via drag & drop, paste, or button
+When a user uploads an image (drag/drop/paste/click), automatically upload it to the existing `video-temp-images` Supabase storage bucket and get a public URL. This URL gets passed to the Pollinations API instead of base64.
 
 ---
 
-## Models to Support
-
-| Model Name | API Parameter | Notes |
-|------------|---------------|-------|
-| Seedream 4.5 Pro | `seedream-pro` | Premium quality |
-| FLUX.2 Klein 9B | `klein-large` | High detail |
-| GPT Image 1.5 | `gptimage-large` | Supports transparency |
-| Seedream 4.0 | `seedream` | Good balance |
-| FLUX.2 Klein 4B | `klein` | Faster generation |
-
----
-
-## Architecture
+## Current Flow (Broken)
 
 ```text
-User Input (prompt + optional image)
-         │
-         ▼
-┌────────────────────────────────┐
-│ New Edge Function:             │
-│ image-gen-multi/index.ts       │
-│                                │
-│ - Receives: prompt, model,     │
-│   count, seed, imageUrl        │
-│ - Calls Pollinations API 5x    │
-│   in parallel                  │
-│ - Returns: array of image URLs │
-└────────────────────────────────┘
-         │
-         ▼
-   5 Images Displayed
+User uploads image
+       │
+       ▼
+Convert to base64
+       │
+       ▼
+Pass base64 to API ❌ (API rejects - needs URL)
+```
+
+## New Flow (Fixed)
+
+```text
+User uploads image
+       │
+       ▼
+Upload to Supabase Storage (video-temp-images bucket)
+       │
+       ▼
+Get public URL
+       │
+       ▼
+Pass URL to API ✅
 ```
 
 ---
 
 ## Changes Required
 
-### 1. Delete Existing Files
+### 1. Update `src/pages/ImageGen.tsx`
 
-| Action | File |
-|--------|------|
-| Delete | `src/pages/ImageGen.tsx` (will rewrite completely) |
-| Keep | `src/components/ImageEditor.tsx` (for potential future use) |
-| Keep | `supabase/functions/pollinations-image/` (for other features) |
-
-### 2. Create New Edge Function
-
-**File:** `supabase/functions/image-gen-multi/index.ts`
-
-- Accepts: `prompt`, `model`, `imageUrl` (optional reference), `count` (default 5)
-- Uses `NEW_POLLINATIONS_APIKEY_1` from secrets
-- Generates 5 images in parallel with different seeds
-- Returns array of image URLs or base64 data
-
-```text
-POST /functions/v1/image-gen-multi
-{
-  "prompt": "a cat in space",
-  "model": "seedream-pro",
-  "imageUrl": "https://..." (optional),
-  "count": 5
-}
-```
-
-### 3. Create New ImageGen Page
-
-**File:** `src/pages/ImageGen.tsx` (complete rewrite)
-
-**Features:**
-- Green/black theme with animated gradient background
-- Model selector dropdown (5 models)
-- Prompt textarea with character counter
-- Image upload area:
-  - Drag & drop zone
-  - Paste support (Ctrl+V)
-  - Plus (+) button for file picker
-- Generate button
-- Grid display of 5 generated images
-- Each image shows:
-  - Loading skeleton while generating
-  - Hover actions: Download, Copy, Regenerate
-- History panel (reuse localStorage pattern)
-
-**Theme Colors:**
-- Background: Black with green particle effects
-- Accent: Green gradient (`from-green-400 to-emerald-500`)
-- Cards: Glassmorphic with green borders
-- Buttons: Green gradient
-
-### 4. Add New Background Component
-
-**File:** `src/components/GreenBackground.tsx`
-
-Same pattern as `PremiumBackground.tsx` but with green/emerald colors instead of pink/purple.
-
-### 5. Update Storage Functions
-
-**File:** `src/lib/storage.ts`
-
-Update `ImageHistoryItem` to support:
-- Multiple images per generation
-- Model used
-- Reference image (if any)
-
-### 6. Update Config
-
-**File:** `supabase/config.toml`
-
-Add entry for new edge function:
-```toml
-[functions.image-gen-multi]
-verify_jwt = false
-```
-
----
-
-## UI Layout
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│  Header (FARABI.me logo)                        [Video] │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ← Back to Chat                           [History 📖]  │
-│                                                         │
-│  🖼️ AI Image Generator                                  │
-│  Generate stunning AI images with multiple models       │
-│                                                         │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │  Model: [ Seedream 4.5 Pro ▼ ]                     │ │
-│  ├────────────────────────────────────────────────────┤ │
-│  │  ┌──────────────────────────────────────────────┐  │ │
-│  │  │                                              │  │ │
-│  │  │    📤 Drop image here, paste, or click +     │  │ │
-│  │  │                                              │  │ │
-│  │  └──────────────────────────────────────────────┘  │ │
-│  │  Preview: [uploaded image thumbnail]              │ │
-│  ├────────────────────────────────────────────────────┤ │
-│  │  Describe your image...                  [✨ AI]  │ │
-│  │  ________________________________________________ │ │
-│  │                                                    │ │
-│  │                              123/500    [Generate] │ │
-│  └────────────────────────────────────────────────────┘ │
-│                                                         │
-│  Generated Images                                       │
-│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐              │
-│  │  1  │ │  2  │ │  3  │ │  4  │ │  5  │              │
-│  │     │ │     │ │     │ │     │ │     │              │
-│  │     │ │     │ │     │ │     │ │     │              │
-│  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘              │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## Image Upload Handling
-
-### Drag & Drop
+**Add new state:**
 ```typescript
-onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-onDragLeave={() => setDragActive(false)}
-onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+const [isUploading, setIsUploading] = useState(false);
 ```
 
-### Paste Support
+**Update `handleFileUpload` function:**
 ```typescript
-useEffect(() => {
-  const handlePaste = (e: ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) handleFiles([file]);
-      }
-    }
-  };
-  document.addEventListener('paste', handlePaste);
-  return () => document.removeEventListener('paste', handlePaste);
-}, []);
-```
+const handleFileUpload = useCallback(async (file: File) => {
+  // Validate file
+  if (!file.type.startsWith('image/')) return;
+  if (file.size > 10 * 1024 * 1024) return;
 
-### File to Base64
-Convert uploaded images to base64 for the API, or upload to temp storage.
-
----
-
-## Parallel Generation Logic
-
-```typescript
-const generateImages = async () => {
-  setLoading(true);
+  setIsUploading(true);
   
-  // Create 5 parallel requests with different seeds
-  const promises = Array.from({ length: 5 }, (_, i) => 
-    supabase.functions.invoke('image-gen-multi', {
-      body: {
-        prompt,
-        model: selectedModel,
-        seed: Date.now() + i * 1000,
-        imageUrl: uploadedImageUrl
-      }
-    })
-  );
-  
-  // Process results as they arrive
-  const results = await Promise.allSettled(promises);
-  // Update UI progressively
+  // Show preview immediately (base64 for UI only)
+  const reader = new FileReader();
+  reader.onload = (e) => setUploadedImage(e.target?.result as string);
+  reader.readAsDataURL(file);
+
+  try {
+    // Upload to Supabase Storage
+    const fileName = `img-ref-${Date.now()}-${Math.random().toString(36).slice(2)}.${file.type.split('/')[1]}`;
+    
+    const { data, error } = await supabase.storage
+      .from('video-temp-images')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) throw error;
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('video-temp-images')
+      .getPublicUrl(fileName);
+
+    setUploadedImageUrl(urlData.publicUrl);
+    toast({ title: 'Image uploaded', description: 'Reference image ready' });
+  } catch (err) {
+    toast({ title: 'Upload failed', description: 'Could not upload image', variant: 'destructive' });
+  } finally {
+    setIsUploading(false);
+  }
+}, [toast]);
+```
+
+**Update API calls to use `uploadedImageUrl`:**
+```typescript
+// In generateImages() and regenerateSingle()
+imageUrl: uploadedImageUrl || undefined,  // Use public URL, not base64
+```
+
+**Update clear image function:**
+```typescript
+const clearUploadedImage = () => {
+  setUploadedImage(null);
+  setUploadedImageUrl(null);
 };
 ```
 
+**Add loading indicator during upload:**
+```typescript
+{isUploading && (
+  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
+    <Loader2 className="w-8 h-8 animate-spin text-green-400" />
+  </div>
+)}
+```
+
+### 2. Add Model Name to Image Cards
+
+**Update `GeneratedImage` interface:**
+```typescript
+interface GeneratedImage {
+  id: number;
+  imageUrl: string | null;
+  loading: boolean;
+  error: string | null;
+  seed: number;
+  modelName: string;  // Add this
+}
+```
+
+**Update initialization in `generateImages`:**
+```typescript
+const modelInfo = MODELS.find(m => m.id === selectedModel);
+const initialImages: GeneratedImage[] = Array.from({ length: 5 }, (_, i) => ({
+  id: i,
+  imageUrl: null,
+  loading: true,
+  error: null,
+  seed: Math.floor(Date.now() % 1000000) + i * 1000,
+  modelName: modelInfo?.name || selectedModel
+}));
+```
+
+**Update card overlay to show model name:**
+```typescript
+<p className="text-xs text-white/70 text-center">{img.modelName}</p>
+// Instead of: Image #{img.id + 1}
+```
+
 ---
 
-## Files Summary
+## Files to Modify
 
-| Action | File | Description |
-|--------|------|-------------|
-| Create | `supabase/functions/image-gen-multi/index.ts` | New edge function for parallel image gen |
-| Rewrite | `src/pages/ImageGen.tsx` | Complete rebuild with new design |
-| Create | `src/components/GreenBackground.tsx` | Green-themed particle background |
-| Update | `src/lib/storage.ts` | Enhanced image history types |
-| Update | `supabase/config.toml` | Add function config |
+| File | Changes |
+|------|---------|
+| `src/pages/ImageGen.tsx` | Add auto-upload to storage, use public URL for API, show model names on cards |
 
 ---
 
-## Expected Behavior
+## Summary of Benefits
 
-1. User visits `/image-gen`
-2. Sees green/black themed page with model selector
-3. Can optionally upload a reference image (drag/drop/paste/click)
-4. Types prompt and clicks Generate
-5. 5 images start generating simultaneously with loading skeletons
-6. Images appear as they complete (1st, 2nd, 3rd, etc.)
-7. Can download, copy, or regenerate individual images
-8. Generation saved to history
+1. User drags/drops/pastes an image
+2. Shows preview immediately (base64 for UI)
+3. Uploads to Supabase in background
+4. Gets public URL automatically
+5. API receives valid URL - no more errors
+6. Each image card shows which model made it
 
