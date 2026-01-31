@@ -1,151 +1,166 @@
 
 
-# Improve Image-to-Image Prompt Enhancer
+# Image Generator Improvements
 
-## Problem
+## Overview
 
-When a user uploads a reference image and types "make him meet ronaldo", the current prompt enhancer doesn't understand:
-- **"him"** refers to the subject in the uploaded reference image
-- This is an **image-to-image editing** task, not text-to-image generation
-- The prompt should preserve references to the original image
+Two features requested:
+1. **Multiple reference images** - Research the API to see if it's possible
+2. **Full-screen image preview** - Add a modal/lightbox to view generated images larger
+
+---
+
+## 1. Multiple Reference Images - API Research Results
+
+### Finding
+
+The Pollinations image generation GET endpoint **only supports 1 reference image** via the `&image={url}` query parameter.
+
+From the official API docs:
+```
+GET https://gen.pollinations.ai/image/{prompt}?model=flux&image=https://example.com/input-image.jpg
+```
+- The `image` parameter is singular
+- Models that support image input have `"input_modalities": ["text", "image"]` (singular)
+
+### Alternative for Multi-Image
+
+To use **multiple reference images**, you would need to switch to the **POST chat completions endpoint** with models like `nanobanana` (Gemini 2.5 Flash Image):
+
+```json
+POST /v1/chat/completions
+{
+  "model": "nanobanana",
+  "messages": [{
+    "role": "user", 
+    "content": [
+      { "type": "text", "text": "Combine these two people in a photo together" },
+      { "type": "image_url", "image_url": { "url": "https://example.com/person1.jpg" }},
+      { "type": "image_url", "image_url": { "url": "https://example.com/person2.jpg" }}
+    ]
+  }],
+  "modalities": ["image", "text"]
+}
+```
+
+This is a fundamentally different architecture and would only work with specific models (nanobanana, nanobanana-pro, gptimage, gptimage-large).
+
+### Recommendation
+
+Multi-image support requires a significant refactor:
+- New edge function using POST endpoint instead of GET
+- Only works with ~4 models (not all 5 currently used)
+- Different response format (base64 images in JSON)
+
+**This is possible but would be a separate, larger feature.**
+
+---
+
+## 2. Full-Screen Image Preview (Lightbox)
 
 ### Current Behavior
-```
-User uploads: Photo of a person
-User types: "make him meet ronaldo"
-Enhanced: "A stunning photorealistic portrait of a man meeting..." ❌
-```
-The AI treats "him" as if it needs to be described, losing the connection to the reference image.
+- Generated images show in a grid
+- On hover, shows download/copy/regenerate buttons
+- No way to view the image larger
 
-### Expected Behavior
-```
-User uploads: Photo of a person  
-User types: "make him meet ronaldo"
-Enhanced: "The subject from the reference image meets Cristiano Ronaldo on a football field, cinematic lighting, photorealistic, 85mm lens, shallow depth of field" ✅
-```
-
----
-
-## Solution
-
-Update the `enhancePrompt` function to:
-1. Detect if a reference image is uploaded
-2. Use specialized image-to-image prompt engineering instructions
-3. Preserve pronouns like "him", "her", "this", "the person" as references to the original image
+### Proposed Behavior
+- **Click on any generated image** to open it in a full-screen modal
+- Modal shows:
+  - Large image preview (full screen)
+  - Model name badge
+  - Action buttons (Download, Copy, Regenerate, Close)
+  - Prompt text at the bottom
+- Click outside or X button to close
 
 ---
 
-## Changes Required
+## Technical Implementation
 
-### File: `src/pages/ImageGen.tsx`
+### Changes to `src/pages/ImageGen.tsx`
 
-**Update the `enhancePrompt` function:**
+#### 1. Add State for Selected Image
 
 ```typescript
-const enhancePrompt = async () => {
-  if (prompt.length < 3) {
-    toast({ title: 'Error', description: 'Prompt must be at least 3 characters', variant: 'destructive' });
-    return;
-  }
+const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
+```
 
-  setEnhancing(true);
-  try {
-    // Use different instructions based on whether there's a reference image
-    const hasReferenceImage = !!uploadedImage;
-    
-    const systemPrompt = hasReferenceImage
-      ? `You are an expert prompt writer for image-to-image AI models (Seedream, FLUX, GPT Image).
+#### 2. Add Image Lightbox Modal
 
-CRITICAL: The user has uploaded a REFERENCE IMAGE. Any pronouns like "him", "her", "them", "the person", "this", "it" refer to the SUBJECT IN THE REFERENCE IMAGE.
+Using Dialog component for full-screen overlay:
 
-Rules for image-to-image prompts:
-1. PRESERVE references to the original image - use phrases like "the subject from the reference image", "the person in the photo", "maintain the original subject"
-2. Start with the subject and what transformation/action should happen
-3. Add environment, background, lighting, mood
-4. Include style details: photorealistic, cinematic lighting, color palette, lens info (85mm, shallow depth of field)
-5. Be specific with colors, textures, lighting (e.g., warm golden hour, soft bokeh)
-6. Use complete natural sentences, not keyword lists
-7. Keep prompts 30-100 words
-8. Optional: add what to avoid (no blurry details, no extra limbs)
+```typescript
+<Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+  <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-green-500/30">
+    <div className="relative flex flex-col items-center justify-center h-full p-4">
+      {/* Close button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setSelectedImage(null)}
+        className="absolute top-4 right-4 z-50 text-white hover:bg-white/10"
+      >
+        <X className="w-6 h-6" />
+      </Button>
+      
+      {/* Image */}
+      <img 
+        src={selectedImage?.imageUrl || ''} 
+        alt="Preview"
+        className="max-w-full max-h-[80vh] object-contain rounded-lg"
+      />
+      
+      {/* Model badge */}
+      <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/40">
+        <span className="text-sm text-green-300">{selectedImage?.modelName}</span>
+      </div>
+      
+      {/* Actions */}
+      <div className="flex gap-3 mt-6">
+        <Button onClick={() => downloadImage(selectedImage?.imageUrl, 0)}>
+          <Download className="w-4 h-4 mr-2" /> Download
+        </Button>
+        <Button variant="outline" onClick={() => copyImage(selectedImage?.imageUrl, 0)}>
+          <Copy className="w-4 h-4 mr-2" /> Copy
+        </Button>
+        <Button variant="outline" onClick={() => {
+          const idx = generatedImages.findIndex(i => i.id === selectedImage?.id);
+          if (idx >= 0) regenerateSingle(idx);
+          setSelectedImage(null);
+        }}>
+          <RefreshCw className="w-4 h-4 mr-2" /> Regenerate
+        </Button>
+      </div>
+      
+      {/* Prompt */}
+      <p className="text-sm text-gray-400 mt-4 text-center max-w-2xl">
+        "{prompt}"
+      </p>
+    </div>
+  </DialogContent>
+</Dialog>
+```
 
-Example transformations:
-- "make him meet ronaldo" → "The subject from the reference image meets Cristiano Ronaldo on a professional football field, both smiling, stadium lights in background, photorealistic, cinematic lighting, 85mm lens"
-- "put her in paris" → "The person from the reference photo stands in front of the Eiffel Tower in Paris, daytime, soft natural lighting, travel photography style, vibrant colors"
-- "make it cyberpunk" → "Transform the reference image into cyberpunk style with neon lights, rain-slicked streets, holographic advertisements, moody purple and cyan lighting"
+#### 3. Make Image Cards Clickable
 
-RESPOND WITH ONLY THE ENHANCED PROMPT. No explanations.`
-      : `You are an expert prompt writer for text-to-image AI models.
+Update the image in the grid to open the modal:
 
-Rules for image generation prompts:
-1. Start with the main subject and describe it clearly
-2. Add action or pose if relevant
-3. Define the environment, background, lighting, mood
-4. Include style: photorealistic, cinematic, artistic, etc.
-5. Add technical details: lens info, depth of field, color palette
-6. Be specific with colors, textures, lighting
-7. Use complete natural sentences, not keyword lists
-8. Keep prompts 30-100 words
-
-RESPOND WITH ONLY THE ENHANCED PROMPT. No explanations.`;
-
-    const enhanced = await sendNormal(
-      `${systemPrompt}
-
-Original prompt: "${prompt}"
-
-Enhanced prompt:`
-    );
-    
-    let cleaned = enhanced
-      .replace(/\*\*/g, '')
-      .replace(/^["']|["']$/g, '')
-      .replace(/^.*?(?:Enhanced prompt|prompt|version|here|output):\s*/im, '')
-      .replace(/\{image:[^}]+\}/g, '')
-      .trim();
-    
-    setPrompt(cleaned);
-    toast({ 
-      title: 'Prompt Enhanced!', 
-      description: hasReferenceImage 
-        ? 'Optimized for image-to-image editing' 
-        : 'Your prompt has been improved' 
-    });
-  } catch {
-    toast({ title: 'Error', description: 'Failed to enhance prompt', variant: 'destructive' });
-  } finally {
-    setEnhancing(false);
-  }
-};
+```typescript
+<img 
+  src={img.imageUrl} 
+  alt={`Generated ${index + 1}`}
+  className="w-full h-full object-cover cursor-pointer"
+  onClick={() => setSelectedImage(img)}
+/>
 ```
 
 ---
 
-## Key Improvements
+## Summary
 
-| Before | After |
-|--------|-------|
-| Generic prompt enhancement | Context-aware: knows if reference image exists |
-| Doesn't understand pronouns | Preserves "him", "her", "the person" as references to uploaded image |
-| Overwrites the subject | Keeps connection to reference image subject |
-| No image-to-image awareness | Specialized instructions for image editing |
-
----
-
-## Example Transformations
-
-### With Reference Image Uploaded:
-
-| User Input | Enhanced Output |
-|------------|-----------------|
-| "make him meet ronaldo" | "The subject from the reference image meets Cristiano Ronaldo on a professional football field, both posing together, stadium atmosphere, photorealistic, cinematic lighting, 85mm lens, shallow depth of field" |
-| "put her in japan" | "The person from the reference photo stands in a traditional Japanese street in Kyoto, cherry blossoms falling, soft natural daylight, travel photography style" |
-| "make it dark and moody" | "Transform the reference image with dramatic dark and moody atmosphere, high contrast shadows, desaturated colors with deep blacks, cinematic noir lighting" |
-
-### Without Reference Image (text-to-image):
-
-| User Input | Enhanced Output |
-|------------|-----------------|
-| "a cat" | "A fluffy orange tabby cat sitting on a sunlit windowsill, soft natural lighting, shallow depth of field, photorealistic, warm cozy atmosphere" |
+| Feature | Status | Effort |
+|---------|--------|--------|
+| Multiple reference images | **Not supported** by GET endpoint; requires POST endpoint refactor | Large (future) |
+| Full-screen image preview | **Ready to implement** | Small |
 
 ---
 
@@ -153,5 +168,19 @@ Enhanced prompt:`
 
 | File | Changes |
 |------|---------|
-| `src/pages/ImageGen.tsx` | Update `enhancePrompt` function with context-aware image-to-image instructions |
+| `src/pages/ImageGen.tsx` | Add Dialog component, selectedImage state, click handlers |
+
+---
+
+## UI Flow After Implementation
+
+1. User generates 5 images
+2. User sees grid of thumbnails with model names
+3. **User clicks on any image** → Full-screen modal opens
+4. Modal shows:
+   - Large image
+   - Model name (top left badge)
+   - Action buttons (Download, Copy, Regenerate)
+   - Prompt text
+5. Click X or outside to close
 
