@@ -30,6 +30,7 @@ interface GeneratedImage {
   loading: boolean;
   error: string | null;
   seed: number;
+  modelName: string;
 }
 
 const ImageGen = () => {
@@ -43,6 +44,8 @@ const ImageGen = () => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [enhancing, setEnhancing] = useState(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -77,7 +80,7 @@ const ImageGen = () => {
     return () => document.removeEventListener('paste', handlePaste);
   }, []);
 
-  const handleFileUpload = useCallback((file: File) => {
+  const handleFileUpload = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
       toast({ title: 'Error', description: 'Please upload an image file', variant: 'destructive' });
       return;
@@ -88,12 +91,41 @@ const ImageGen = () => {
       return;
     }
 
+    setIsUploading(true);
+
+    // Show preview immediately (base64 for UI only)
     const reader = new FileReader();
-    reader.onload = (e) => {
-      setUploadedImage(e.target?.result as string);
-      toast({ title: 'Image uploaded', description: 'Reference image ready' });
-    };
+    reader.onload = (e) => setUploadedImage(e.target?.result as string);
     reader.readAsDataURL(file);
+
+    try {
+      // Upload to Supabase Storage
+      const ext = file.type.split('/')[1] || 'png';
+      const fileName = `img-ref-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      
+      const { error } = await supabase.storage
+        .from('video-temp-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('video-temp-images')
+        .getPublicUrl(fileName);
+
+      setUploadedImageUrl(urlData.publicUrl);
+      toast({ title: 'Image uploaded', description: 'Reference image ready for generation' });
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast({ title: 'Upload failed', description: 'Could not upload image to storage', variant: 'destructive' });
+      setUploadedImage(null);
+    } finally {
+      setIsUploading(false);
+    }
   }, [toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -148,13 +180,17 @@ Output ONLY the enhanced prompt:`
 
     setIsGenerating(true);
     
+    // Get model info for display
+    const modelInfo = MODELS.find(m => m.id === selectedModel);
+    
     // Initialize 5 image slots with loading state
     const initialImages: GeneratedImage[] = Array.from({ length: 5 }, (_, i) => ({
       id: i,
       imageUrl: null,
       loading: true,
       error: null,
-      seed: Math.floor(Date.now() % 1000000) + i * 1000
+      seed: Math.floor(Date.now() % 1000000) + i * 1000,
+      modelName: modelInfo?.name || selectedModel
     }));
     setGeneratedImages(initialImages);
 
@@ -166,7 +202,7 @@ Output ONLY the enhanced prompt:`
             prompt,
             model: selectedModel,
             seed: img.seed,
-            imageUrl: uploadedImage || undefined,
+            imageUrl: uploadedImageUrl || undefined,
             width: 1024,
             height: 1024
           }
@@ -229,7 +265,7 @@ Output ONLY the enhanced prompt:`
           prompt,
           model: selectedModel,
           seed: newSeed,
-          imageUrl: uploadedImage || undefined,
+          imageUrl: uploadedImageUrl || undefined,
           width: 1024,
           height: 1024
         }
@@ -430,11 +466,16 @@ Output ONLY the enhanced prompt:`
                       className="max-h-40 rounded-lg border-2 border-green-500/30"
                     />
                     <button
-                      onClick={() => setUploadedImage(null)}
+                      onClick={() => { setUploadedImage(null); setUploadedImageUrl(null); }}
                       className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition-colors"
                     >
                       <X className="w-4 h-4 text-white" />
                     </button>
+                    {isUploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                        <Loader2 className="w-8 h-8 animate-spin text-green-400" />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -582,7 +623,7 @@ Output ONLY the enhanced prompt:`
                       )}
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                      <p className="text-xs text-white/70 text-center">Image #{index + 1}</p>
+                      <p className="text-xs text-white/70 text-center">{img.modelName}</p>
                     </div>
                   </Card>
                 ))}
