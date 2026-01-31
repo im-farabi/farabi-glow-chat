@@ -14,11 +14,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const MODELS = [
+  // APIFree.ai models (5)
   { id: 'openai/gpt-image-1.5', name: 'GPT Image 1.5', description: 'Best quality', api: 'apifree' },
   { id: 'google/nano-banana-pro', name: 'Nano Banana Pro', description: '4K + text', api: 'apifree' },
   { id: 'black-forest-labs/flux-2-dev', name: 'FLUX 2 DEV', description: 'Fast realism', api: 'apifree' },
   { id: 'qwen/qwen-image-2512', name: 'Qwen Image', description: 'Cheapest', api: 'apifree' },
   { id: 'tongyi-mai/z-image-turbo', name: 'Z Image Turbo', description: 'Fastest', api: 'apifree' },
+  // Pollinations models (3)
+  { id: 'flux', name: 'Flux Schnell', description: 'Free & fast', api: 'pollinations' },
+  { id: 'seedream', name: 'Seedream 4.0', description: 'Good balance', api: 'pollinations' },
+  { id: 'klein-large', name: 'FLUX.2 Klein 9B', description: 'High detail', api: 'pollinations' },
 ];
 
 interface GeneratedImage {
@@ -259,32 +264,55 @@ Return ONLY the enhanced prompt. No explanations, no quotes, no prefixes.`;
     setUploadedImageUrl(null);
 
     const promises = initialImages.map(async (img) => {
+      const model = MODELS.find(m => m.id === img.modelId);
+      
       try {
-        // Use new APIFree edge function for all models
-        const { data, error } = await supabase.functions.invoke('apifree-image', {
-          body: {
-            prompt: currentPrompt,
-            model: img.modelId,
-            aspect_ratio: '1:1',
-            size: '1024x1024',
-            quality: 'high'
-          }
-        });
+        let imageUrl: string;
+        
+        if (model?.api === 'apifree') {
+          // Use APIFree edge function
+          const { data, error } = await supabase.functions.invoke('apifree-image', {
+            body: {
+              prompt: currentPrompt,
+              model: img.modelId,
+              aspect_ratio: '1:1',
+              size: '1024x1024',
+              quality: 'high'
+            }
+          });
 
-        if (error) throw error;
-        if (!data.success) throw new Error(data.error);
+          if (error) throw error;
+          if (!data.success) throw new Error(data.error);
+          imageUrl = data.imageUrl;
+        } else {
+          // Use Pollinations edge function
+          const { data, error } = await supabase.functions.invoke('image-gen-multi', {
+            body: {
+              prompt: currentPrompt,
+              model: img.modelId,
+              seed: img.seed,
+              imageUrl: currentImageUrl,
+              width: 1024,
+              height: 1024
+            }
+          });
+
+          if (error) throw error;
+          if (!data.success) throw new Error(data.error);
+          imageUrl = data.imageUrl;
+        }
 
         setMessages(prev => prev.map(msg => {
           if (msg.id === assistantMessage.id && msg.images) {
             return {
               ...msg,
-              images: msg.images.map(i => i.id === img.id ? { ...i, imageUrl: data.imageUrl, loading: false } : i)
+              images: msg.images.map(i => i.id === img.id ? { ...i, imageUrl, loading: false } : i)
             };
           }
           return msg;
         }));
 
-        return { success: true, id: img.id, imageUrl: data.imageUrl };
+        return { success: true, id: img.id, imageUrl };
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Generation failed';
         setMessages(prev => prev.map(msg => {
@@ -326,23 +354,44 @@ Return ONLY the enhanced prompt. No explanations, no quotes, no prefixes.`;
     const currentImage = messages.find(m => m.id === messageId)?.images?.find(i => i.id === imageId);
     if (!currentImage) return;
 
-    try {
-      const { data, error } = await supabase.functions.invoke('apifree-image', {
-        body: { 
-          prompt: currentPrompt, 
-          model: currentImage.modelId, 
-          aspect_ratio: '1:1',
-          size: '1024x1024',
-          quality: 'high'
-        }
-      });
+    const model = MODELS.find(m => m.id === currentImage.modelId);
 
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error);
+    try {
+      let imageUrl: string;
+      
+      if (model?.api === 'apifree') {
+        const { data, error } = await supabase.functions.invoke('apifree-image', {
+          body: { 
+            prompt: currentPrompt, 
+            model: currentImage.modelId, 
+            aspect_ratio: '1:1',
+            size: '1024x1024',
+            quality: 'high'
+          }
+        });
+
+        if (error) throw error;
+        if (!data.success) throw new Error(data.error);
+        imageUrl = data.imageUrl;
+      } else {
+        const { data, error } = await supabase.functions.invoke('image-gen-multi', {
+          body: { 
+            prompt: currentPrompt, 
+            model: currentImage.modelId, 
+            seed: Math.floor(Date.now() % 1000000),
+            width: 1024,
+            height: 1024
+          }
+        });
+
+        if (error) throw error;
+        if (!data.success) throw new Error(data.error);
+        imageUrl = data.imageUrl;
+      }
 
       setMessages(prev => prev.map(msg => {
         if (msg.id === messageId && msg.images) {
-          return { ...msg, images: msg.images.map(i => i.id === imageId ? { ...i, imageUrl: data.imageUrl, loading: false } : i) };
+          return { ...msg, images: msg.images.map(i => i.id === imageId ? { ...i, imageUrl, loading: false } : i) };
         }
         return msg;
       }));
@@ -415,7 +464,7 @@ Return ONLY the enhanced prompt. No explanations, no quotes, no prefixes.`;
             </div>
             <div className="text-center">
               <span className="font-semibold">AI Image</span>
-              <p className="text-xs text-muted-foreground">5 Models</p>
+              <p className="text-xs text-muted-foreground">8 Models</p>
             </div>
           </div>
           <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
@@ -482,7 +531,7 @@ Return ONLY the enhanced prompt. No explanations, no quotes, no prefixes.`;
                 </div>
                 <h2 className="text-2xl font-bold mb-3 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">AI Image Generator</h2>
                 <p className="text-muted-foreground max-w-md mb-6">
-                  Generate 5 images simultaneously using different AI models. Add a reference image or just describe what you want!
+                  Generate 8 images simultaneously using different AI models. Add a reference image or just describe what you want!
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {MODELS.map(model => (
