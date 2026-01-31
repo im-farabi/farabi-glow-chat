@@ -1,83 +1,249 @@
 
-# Switch from GPT 5.2 to Claude Sonnet 4.5
+
+# Complete Rebuild: AI Image Generator
 
 ## Summary
-Replace the GPT 5.2 model with Claude Sonnet 4.5 (`anthropic/claude-sonnet-4.5`) for better streaming performance. The API endpoint and key rotation system stay the same - only the model and some parameters change.
+Remove the existing `/image-gen` page and build a new modern image generator from scratch with:
+- Green/black premium theme matching the main chat (`/`)
+- 5 AI models to choose from
+- 5 parallel image generations per prompt
+- Image upload via drag & drop, paste, or button
+
+---
+
+## Models to Support
+
+| Model Name | API Parameter | Notes |
+|------------|---------------|-------|
+| Seedream 4.5 Pro | `seedream-pro` | Premium quality |
+| FLUX.2 Klein 9B | `klein-large` | High detail |
+| GPT Image 1.5 | `gptimage-large` | Supports transparency |
+| Seedream 4.0 | `seedream` | Good balance |
+| FLUX.2 Klein 4B | `klein` | Faster generation |
+
+---
+
+## Architecture
+
+```text
+User Input (prompt + optional image)
+         │
+         ▼
+┌────────────────────────────────┐
+│ New Edge Function:             │
+│ image-gen-multi/index.ts       │
+│                                │
+│ - Receives: prompt, model,     │
+│   count, seed, imageUrl        │
+│ - Calls Pollinations API 5x    │
+│   in parallel                  │
+│ - Returns: array of image URLs │
+└────────────────────────────────┘
+         │
+         ▼
+   5 Images Displayed
+```
 
 ---
 
 ## Changes Required
 
-### 1. Update Edge Function: `supabase/functions/apifree-chat/index.ts`
+### 1. Delete Existing Files
 
-| Change | From | To |
-|--------|------|-----|
-| Model | `openai/gpt-5.2` | `anthropic/claude-sonnet-4.5` |
-| Max tokens | `4096` | `8192` |
-| System prompt name | `FARABI-GPT5.2` | `FARABI-Claude` |
-| Log prefix | `[GPT-5.2]` | `[Claude]` |
-| Temperature | (not set) | `1` (Claude default) |
+| Action | File |
+|--------|------|
+| Delete | `src/pages/ImageGen.tsx` (will rewrite completely) |
+| Keep | `src/components/ImageEditor.tsx` (for potential future use) |
+| Keep | `supabase/functions/pollinations-image/` (for other features) |
 
-The streaming format is identical - both use SSE with `choices[0].delta.content`.
+### 2. Create New Edge Function
 
-### 2. Update API Library: `src/lib/api.ts`
+**File:** `supabase/functions/image-gen-multi/index.ts`
 
-| Change | From | To |
-|--------|------|-----|
-| System prompt | References GPT-5.2 | References Claude Sonnet 4.5 |
-| Function name | Keep as `sendGPT52` or rename | Keep same for simplicity |
-
-### 3. Update UI Labels: `src/components/ChatInput.tsx`
-
-| Change | From | To |
-|--------|------|-----|
-| Menu label | "GPT 5.2" | "Claude 4.5" or keep same |
-
-The icon stays the same (the colorful flower logo works for both).
-
----
-
-## Technical Details
-
-### Edge Function Changes
+- Accepts: `prompt`, `model`, `imageUrl` (optional reference), `count` (default 5)
+- Uses `NEW_POLLINATIONS_APIKEY_1` from secrets
+- Generates 5 images in parallel with different seeds
+- Returns array of image URLs or base64 data
 
 ```text
-- const MODEL = 'openai/gpt-5.2';
-- const MAX_TOKENS = 4096;
-+ const MODEL = 'anthropic/claude-sonnet-4.5';
-+ const MAX_TOKENS = 8192;
+POST /functions/v1/image-gen-multi
+{
+  "prompt": "a cat in space",
+  "model": "seedream-pro",
+  "imageUrl": "https://..." (optional),
+  "count": 5
+}
 ```
 
-Add temperature parameter to API request:
+### 3. Create New ImageGen Page
+
+**File:** `src/pages/ImageGen.tsx` (complete rewrite)
+
+**Features:**
+- Green/black theme with animated gradient background
+- Model selector dropdown (5 models)
+- Prompt textarea with character counter
+- Image upload area:
+  - Drag & drop zone
+  - Paste support (Ctrl+V)
+  - Plus (+) button for file picker
+- Generate button
+- Grid display of 5 generated images
+- Each image shows:
+  - Loading skeleton while generating
+  - Hover actions: Download, Copy, Regenerate
+- History panel (reuse localStorage pattern)
+
+**Theme Colors:**
+- Background: Black with green particle effects
+- Accent: Green gradient (`from-green-400 to-emerald-500`)
+- Cards: Glassmorphic with green borders
+- Buttons: Green gradient
+
+### 4. Add New Background Component
+
+**File:** `src/components/GreenBackground.tsx`
+
+Same pattern as `PremiumBackground.tsx` but with green/emerald colors instead of pink/purple.
+
+### 5. Update Storage Functions
+
+**File:** `src/lib/storage.ts`
+
+Update `ImageHistoryItem` to support:
+- Multiple images per generation
+- Model used
+- Reference image (if any)
+
+### 6. Update Config
+
+**File:** `supabase/config.toml`
+
+Add entry for new edge function:
+```toml
+[functions.image-gen-multi]
+verify_jwt = false
+```
+
+---
+
+## UI Layout
+
 ```text
-body: JSON.stringify({
-  model: MODEL,
-  max_tokens: MAX_TOKENS,
-  messages,
-  stream: true,
-  temperature: 1  // Claude default
-})
+┌─────────────────────────────────────────────────────────┐
+│  Header (FARABI.me logo)                        [Video] │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ← Back to Chat                           [History 📖]  │
+│                                                         │
+│  🖼️ AI Image Generator                                  │
+│  Generate stunning AI images with multiple models       │
+│                                                         │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │  Model: [ Seedream 4.5 Pro ▼ ]                     │ │
+│  ├────────────────────────────────────────────────────┤ │
+│  │  ┌──────────────────────────────────────────────┐  │ │
+│  │  │                                              │  │ │
+│  │  │    📤 Drop image here, paste, or click +     │  │ │
+│  │  │                                              │  │ │
+│  │  └──────────────────────────────────────────────┘  │ │
+│  │  Preview: [uploaded image thumbnail]              │ │
+│  ├────────────────────────────────────────────────────┤ │
+│  │  Describe your image...                  [✨ AI]  │ │
+│  │  ________________________________________________ │ │
+│  │                                                    │ │
+│  │                              123/500    [Generate] │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                         │
+│  Generated Images                                       │
+│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐              │
+│  │  1  │ │  2  │ │  3  │ │  4  │ │  5  │              │
+│  │     │ │     │ │     │ │     │ │     │              │
+│  │     │ │     │ │     │ │     │ │     │              │
+│  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘              │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Why Claude Streams Better
-Claude's streaming implementation sends smaller, more frequent chunks compared to some other models. The SSE format is OpenAI-compatible, so no changes needed to the parsing logic.
+---
+
+## Image Upload Handling
+
+### Drag & Drop
+```typescript
+onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+onDragLeave={() => setDragActive(false)}
+onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+```
+
+### Paste Support
+```typescript
+useEffect(() => {
+  const handlePaste = (e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) handleFiles([file]);
+      }
+    }
+  };
+  document.addEventListener('paste', handlePaste);
+  return () => document.removeEventListener('paste', handlePaste);
+}, []);
+```
+
+### File to Base64
+Convert uploaded images to base64 for the API, or upload to temp storage.
 
 ---
 
-## Files to Modify
+## Parallel Generation Logic
 
-| File | Change |
-|------|--------|
-| `supabase/functions/apifree-chat/index.ts` | Switch model to Claude, update max_tokens to 8192, add temperature |
-| `src/lib/api.ts` | Update system prompt to reference Claude |
-| `src/components/ChatInput.tsx` | Optionally update label (or keep as "GPT 5.2") |
+```typescript
+const generateImages = async () => {
+  setLoading(true);
+  
+  // Create 5 parallel requests with different seeds
+  const promises = Array.from({ length: 5 }, (_, i) => 
+    supabase.functions.invoke('image-gen-multi', {
+      body: {
+        prompt,
+        model: selectedModel,
+        seed: Date.now() + i * 1000,
+        imageUrl: uploadedImageUrl
+      }
+    })
+  );
+  
+  // Process results as they arrive
+  const results = await Promise.allSettled(promises);
+  // Update UI progressively
+};
+```
 
 ---
 
-## Summary of Key Points
+## Files Summary
 
-1. Same API endpoint (`api.apifree.ai`)
-2. Same 3-key rotation strategy
-3. Same streaming SSE format
-4. Only model name, max_tokens, and temperature change
-5. Better streaming reliability with Claude
+| Action | File | Description |
+|--------|------|-------------|
+| Create | `supabase/functions/image-gen-multi/index.ts` | New edge function for parallel image gen |
+| Rewrite | `src/pages/ImageGen.tsx` | Complete rebuild with new design |
+| Create | `src/components/GreenBackground.tsx` | Green-themed particle background |
+| Update | `src/lib/storage.ts` | Enhanced image history types |
+| Update | `supabase/config.toml` | Add function config |
+
+---
+
+## Expected Behavior
+
+1. User visits `/image-gen`
+2. Sees green/black themed page with model selector
+3. Can optionally upload a reference image (drag/drop/paste/click)
+4. Types prompt and clicks Generate
+5. 5 images start generating simultaneously with loading skeletons
+6. Images appear as they complete (1st, 2nd, 3rd, etc.)
+7. Can download, copy, or regenerate individual images
+8. Generation saved to history
+
