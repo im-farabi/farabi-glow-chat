@@ -108,7 +108,9 @@ async function generateImage(apiKey: string, model: string, prompt: string, opti
   console.log(`[APIFree] Submit response:`, JSON.stringify(submitData));
   
   if (submitData.code !== 200) {
-    throw new Error(submitData.code_msg || `Submit failed with code ${submitData.code}`);
+    // Include code in error message for better rate limit detection
+    const errorMsg = submitData.code_msg || 'Unknown error';
+    throw new Error(`[${submitData.code}] ${errorMsg}`);
   }
 
   const requestId = submitData.resp_data?.request_id;
