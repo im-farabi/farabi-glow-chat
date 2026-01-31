@@ -1,186 +1,162 @@
 
 
-# Image Generator Improvements
+# Fix Image Generator Issues
 
-## Overview
+## Problems Identified
 
-Two features requested:
-1. **Multiple reference images** - Research the API to see if it's possible
-2. **Full-screen image preview** - Add a modal/lightbox to view generated images larger
-
----
-
-## 1. Multiple Reference Images - API Research Results
-
-### Finding
-
-The Pollinations image generation GET endpoint **only supports 1 reference image** via the `&image={url}` query parameter.
-
-From the official API docs:
-```
-GET https://gen.pollinations.ai/image/{prompt}?model=flux&image=https://example.com/input-image.jpg
-```
-- The `image` parameter is singular
-- Models that support image input have `"input_modalities": ["text", "image"]` (singular)
-
-### Alternative for Multi-Image
-
-To use **multiple reference images**, you would need to switch to the **POST chat completions endpoint** with models like `nanobanana` (Gemini 2.5 Flash Image):
-
-```json
-POST /v1/chat/completions
-{
-  "model": "nanobanana",
-  "messages": [{
-    "role": "user", 
-    "content": [
-      { "type": "text", "text": "Combine these two people in a photo together" },
-      { "type": "image_url", "image_url": { "url": "https://example.com/person1.jpg" }},
-      { "type": "image_url", "image_url": { "url": "https://example.com/person2.jpg" }}
-    ]
-  }],
-  "modalities": ["image", "text"]
-}
-```
-
-This is a fundamentally different architecture and would only work with specific models (nanobanana, nanobanana-pro, gptimage, gptimage-large).
-
-### Recommendation
-
-Multi-image support requires a significant refactor:
-- New edge function using POST endpoint instead of GET
-- Only works with ~4 models (not all 5 currently used)
-- Different response format (base64 images in JSON)
-
-**This is possible but would be a separate, larger feature.**
+1. **`seedream-pro` is a paid model** - Costs 0.04 pollen per image, needs to be removed
+2. **"No prompt provided" errors** - Appears in logs but seems to be from stray requests, not affecting main flow
+3. **Prompt enhancer is too simple** - Needs full context-aware instructions restored
 
 ---
 
-## 2. Full-Screen Image Preview (Lightbox)
+## Changes Required
 
-### Current Behavior
-- Generated images show in a grid
-- On hover, shows download/copy/regenerate buttons
-- No way to view the image larger
+### 1. File: `src/pages/ImageGen.tsx` - Update Models List
 
-### Proposed Behavior
-- **Click on any generated image** to open it in a full-screen modal
-- Modal shows:
-  - Large image preview (full screen)
-  - Model name badge
-  - Action buttons (Download, Copy, Regenerate, Close)
-  - Prompt text at the bottom
-- Click outside or X button to close
-
----
-
-## Technical Implementation
-
-### Changes to `src/pages/ImageGen.tsx`
-
-#### 1. Add State for Selected Image
-
+**Current (line 17-23):**
 ```typescript
-const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
+const MODELS = [
+  { id: 'seedream-pro', name: 'Seedream 4.5 Pro', description: 'Premium quality' },  // ❌ PAID
+  { id: 'klein-large', name: 'FLUX.2 Klein 9B', description: 'High detail' },
+  { id: 'gptimage-large', name: 'GPT Image 1.5', description: 'Transparency support' },
+  { id: 'seedream', name: 'Seedream 4.0', description: 'Good balance' },
+  { id: 'klein', name: 'FLUX.2 Klein 4B', description: 'Faster generation' },
+];
 ```
 
-#### 2. Add Image Lightbox Modal
-
-Using Dialog component for full-screen overlay:
-
+**Replace with (4 free/cheap models):**
 ```typescript
-<Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-  <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-green-500/30">
-    <div className="relative flex flex-col items-center justify-center h-full p-4">
-      {/* Close button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setSelectedImage(null)}
-        className="absolute top-4 right-4 z-50 text-white hover:bg-white/10"
-      >
-        <X className="w-6 h-6" />
-      </Button>
-      
-      {/* Image */}
-      <img 
-        src={selectedImage?.imageUrl || ''} 
-        alt="Preview"
-        className="max-w-full max-h-[80vh] object-contain rounded-lg"
-      />
-      
-      {/* Model badge */}
-      <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/40">
-        <span className="text-sm text-green-300">{selectedImage?.modelName}</span>
-      </div>
-      
-      {/* Actions */}
-      <div className="flex gap-3 mt-6">
-        <Button onClick={() => downloadImage(selectedImage?.imageUrl, 0)}>
-          <Download className="w-4 h-4 mr-2" /> Download
-        </Button>
-        <Button variant="outline" onClick={() => copyImage(selectedImage?.imageUrl, 0)}>
-          <Copy className="w-4 h-4 mr-2" /> Copy
-        </Button>
-        <Button variant="outline" onClick={() => {
-          const idx = generatedImages.findIndex(i => i.id === selectedImage?.id);
-          if (idx >= 0) regenerateSingle(idx);
-          setSelectedImage(null);
-        }}>
-          <RefreshCw className="w-4 h-4 mr-2" /> Regenerate
-        </Button>
-      </div>
-      
-      {/* Prompt */}
-      <p className="text-sm text-gray-400 mt-4 text-center max-w-2xl">
-        "{prompt}"
-      </p>
-    </div>
-  </DialogContent>
-</Dialog>
+const MODELS = [
+  { id: 'flux', name: 'Flux Schnell', description: 'Fast & high quality' },
+  { id: 'klein-large', name: 'FLUX.2 Klein 9B', description: 'High detail editing' },
+  { id: 'gptimage-large', name: 'GPT Image 1.5', description: 'OpenAI quality' },
+  { id: 'seedream', name: 'Seedream 4.0', description: 'Good balance' },
+];
 ```
 
-#### 3. Make Image Cards Clickable
+**Why these models:**
+| Model | Price | Features |
+|-------|-------|----------|
+| `flux` | 0.0002 pollen | Fast, high-quality, text-only |
+| `klein-large` | 0.012 pollen | Supports image editing, 9B params |
+| `gptimage-large` | 0.000032 pollen | OpenAI's advanced, supports editing |
+| `seedream` | 0.03 pollen | ByteDance, good quality |
 
-Update the image in the grid to open the modal:
+---
 
+### 2. File: `src/pages/ImageGen.tsx` - Restore Full Prompt Enhancer
+
+**Current (lines 141-159):** Simplified one-line instructions
+
+**Replace with full context-aware version:**
 ```typescript
-<img 
-  src={img.imageUrl} 
-  alt={`Generated ${index + 1}`}
-  className="w-full h-full object-cover cursor-pointer"
-  onClick={() => setSelectedImage(img)}
-/>
+const enhancePrompt = async () => {
+  if (prompt.length < 3) return;
+  setEnhancing(true);
+  try {
+    const hasReferenceImage = !!uploadedImage;
+    
+    const systemPrompt = hasReferenceImage
+      ? `You are an expert prompt writer for image-to-image AI models (Seedream, FLUX, GPT Image).
+
+CRITICAL: The user has uploaded a REFERENCE IMAGE. Any pronouns like "him", "her", "them", "the person", "this", "it" refer to the SUBJECT IN THE REFERENCE IMAGE.
+
+Rules for image-to-image prompts:
+1. PRESERVE references to the original image - use phrases like "the subject from the reference image", "the person in the photo", "maintain the original subject"
+2. Start with the subject and what transformation/action should happen
+3. Add environment, background, lighting, mood
+4. Include style details: photorealistic, cinematic lighting, color palette, lens info (85mm, shallow depth of field)
+5. Be specific with colors, textures, lighting (e.g., warm golden hour, soft bokeh)
+6. Use complete natural sentences, not keyword lists
+7. Keep prompts 30-100 words
+8. Optional: add what to avoid (no blurry details, no extra limbs)
+
+Example transformations:
+- "make him meet ronaldo" → "The subject from the reference image meets Cristiano Ronaldo on a professional football field, both smiling, stadium lights in background, photorealistic, cinematic lighting, 85mm lens"
+- "put her in paris" → "The person from the reference photo stands in front of the Eiffel Tower in Paris, daytime, soft natural lighting, travel photography style, vibrant colors"
+- "make it cyberpunk" → "Transform the reference image into cyberpunk style with neon lights, rain-slicked streets, holographic advertisements, moody purple and cyan lighting"
+
+RESPOND WITH ONLY THE ENHANCED PROMPT. No explanations.`
+      : `You are an expert prompt writer for text-to-image AI models.
+
+Rules for image generation prompts:
+1. Start with the main subject and describe it clearly
+2. Add action or pose if relevant
+3. Define the environment, background, lighting, mood
+4. Include style: photorealistic, cinematic, artistic, etc.
+5. Add technical details: lens info, depth of field, color palette
+6. Be specific with colors, textures, lighting
+7. Use complete natural sentences, not keyword lists
+8. Keep prompts 30-100 words
+
+RESPOND WITH ONLY THE ENHANCED PROMPT. No explanations.`;
+
+    const enhanced = await sendNormal(
+      `${systemPrompt}
+
+Original prompt: "${prompt}"
+
+Enhanced prompt:`
+    );
+    
+    let cleaned = enhanced
+      .replace(/\*\*/g, '')
+      .replace(/^["']|["']$/g, '')
+      .replace(/^.*?(?:Enhanced prompt|prompt|version|here|output):\s*/im, '')
+      .replace(/\{image:[^}]+\}/g, '')
+      .trim();
+    
+    setPrompt(cleaned);
+    toast({ 
+      title: 'Prompt Enhanced!', 
+      description: hasReferenceImage 
+        ? 'Optimized for image-to-image editing' 
+        : 'Your prompt has been improved' 
+    });
+  } catch {
+    toast({ title: 'Error', description: 'Failed to enhance prompt', variant: 'destructive' });
+  } finally {
+    setEnhancing(false);
+  }
+};
 ```
 
 ---
 
-## Summary
+### 3. Update Header Text
 
-| Feature | Status | Effort |
-|---------|--------|--------|
-| Multiple reference images | **Not supported** by GET endpoint; requires POST endpoint refactor | Large (future) |
-| Full-screen image preview | **Ready to implement** | Small |
+Since we're now showing 4 models instead of 5, update the header:
 
----
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/ImageGen.tsx` | Add Dialog component, selectedImage state, click handlers |
+**Line 353:**
+```typescript
+<p className="text-xs text-muted-foreground">4 Models</p>
+```
 
 ---
 
-## UI Flow After Implementation
+## Summary of Changes
 
-1. User generates 5 images
-2. User sees grid of thumbnails with model names
-3. **User clicks on any image** → Full-screen modal opens
-4. Modal shows:
-   - Large image
-   - Model name (top left badge)
-   - Action buttons (Download, Copy, Regenerate)
-   - Prompt text
-5. Click X or outside to close
+| File | Lines | Change |
+|------|-------|--------|
+| `src/pages/ImageGen.tsx` | 17-23 | Remove `seedream-pro`, reduce to 4 models, add `flux` |
+| `src/pages/ImageGen.tsx` | 141-159 | Restore full prompt enhancer with image-to-image awareness |
+| `src/pages/ImageGen.tsx` | 353 | Update "5 Models" → "4 Models" |
+
+---
+
+## Model Comparison
+
+| Removed | Added | Reason |
+|---------|-------|--------|
+| `seedream-pro` (0.04 pollen) | `flux` (0.0002 pollen) | 200x cheaper, fast, high quality |
+| `klein` (kept for variety) | - | Klein 4B removed to keep 4 models |
+
+---
+
+## Result
+
+- **No paid models** - All 4 models are free/very cheap
+- **Better image-to-image prompts** - Full context-aware instructions for reference images
+- **Pronoun preservation** - "make him meet ronaldo" properly keeps reference to uploaded subject
 
