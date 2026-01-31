@@ -1,83 +1,151 @@
 
 
-# Fix: Better Error Messages for GPT Image Failures
+# Improve Image-to-Image Prompt Enhancer
 
-## What Happened
+## Problem
 
-The GPT Image 1.5 model (`gptimage-large`) failed with a **content moderation block**:
+When a user uploads a reference image and types "make him meet ronaldo", the current prompt enhancer doesn't understand:
+- **"him"** refers to the subject in the uploaded reference image
+- This is an **image-to-image editing** task, not text-to-image generation
+- The prompt should preserve references to the original image
+
+### Current Behavior
 ```
-"message": "Your request was rejected by the safety system"
-"code": "moderation_blocked"
+User uploads: Photo of a person
+User types: "make him meet ronaldo"
+Enhanced: "A stunning photorealistic portrait of a man meeting..." ❌
 ```
+The AI treats "him" as if it needs to be described, losing the connection to the reference image.
 
-This is NOT a bug - it's OpenAI's safety filter rejecting the prompt. However, the user sees a generic "Generation failed" error instead of understanding why.
+### Expected Behavior
+```
+User uploads: Photo of a person  
+User types: "make him meet ronaldo"
+Enhanced: "The subject from the reference image meets Cristiano Ronaldo on a football field, cinematic lighting, photorealistic, 85mm lens, shallow depth of field" ✅
+```
 
 ---
 
 ## Solution
 
-Parse the Pollinations API error response and extract meaningful messages for users.
+Update the `enhancePrompt` function to:
+1. Detect if a reference image is uploaded
+2. Use specialized image-to-image prompt engineering instructions
+3. Preserve pronouns like "him", "her", "this", "the person" as references to the original image
 
 ---
 
 ## Changes Required
 
-### 1. Update Edge Function: `supabase/functions/image-gen-multi/index.ts`
+### File: `src/pages/ImageGen.tsx`
 
-**Current behavior:**
-```typescript
-throw new Error(`Image generation failed: ${response.status}`);
-```
+**Update the `enhancePrompt` function:**
 
-**New behavior:**
 ```typescript
-// Parse error response for detailed message
-try {
-  const errorData = JSON.parse(errorText);
-  const innerError = errorData.error?.message;
-  
-  // Try to extract the actual error reason
-  if (innerError && innerError.includes('moderation_blocked')) {
-    throw new Error('Content blocked by safety filter');
-  } else if (innerError && innerError.includes('rate_limit')) {
-    throw new Error('Rate limit exceeded, try again');
-  } else {
-    throw new Error(innerError || `Generation failed: ${response.status}`);
+const enhancePrompt = async () => {
+  if (prompt.length < 3) {
+    toast({ title: 'Error', description: 'Prompt must be at least 3 characters', variant: 'destructive' });
+    return;
   }
-} catch (parseErr) {
-  throw new Error(`Generation failed: ${response.status}`);
-}
-```
 
-### 2. Update Frontend: `src/pages/ImageGen.tsx`
+  setEnhancing(true);
+  try {
+    // Use different instructions based on whether there's a reference image
+    const hasReferenceImage = !!uploadedImage;
+    
+    const systemPrompt = hasReferenceImage
+      ? `You are an expert prompt writer for image-to-image AI models (Seedream, FLUX, GPT Image).
 
-Show a more descriptive error on the image card when blocked:
+CRITICAL: The user has uploaded a REFERENCE IMAGE. Any pronouns like "him", "her", "them", "the person", "this", "it" refer to the SUBJECT IN THE REFERENCE IMAGE.
 
-**Current:**
-```typescript
-<p className="text-red-400 text-xs text-center">{img.error}</p>
-```
+Rules for image-to-image prompts:
+1. PRESERVE references to the original image - use phrases like "the subject from the reference image", "the person in the photo", "maintain the original subject"
+2. Start with the subject and what transformation/action should happen
+3. Add environment, background, lighting, mood
+4. Include style details: photorealistic, cinematic lighting, color palette, lens info (85mm, shallow depth of field)
+5. Be specific with colors, textures, lighting (e.g., warm golden hour, soft bokeh)
+6. Use complete natural sentences, not keyword lists
+7. Keep prompts 30-100 words
+8. Optional: add what to avoid (no blurry details, no extra limbs)
 
-**Enhanced:**
-```typescript
-// Show appropriate icon for different error types
-{img.error?.includes('safety') || img.error?.includes('blocked') ? (
-  <p className="text-yellow-400 text-xs text-center">⚠️ {img.error}</p>
-) : (
-  <p className="text-red-400 text-xs text-center">❌ {img.error}</p>
-)}
+Example transformations:
+- "make him meet ronaldo" → "The subject from the reference image meets Cristiano Ronaldo on a professional football field, both smiling, stadium lights in background, photorealistic, cinematic lighting, 85mm lens"
+- "put her in paris" → "The person from the reference photo stands in front of the Eiffel Tower in Paris, daytime, soft natural lighting, travel photography style, vibrant colors"
+- "make it cyberpunk" → "Transform the reference image into cyberpunk style with neon lights, rain-slicked streets, holographic advertisements, moody purple and cyan lighting"
+
+RESPOND WITH ONLY THE ENHANCED PROMPT. No explanations.`
+      : `You are an expert prompt writer for text-to-image AI models.
+
+Rules for image generation prompts:
+1. Start with the main subject and describe it clearly
+2. Add action or pose if relevant
+3. Define the environment, background, lighting, mood
+4. Include style: photorealistic, cinematic, artistic, etc.
+5. Add technical details: lens info, depth of field, color palette
+6. Be specific with colors, textures, lighting
+7. Use complete natural sentences, not keyword lists
+8. Keep prompts 30-100 words
+
+RESPOND WITH ONLY THE ENHANCED PROMPT. No explanations.`;
+
+    const enhanced = await sendNormal(
+      `${systemPrompt}
+
+Original prompt: "${prompt}"
+
+Enhanced prompt:`
+    );
+    
+    let cleaned = enhanced
+      .replace(/\*\*/g, '')
+      .replace(/^["']|["']$/g, '')
+      .replace(/^.*?(?:Enhanced prompt|prompt|version|here|output):\s*/im, '')
+      .replace(/\{image:[^}]+\}/g, '')
+      .trim();
+    
+    setPrompt(cleaned);
+    toast({ 
+      title: 'Prompt Enhanced!', 
+      description: hasReferenceImage 
+        ? 'Optimized for image-to-image editing' 
+        : 'Your prompt has been improved' 
+    });
+  } catch {
+    toast({ title: 'Error', description: 'Failed to enhance prompt', variant: 'destructive' });
+  } finally {
+    setEnhancing(false);
+  }
+};
 ```
 
 ---
 
-## Error Types to Handle
+## Key Improvements
 
-| Error | User Message | Icon |
-|-------|--------------|------|
-| moderation_blocked | "Content blocked by safety filter" | ⚠️ Yellow |
-| rate_limit | "Rate limit exceeded, try again" | 🔄 |
-| timeout | "Generation timed out" | ⏱️ |
-| Other | Generic error message | ❌ Red |
+| Before | After |
+|--------|-------|
+| Generic prompt enhancement | Context-aware: knows if reference image exists |
+| Doesn't understand pronouns | Preserves "him", "her", "the person" as references to uploaded image |
+| Overwrites the subject | Keeps connection to reference image subject |
+| No image-to-image awareness | Specialized instructions for image editing |
+
+---
+
+## Example Transformations
+
+### With Reference Image Uploaded:
+
+| User Input | Enhanced Output |
+|------------|-----------------|
+| "make him meet ronaldo" | "The subject from the reference image meets Cristiano Ronaldo on a professional football field, both posing together, stadium atmosphere, photorealistic, cinematic lighting, 85mm lens, shallow depth of field" |
+| "put her in japan" | "The person from the reference photo stands in a traditional Japanese street in Kyoto, cherry blossoms falling, soft natural daylight, travel photography style" |
+| "make it dark and moody" | "Transform the reference image with dramatic dark and moody atmosphere, high contrast shadows, desaturated colors with deep blacks, cinematic noir lighting" |
+
+### Without Reference Image (text-to-image):
+
+| User Input | Enhanced Output |
+|------------|-----------------|
+| "a cat" | "A fluffy orange tabby cat sitting on a sunlit windowsill, soft natural lighting, shallow depth of field, photorealistic, warm cozy atmosphere" |
 
 ---
 
@@ -85,24 +153,5 @@ Show a more descriptive error on the image card when blocked:
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/image-gen-multi/index.ts` | Parse error response, extract meaningful error messages |
-| `src/pages/ImageGen.tsx` | Show color-coded error messages on cards |
-
----
-
-## Behavior After Fix
-
-1. User enters prompt + reference image
-2. 5 models generate simultaneously
-3. GPT Image 1.5 gets blocked by safety filter
-4. Instead of "Generation failed: 400", user sees:
-   - **"Content blocked by safety filter"** in yellow
-5. Other 4 models complete successfully
-6. User understands why GPT Image failed (and can try a different prompt)
-
----
-
-## Note
-
-This is NOT a code bug - OpenAI/GPT models have stricter content moderation than other models like Seedream or FLUX. Some prompts will work on 4 models but fail on GPT Image 1.5 due to safety policies.
+| `src/pages/ImageGen.tsx` | Update `enhancePrompt` function with context-aware image-to-image instructions |
 
