@@ -15,11 +15,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const MODELS = [
-  { id: 'seedream-pro', name: 'Seedream 4.5 Pro', description: 'Premium quality' },
-  { id: 'klein-large', name: 'FLUX.2 Klein 9B', description: 'High detail' },
-  { id: 'gptimage-large', name: 'GPT Image 1.5', description: 'Transparency support' },
+  { id: 'flux', name: 'Flux Schnell', description: 'Fast & high quality' },
+  { id: 'klein-large', name: 'FLUX.2 Klein 9B', description: 'High detail editing' },
+  { id: 'gptimage-large', name: 'GPT Image 1.5', description: 'OpenAI quality' },
   { id: 'seedream', name: 'Seedream 4.0', description: 'Good balance' },
-  { id: 'klein', name: 'FLUX.2 Klein 4B', description: 'Faster generation' },
 ];
 
 interface GeneratedImage {
@@ -143,14 +142,64 @@ const ImageGen = () => {
     setEnhancing(true);
     try {
       const hasReferenceImage = !!uploadedImage;
+      
       const systemPrompt = hasReferenceImage
-        ? `Enhance this image-to-image prompt. Treat pronouns (him/her/it) as references to the subject in the reference image. Keep 30-100 words. Return ONLY the enhanced prompt:`
-        : `Enhance this text-to-image prompt for AI art. Add style, lighting, details. Keep 30-100 words. Return ONLY the enhanced prompt:`;
+        ? `You are an expert prompt writer for image-to-image AI models (Seedream, FLUX, GPT Image).
 
-      const enhanced = await sendNormal(`${systemPrompt} "${prompt}"`);
-      let cleaned = enhanced.replace(/\*\*/g, '').replace(/^["']|["']$/g, '').replace(/^.*?(?:Enhanced prompt|prompt|version|here|output):\s*/im, '').replace(/\{image:[^}]+\}/g, '').trim();
+CRITICAL: The user has uploaded a REFERENCE IMAGE. Any pronouns like "him", "her", "them", "the person", "this", "it" refer to the SUBJECT IN THE REFERENCE IMAGE.
+
+Rules for image-to-image prompts:
+1. PRESERVE references to the original image - use phrases like "the subject from the reference image", "the person in the photo", "maintain the original subject"
+2. Start with the subject and what transformation/action should happen
+3. Add environment, background, lighting, mood
+4. Include style details: photorealistic, cinematic lighting, color palette, lens info (85mm, shallow depth of field)
+5. Be specific with colors, textures, lighting (e.g., warm golden hour, soft bokeh)
+6. Use complete natural sentences, not keyword lists
+7. Keep prompts 30-100 words
+8. Optional: add what to avoid (no blurry details, no extra limbs)
+
+Example transformations:
+- "make him meet ronaldo" → "The subject from the reference image meets Cristiano Ronaldo on a professional football field, both smiling, stadium lights in background, photorealistic, cinematic lighting, 85mm lens"
+- "put her in paris" → "The person from the reference photo stands in front of the Eiffel Tower in Paris, daytime, soft natural lighting, travel photography style, vibrant colors"
+- "make it cyberpunk" → "Transform the reference image into cyberpunk style with neon lights, rain-slicked streets, holographic advertisements, moody purple and cyan lighting"
+
+RESPOND WITH ONLY THE ENHANCED PROMPT. No explanations.`
+        : `You are an expert prompt writer for text-to-image AI models.
+
+Rules for image generation prompts:
+1. Start with the main subject and describe it clearly
+2. Add action or pose if relevant
+3. Define the environment, background, lighting, mood
+4. Include style: photorealistic, cinematic, artistic, etc.
+5. Add technical details: lens info, depth of field, color palette
+6. Be specific with colors, textures, lighting
+7. Use complete natural sentences, not keyword lists
+8. Keep prompts 30-100 words
+
+RESPOND WITH ONLY THE ENHANCED PROMPT. No explanations.`;
+
+      const enhanced = await sendNormal(
+        `${systemPrompt}
+
+Original prompt: "${prompt}"
+
+Enhanced prompt:`
+      );
+      
+      let cleaned = enhanced
+        .replace(/\*\*/g, '')
+        .replace(/^["']|["']$/g, '')
+        .replace(/^.*?(?:Enhanced prompt|prompt|version|here|output):\s*/im, '')
+        .replace(/\{image:[^}]+\}/g, '')
+        .trim();
+      
       setPrompt(cleaned);
-      toast({ title: 'Prompt Enhanced!' });
+      toast({ 
+        title: 'Prompt Enhanced!', 
+        description: hasReferenceImage 
+          ? 'Optimized for image-to-image editing' 
+          : 'Your prompt has been improved' 
+      });
     } catch {
       toast({ title: 'Error', description: 'Failed to enhance prompt', variant: 'destructive' });
     } finally {
@@ -350,7 +399,7 @@ const ImageGen = () => {
             </div>
             <div className="text-center">
               <span className="font-semibold">AI Image</span>
-              <p className="text-xs text-muted-foreground">5 Models</p>
+              <p className="text-xs text-muted-foreground">4 Models</p>
             </div>
           </div>
           <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
