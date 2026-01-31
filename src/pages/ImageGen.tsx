@@ -565,7 +565,13 @@ Output ONLY the enhanced prompt:`
                       ) : img.error ? (
                         <div className="absolute inset-0 flex items-center justify-center bg-red-500/5 p-4">
                           <div className="text-center space-y-2">
-                            <p className="text-xs text-red-400">{img.error}</p>
+                            {img.error?.includes('safety') || img.error?.includes('blocked') ? (
+                              <p className="text-xs text-yellow-400">⚠️ {img.error}</p>
+                            ) : img.error?.includes('Rate limit') ? (
+                              <p className="text-xs text-orange-400">🔄 {img.error}</p>
+                            ) : (
+                              <p className="text-xs text-red-400">❌ {img.error}</p>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"

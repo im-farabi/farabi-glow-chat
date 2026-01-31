@@ -52,7 +52,25 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[ImageGenMulti] Pollinations error: ${response.status} - ${errorText}`);
-      throw new Error(`Image generation failed: ${response.status}`);
+      
+      // Parse error response for detailed message
+      try {
+        const errorData = JSON.parse(errorText);
+        const innerError = errorData.error?.message || errorData.message;
+        
+        if (innerError && (innerError.includes('moderation_blocked') || innerError.includes('safety system'))) {
+          throw new Error('Content blocked by safety filter');
+        } else if (innerError && innerError.includes('rate_limit')) {
+          throw new Error('Rate limit exceeded, try again');
+        } else if (innerError) {
+          throw new Error(innerError);
+        }
+      } catch (parseErr) {
+        if (parseErr instanceof Error && parseErr.message !== 'Unexpected token') {
+          throw parseErr;
+        }
+      }
+      throw new Error(`Generation failed: ${response.status}`);
     }
 
     // Get the image as blob and convert to base64
