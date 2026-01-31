@@ -31,11 +31,11 @@ interface GeneratedImage {
   error: string | null;
   seed: number;
   modelName: string;
+  modelId: string;
 }
 
 const ImageGen = () => {
   const [prompt, setPrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState('seedream-pro');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -180,27 +180,25 @@ Output ONLY the enhanced prompt:`
 
     setIsGenerating(true);
     
-    // Get model info for display
-    const modelInfo = MODELS.find(m => m.id === selectedModel);
-    
-    // Initialize 5 image slots with loading state
-    const initialImages: GeneratedImage[] = Array.from({ length: 5 }, (_, i) => ({
+    // Initialize 5 image slots - each with a DIFFERENT model
+    const initialImages: GeneratedImage[] = MODELS.map((model, i) => ({
       id: i,
       imageUrl: null,
       loading: true,
       error: null,
       seed: Math.floor(Date.now() % 1000000) + i * 1000,
-      modelName: modelInfo?.name || selectedModel
+      modelName: model.name,
+      modelId: model.id
     }));
     setGeneratedImages(initialImages);
 
-    // Generate 5 images in parallel
+    // Generate 5 images in parallel - each using its own model
     const promises = initialImages.map(async (img) => {
       try {
         const { data, error } = await supabase.functions.invoke('image-gen-multi', {
           body: {
             prompt,
-            model: selectedModel,
+            model: (img as GeneratedImage & { modelId: string }).modelId,
             seed: img.seed,
             imageUrl: uploadedImageUrl || undefined,
             width: 1024,
@@ -239,7 +237,7 @@ Output ONLY the enhanced prompt:`
         saveImageToHistory({
           prompt,
           imageUrl: firstSuccess.imageUrl,
-          sizePreset: selectedModel
+          sizePreset: 'multi-model'
         });
         setHistory(getImageHistory());
       }
@@ -253,6 +251,9 @@ Output ONLY the enhanced prompt:`
   };
 
   const regenerateSingle = async (index: number) => {
+    const currentImage = generatedImages[index];
+    if (!currentImage) return;
+
     setGeneratedImages(prev => prev.map((p, i) => 
       i === index ? { ...p, loading: true, error: null } : p
     ));
@@ -260,10 +261,11 @@ Output ONLY the enhanced prompt:`
     try {
       const newSeed = Math.floor(Date.now() % 1000000) + Math.floor(Math.random() * 10000);
       
+      // Use the same model that was used for this slot
       const { data, error } = await supabase.functions.invoke('image-gen-multi', {
         body: {
           prompt,
-          model: selectedModel,
+          model: currentImage.modelId,
           seed: newSeed,
           imageUrl: uploadedImageUrl || undefined,
           width: 1024,
@@ -349,7 +351,7 @@ Output ONLY the enhanced prompt:`
                   AI Image Generator
                 </h1>
                 <p className="text-xl text-gray-200 font-medium">
-                  Generate 5 stunning AI images simultaneously
+                  Compare 5 AI models side-by-side with one prompt
                 </p>
               </div>
             </div>
@@ -425,24 +427,16 @@ Output ONLY the enhanced prompt:`
 
           {/* Main input card */}
           <Card className="bg-gradient-to-br from-card/60 to-card/40 backdrop-blur-2xl border-2 border-green-500/40 shadow-[0_8px_32px_rgba(34,197,94,0.25),0_0_60px_rgba(16,185,129,0.15)] hover:shadow-[0_12px_48px_rgba(34,197,94,0.35),0_0_80px_rgba(16,185,129,0.25)] hover:border-green-500/60 transition-all duration-500 p-8 space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            {/* Model selector */}
+            {/* Models info */}
             <div className="space-y-3">
-              <Label className="text-sm font-semibold text-foreground">AI Model</Label>
-              <Select value={selectedModel} onValueChange={setSelectedModel}>
-                <SelectTrigger className="bg-background/50 border-green-500/30 focus:border-green-500/50 focus:ring-2 focus:ring-green-500/20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-black/95 border-green-500/30">
-                  {MODELS.map(model => (
-                    <SelectItem key={model.id} value={model.id} className="focus:bg-green-500/20">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{model.name}</span>
-                        <span className="text-xs text-muted-foreground">• {model.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-sm font-semibold text-foreground">AI Models (generates with all 5)</Label>
+              <div className="flex flex-wrap gap-2">
+                {MODELS.map(model => (
+                  <div key={model.id} className="px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 text-xs text-green-300">
+                    {model.name}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Image upload zone */}
