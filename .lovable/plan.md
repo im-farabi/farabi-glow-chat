@@ -1,117 +1,163 @@
 
-# Fix WebGen: API Returning Empty Responses
 
-## Problem Diagnosis
+# Fix Multi-Model Beta: Stream Requirement for Large Tokens
 
-**Root Cause**: The `apifree.ai` API is returning empty or invalid responses across ALL 3 API keys.
+## Problem
 
-**Evidence**:
-- Edge function logs show "Success" (200 status)
-- But actual response body is empty → stream sends `[DONE]` immediately
-- Non-streaming test shows: `"Response is not valid HTML"` 
-- All 3 models (gemini, haiku, kimi) fail the same way
-- All 3 API keys fail
+The Pollinations API has a constraint:
+- **`max_tokens > 4096` requires `stream: true`**
 
-**Conclusion**: The apifree.ai service is either:
-1. Out of quota on all keys
-2. Rate limiting requests
-3. Returning error messages instead of HTML (which the code ignores)
+The multi-model feature uses `generateNonStreaming` with `stream: false` and `max_tokens: 16384`, which causes a 400 error.
+
+## Solution
+
+For multi-model mode, we need to either:
+1. Use streaming and collect the full response, OR
+2. Reduce `max_tokens` to 4096 for non-streaming
+
+**Best approach**: Use streaming but collect the full response into a string (not pipe to client). This allows us to keep the 16384 token limit for complete website generation.
 
 ---
 
-## Solution: Add Debug Logging + Fallback to Pollinations
-
-### Part 1: Add Better Logging to See Actual API Response
-
-Currently the code doesn't log what the API actually returns. Add logging to see if it's an error message.
+## File Changes
 
 **File: `supabase/functions/web-gen/index.ts`**
 
-Add logging before returning the stream:
+### Change 1: Rewrite `generateNonStreaming` to use streaming internally
+
+Replace the non-streaming fetch with a streaming fetch that collects all chunks:
+
 ```typescript
-// Before piping through transform stream, read a preview
-const [stream1, stream2] = upstreamStream.tee();
-const previewReader = stream2.getReader();
-const { value } = await previewReader.read();
-if (value) {
-  const preview = new TextDecoder().decode(value).slice(0, 500);
-  console.log(`[web-gen] Response preview: ${preview}`);
-}
-```
-
-For non-streaming, log the actual response:
-```typescript
-const data = await response.json();
-console.log(`[web-gen] Full response:`, JSON.stringify(data).slice(0, 1000));
-```
-
-### Part 2: Use Pollinations as Fallback
-
-The project already has `POLLINATIONS_API_KEY` configured. Add Pollinations as a fallback when apifree.ai fails.
-
-**Add to MODELS config**:
-```typescript
-const MODELS = {
-  // ... existing models
-  pollinations: {
-    name: 'openai-large',
-    label: 'Pollinations GPT',
-    apiUrl: 'https://text.pollinations.ai/openai'
+async function generateWithStreaming(
+  apiKey: string,
+  prompt: string,
+  modelConfig: { name: string; label: string },
+  systemPrompt: string,
+  timeoutMs: number = 120000  // Increase timeout for full generation
+): Promise<{ code: string; model: string; time: number }> {
+  const startTime = Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    console.log(`[web-gen] Multi-model: Calling ${modelConfig.name} (streaming)...`);
+    
+    const response = await fetch(POLLINATIONS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: modelConfig.name,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        stream: true,  // Must be true for max_tokens > 4096
+        max_tokens: 16384,
+        temperature: 0.7
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error ${response.status}: ${errorText.slice(0, 200)}`);
+    }
+    
+    // Collect all streamed content
+    let fullContent = '';
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    if (!reader) throw new Error('No response body');
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) fullContent += content;
+          } catch {
+            // Skip malformed JSON
+          }
+        }
+      }
+    }
+    
+    // Clean up code
+    let cleanedCode = fullContent
+      .replace(/```html\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+      
+    if (!cleanedCode.startsWith('<!DOCTYPE')) {
+      const doctypeIndex = cleanedCode.indexOf('<!DOCTYPE');
+      if (doctypeIndex > 0) cleanedCode = cleanedCode.substring(doctypeIndex);
+    }
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`[web-gen] ${modelConfig.label} completed in ${elapsed}ms, ${cleanedCode.length} chars`);
+    
+    return {
+      code: cleanedCode,
+      model: modelConfig.label,
+      time: elapsed
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Timeout after ${timeoutMs}ms`);
+    }
+    throw error;
   }
-};
-```
-
-**Update fallback order**:
-```typescript
-const FALLBACK_ORDER = ['gemini', 'haiku', 'kimi', 'pollinations'];
-```
-
-**Add Pollinations API call logic**:
-```typescript
-if (modelKey === 'pollinations') {
-  const pollinationsKey = Deno.env.get('POLLINATIONS_API_KEY');
-  // Use Pollinations API with OpenAI-compatible format
 }
 ```
 
-### Part 3: Improve Error Handling in Frontend
+### Change 2: Update multi-model mode to use new function
 
-Currently the frontend shows a generic "Generation incomplete" error. Make it more helpful:
+Update line 390 to call `generateWithStreaming` instead of `generateNonStreaming`:
 
 ```typescript
-// In catch block
-if (error.message?.includes('invalid HTML')) {
-  toast({
-    title: "API temporarily unavailable",
-    description: "Please try again in a moment or try a different model",
-    variant: "destructive"
-  });
-}
+const results = await Promise.allSettled(
+  modelKeys.map(key => 
+    generateWithStreaming(pollinationsKey, prompt, MODELS[key], systemPrompt)
+  )
+);
 ```
 
----
+### Change 3: Increase timeout for multi-model
 
-## Files to Change
-
-| File | Changes |
-|------|---------|
-| `supabase/functions/web-gen/index.ts` | 1. Add response preview logging<br>2. Add Pollinations as fallback API<br>3. Better error messages in response |
+Since we're generating 3 complete websites in parallel, increase the timeout from 90s to 120s to give models enough time.
 
 ---
 
-## Alternative Quick Fix
+## Summary of Changes
 
-If you want to test immediately without code changes:
-
-1. Check apifree.ai dashboard for remaining quota
-2. Generate new API keys if quota is exhausted
-3. Test with a simpler prompt to verify API works
+| Location | Change |
+|----------|--------|
+| Lines 291-353 | Rename to `generateWithStreaming`, change `stream: false` to `stream: true`, add chunk collection logic |
+| Line 296 | Increase timeout from 90000 to 120000 ms |
+| Line 390 | Call `generateWithStreaming` instead of `generateNonStreaming` |
 
 ---
 
-## Expected Outcome
+## Expected Result
 
-After these changes:
-- Logs will show exactly what the API returns (error message or empty)
-- If apifree.ai fails, Pollinations will be tried as backup
-- Users get clearer error messages about what went wrong
+After this fix:
+- Multi-model beta will use streaming internally (as required by Pollinations API)
+- All 3 models will generate complete websites without the 400 error
+- Results will be collected and returned as JSON for comparison view
+
