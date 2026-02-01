@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Loader2, 
   Code2, 
@@ -22,7 +25,10 @@ import {
   Wand2,
   Beaker,
   X,
-  Eye
+  Eye,
+  Globe,
+  Maximize2,
+  Link2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
@@ -178,11 +184,37 @@ const WebGen = () => {
   });
   const [isMultiModelStreaming, setIsMultiModelStreaming] = useState(false);
   
-  // Live preview state
+  // Live preview state - using refs for latest code access
   const [showLivePreview, setShowLivePreview] = useState(false);
-  const [livePreviewUrl, setLivePreviewUrl] = useState<string | null>(null);
   const [livePreviewModel, setLivePreviewModel] = useState<ModelType | null>(null);
   const livePreviewIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const livePreviewIframeRef = useRef<HTMLIFrameElement>(null);
+  const generatedCodeRef = useRef('');
+  const multiModelStreamsRef = useRef(multiModelStreams);
+  
+  // Full preview state for comparison modal
+  const [fullPreviewModel, setFullPreviewModel] = useState<string | null>(null);
+  
+  // Publish state
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [publishTitle, setPublishTitle] = useState('');
+  const [publishSlug, setPublishSlug] = useState('');
+  const [slugPrefix, setSlugPrefix] = useState('#');
+  const [publishing, setPublishing] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  
+  // Slug prefix options
+  const SLUG_PREFIXES = [
+    { id: '#', label: '#', example: 'farabi.me/site/ariyan' },
+    { id: '/web/', label: '/web/', example: 'farabi.me/site/web/ariyan' },
+    { id: '/~/', label: '/~/', example: 'farabi.me/site/~/ariyan' },
+    { id: '/app/', label: '/app/', example: 'farabi.me/site/app/ariyan' }
+  ];
+  
+  
+  useEffect(() => {
+    multiModelStreamsRef.current = multiModelStreams;
+  }, [multiModelStreams]);
 
   // Get modes array from selected stack
   const getSelectedModes = () => {
@@ -279,24 +311,29 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
     }
   }, [generatedCode, showCode, loading]);
 
-  // Live preview auto-refresh during streaming
+  // Live preview auto-refresh during streaming using contentDocument.write
   useEffect(() => {
     if (showLivePreview && loading) {
-      const codeToPreview = livePreviewModel 
-        ? multiModelStreams[livePreviewModel]?.code || ''
-        : generatedCode;
-      
-      if (codeToPreview.length > 100) {
-        livePreviewIntervalRef.current = setInterval(() => {
-          const currentCode = livePreviewModel 
-            ? multiModelStreams[livePreviewModel]?.code || ''
-            : generatedCode;
-          
-          if (livePreviewUrl) URL.revokeObjectURL(livePreviewUrl);
-          const blob = new Blob([currentCode], { type: 'text/html' });
-          setLivePreviewUrl(URL.createObjectURL(blob));
-        }, 500);
-      }
+      livePreviewIntervalRef.current = setInterval(() => {
+        // Use refs to get the latest code
+        const currentCode = livePreviewModel 
+          ? multiModelStreamsRef.current[livePreviewModel]?.code || ''
+          : generatedCodeRef.current;
+        
+        // Update iframe content without reloading
+        if (livePreviewIframeRef.current && currentCode.length > 100) {
+          try {
+            const doc = livePreviewIframeRef.current.contentDocument;
+            if (doc) {
+              doc.open();
+              doc.write(currentCode);
+              doc.close();
+            }
+          } catch (e) {
+            console.error('Failed to update live preview:', e);
+          }
+        }
+      }, 500);
     }
     
     return () => {
@@ -307,37 +344,117 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
     };
   }, [showLivePreview, loading, livePreviewModel]);
   
-  // Update preview immediately when code changes (for initial preview)
+  // Update preview immediately when opening
   useEffect(() => {
     if (showLivePreview) {
       const codeToPreview = livePreviewModel 
-        ? multiModelStreams[livePreviewModel]?.code || ''
-        : generatedCode;
+        ? multiModelStreamsRef.current[livePreviewModel]?.code || ''
+        : generatedCodeRef.current;
       
-      if (codeToPreview.length > 100) {
-        if (livePreviewUrl) URL.revokeObjectURL(livePreviewUrl);
-        const blob = new Blob([codeToPreview], { type: 'text/html' });
-        setLivePreviewUrl(URL.createObjectURL(blob));
+      if (codeToPreview.length > 100 && livePreviewIframeRef.current) {
+        try {
+          const doc = livePreviewIframeRef.current.contentDocument;
+          if (doc) {
+            doc.open();
+            doc.write(codeToPreview);
+            doc.close();
+          }
+        } catch (e) {
+          console.error('Failed to set initial preview:', e);
+        }
       }
     }
   }, [showLivePreview, livePreviewModel]);
 
-  // Cleanup live preview URL
+  // Cleanup live preview
   const closeLivePreview = useCallback(() => {
-    if (livePreviewUrl) URL.revokeObjectURL(livePreviewUrl);
     setShowLivePreview(false);
-    setLivePreviewUrl(null);
     setLivePreviewModel(null);
     if (livePreviewIntervalRef.current) {
       clearInterval(livePreviewIntervalRef.current);
       livePreviewIntervalRef.current = null;
     }
-  }, [livePreviewUrl]);
+  }, []);
 
   const openLivePreview = useCallback((modelKey?: ModelType) => {
     setLivePreviewModel(modelKey || null);
     setShowLivePreview(true);
   }, []);
+
+  // Publish website handler
+  const handlePublish = async () => {
+    if (!publishTitle.trim() || !publishSlug.trim() || !generatedCode) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in the title and slug",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setPublishing(true);
+    
+    try {
+      const anonymousId = localStorage.getItem('anonymous_user_id') || 
+        `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Store if new
+      if (!localStorage.getItem('anonymous_user_id')) {
+        localStorage.setItem('anonymous_user_id', anonymousId);
+      }
+      
+      const { data, error } = await supabase.functions.invoke('publish-website', {
+        body: {
+          title: publishTitle.trim(),
+          slug: publishSlug.trim().toLowerCase(),
+          prefix: slugPrefix,
+          html_content: generatedCode,
+          anonymous_id: anonymousId
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.error) {
+        toast({
+          title: "Publishing failed",
+          description: data.error,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setPublishedUrl(data.url);
+      toast({
+        title: "Published!",
+        description: "Your website is now live",
+      });
+    } catch (error) {
+      console.error('Publish error:', error);
+      toast({
+        title: "Publishing failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
+    } finally {
+      setPublishing(false);
+    }
+  };
+  
+  const copyPublishedUrl = async () => {
+    if (publishedUrl) {
+      await navigator.clipboard.writeText(publishedUrl);
+      toast({ title: "Copied!", description: "URL copied to clipboard" });
+    }
+  };
+  
+  const openPublishDialog = () => {
+    setPublishTitle(userPrompt.slice(0, 50) || 'My Website');
+    setPublishSlug('');
+    setSlugPrefix('#');
+    setPublishedUrl(null);
+    setShowPublishDialog(true);
+  };
 
   const handleSendPrompt = () => {
     if (!inputValue.trim()) return;
@@ -960,27 +1077,37 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                         </span>
                       </div>
                       
-                      {/* Preview */}
+                      {/* Preview - larger 16:9 aspect */}
                       {result.success && result.code ? (
                         <>
-                          <div className="aspect-[4/3] bg-white">
+                          <div className="aspect-video bg-white overflow-hidden relative group">
                             <iframe 
                               src={multiModelBlobUrls[result.model]}
                               className="w-full h-full border-0"
                               title={`Preview ${result.label}`}
                             />
+                            {/* Full Preview button overlay */}
+                            <button
+                              onClick={() => setFullPreviewModel(result.model)}
+                              className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            >
+                              <div className="bg-white/90 text-black px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-sm font-medium">
+                                <Maximize2 className="h-4 w-4" />
+                                Full Preview
+                              </div>
+                            </button>
                           </div>
-                          <div className="p-3">
+                          <div className="p-3 flex gap-2">
                             <Button 
                               onClick={() => selectMultiModelResult(result)}
-                              className="w-full bg-white/10 hover:bg-white/20 border border-white/10"
+                              className="flex-1 bg-white/10 hover:bg-white/20 border border-white/10"
                             >
                               Use This
                             </Button>
                           </div>
                         </>
                       ) : (
-                        <div className="aspect-[4/3] flex items-center justify-center text-destructive">
+                        <div className="aspect-video flex items-center justify-center text-destructive">
                           <div className="text-center p-4">
                             <p className="text-sm">{result.error || 'Generation failed'}</p>
                           </div>
@@ -1016,22 +1143,170 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
           </DialogHeader>
           
           <div className="flex-1 h-full bg-white">
-            {livePreviewUrl ? (
+            <iframe 
+              ref={livePreviewIframeRef}
+              className="w-full h-[calc(85vh-80px)] border-0"
+              title="Live Preview"
+              sandbox="allow-scripts allow-same-origin"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Full Preview Dialog (for multi-model comparison) */}
+      <Dialog open={!!fullPreviewModel} onOpenChange={(open) => !open && setFullPreviewModel(null)}>
+        <DialogContent className="max-w-[95vw] h-[95vh] p-0 overflow-hidden">
+          <DialogHeader className="p-4 border-b border-white/10">
+            <DialogTitle className="flex items-center gap-2">
+              <Maximize2 className="h-5 w-5" />
+              Full Preview — {MODEL_OPTIONS.find(m => m.id === fullPreviewModel)?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 h-full bg-white">
+            {fullPreviewModel && multiModelBlobUrls[fullPreviewModel] && (
               <iframe 
-                src={livePreviewUrl}
-                className="w-full h-[calc(85vh-80px)] border-0"
-                title="Live Preview"
-                key={livePreviewUrl} // Force refresh on URL change
+                src={multiModelBlobUrls[fullPreviewModel]}
+                className="w-full h-[calc(95vh-80px)] border-0"
+                title="Full Preview"
               />
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                  <p>Waiting for code...</p>
-                </div>
-              </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Publish Dialog */}
+      <Dialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Publish Your Website
+            </DialogTitle>
+          </DialogHeader>
+          
+          {!publishedUrl ? (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="publish-title">Title</Label>
+                <Input
+                  id="publish-title"
+                  value={publishTitle}
+                  onChange={(e) => setPublishTitle(e.target.value)}
+                  placeholder="My Awesome Website"
+                  maxLength={100}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>URL Prefix</Label>
+                <div className="flex gap-2">
+                  {SLUG_PREFIXES.map(prefix => (
+                    <Button
+                      key={prefix.id}
+                      type="button"
+                      variant={slugPrefix === prefix.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSlugPrefix(prefix.id)}
+                      className={slugPrefix === prefix.id ? "bg-white text-black" : "border-white/10"}
+                    >
+                      {prefix.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="publish-slug">Slug</Label>
+                <Input
+                  id="publish-slug"
+                  value={publishSlug}
+                  onChange={(e) => setPublishSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  placeholder="my-website"
+                  maxLength={50}
+                />
+                <p className="text-xs text-muted-foreground">
+                  3-50 characters, lowercase letters, numbers, and hyphens only
+                </p>
+              </div>
+              
+              {publishSlug.length >= 3 && (
+                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <p className="text-xs text-muted-foreground mb-1">Preview URL:</p>
+                  <p className="text-sm font-mono text-foreground break-all">
+                    farabi.me/site/{slugPrefix === '#' ? publishSlug : `${slugPrefix.replace(/\//g, '')}/${publishSlug}`}
+                  </p>
+                </div>
+              )}
+              
+              <DialogFooter className="pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPublishDialog(false)}
+                  className="border-white/10"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handlePublish}
+                  disabled={publishing || publishSlug.length < 3 || !publishTitle.trim()}
+                  className="bg-white text-black hover:bg-white/90"
+                >
+                  {publishing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <Globe className="mr-2 h-4 w-4" />
+                      Publish
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2 text-center">
+              <div className="p-4 rounded-full bg-emerald-500/10 w-fit mx-auto">
+                <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Published!</h3>
+                <p className="text-sm text-muted-foreground">Your website is now live</p>
+              </div>
+              
+              <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                <p className="text-sm font-mono text-foreground break-all">{publishedUrl}</p>
+              </div>
+              
+              <div className="flex gap-2 justify-center">
+                <Button
+                  variant="outline"
+                  onClick={copyPublishedUrl}
+                  className="border-white/10"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy URL
+                </Button>
+                <Button
+                  onClick={() => window.open(publishedUrl, '_blank')}
+                  className="bg-white text-black hover:bg-white/90"
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Visit Site
+                </Button>
+              </div>
+              
+              <Button
+                variant="ghost"
+                onClick={() => setShowPublishDialog(false)}
+                className="text-muted-foreground"
+              >
+                Close
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
       
@@ -1417,6 +1692,10 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                         <Button onClick={openInNewTab} className="bg-white text-black hover:bg-white/90">
                           <ExternalLink className="mr-2 h-4 w-4" />
                           View App
+                        </Button>
+                        <Button onClick={openPublishDialog} className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                          <Globe className="mr-2 h-4 w-4" />
+                          Publish
                         </Button>
                         <Button variant="outline" onClick={copyCode} className="border-white/10 hover:bg-white/5">
                           {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
