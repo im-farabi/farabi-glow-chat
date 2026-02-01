@@ -110,15 +110,17 @@ ${baseRules}`;
   }
   
   if (modes.includes('threejs')) {
-    prompt += `THREE.JS (3D Experience Mode):
+    // Simplified 3D prompt for better success rate
+    prompt += `THREE.JS (3D Experience - SIMPLIFIED):
 - Include: <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-- Include: <script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
-- Create Scene, Camera (PerspectiveCamera), and WebGLRenderer
-- Add proper lighting (AmbientLight, DirectionalLight, PointLight)
-- Create geometries with materials (MeshStandardMaterial, MeshPhongMaterial)
-- Implement animation loop with requestAnimationFrame
-- Add OrbitControls for camera interaction
-- Make canvas responsive to window resize
+- Create a simple but visually impressive 3D scene
+- Use PerspectiveCamera and WebGLRenderer
+- Add AmbientLight and one DirectionalLight
+- Create ONE main geometry (TorusKnot, Icosahedron, or Sphere)
+- Use MeshStandardMaterial with metalness and roughness
+- Rotate the geometry in animation loop with requestAnimationFrame
+- Keep JavaScript under 50 lines total
+- NO OrbitControls (keep it simple)
 
 `;
   }
@@ -137,15 +139,16 @@ ${baseRules}`;
 `;
   }
 
-  // Add priority ordering for multi-mode combinations
-  if (modes.length > 1) {
-    prompt += `\nIMPORTANT: When combining technologies, prioritize them in this order:
-1. Game Mode (Kaboom.js) - Core game mechanics must work first
-2. 3D Experience (Three.js) - Use as background/visual enhancement only
-3. Interactive (Alpine.js) - For UI elements outside the main canvas
-4. Animated (GSAP) - For entrance animations and non-conflicting elements
+  // Special handling for Interactive + Animated combo (the only allowed combo)
+  if (modes.includes('interactive') && modes.includes('animated')) {
+    prompt += `\nCRITICAL COMBO RULES (Interactive + Animated):
+- GSAP: Use ONLY for entrance animations on page load and scroll-triggered reveals
+- Alpine.js: Use ONLY for UI state management (mobile menu, dark mode toggle, tabs, accordions)
+- NEVER animate the same element with both libraries
+- Alpine handles: x-show, x-transition for UI toggles
+- GSAP handles: gsap.from() for initial animations, ScrollTrigger for scroll effects
+- This separation prevents DOM conflicts
 
-Ensure the technologies work together harmoniously without conflicts.
 `;
   }
 
