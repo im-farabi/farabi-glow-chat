@@ -1,97 +1,159 @@
 
-# Fix Publish URL Structure
 
-## Current State (Already Working!)
+# Progress Bar for Website Generation
 
-The publishing system is **already implemented and working correctly**:
+## Overview
+Add a progress bar that estimates completion percentage based on expected generation times for each model. If generation takes longer than estimated, it sticks at 99% until complete.
 
-1. **Edge Function** (`publish-website/index.ts`): Saves websites to `user_websites` table with the slug
-2. **Route** (`App.tsx` line 102): `/site/*` catches all published sites  
-3. **Viewer** (`SiteView.tsx`): Fetches by slug and renders full-screen iframe
+## Estimated Generation Times (Based on Token Speeds)
 
-**Published websites are live at**: `farabi.me/site/{slug}`
+| Model | Tokens/sec | Expected Time (avg website) |
+|-------|------------|----------------------------|
+| GPT 5.2 | ~100 | **60 seconds** |
+| Claude | ~60 | **90 seconds** |
+| DeepSeek | ~80 | **75 seconds** |
 
-## What Needs Fixing
+These are conservative estimates for typical 6,000-8,000 token websites. The system will use these as the "100%" target.
 
-### Issue 1: Confusing Prefix Options
-The prefix dropdown (`#`, `/web/`, `/~/`, `/app/`) is misleading because ALL sites go to `/site/*` regardless of prefix choice. The prefix is stored in the slug but doesn't change the actual URL structure.
+## Implementation
 
-### Solution: Simplify to One URL Pattern
+### 1. Add Model Timing Constants
 
-Since all sites go through `/site/*`, we should:
-1. Remove the confusing prefix dropdown
-2. Just show the actual URL pattern: `farabi.me/site/{slug}`
-3. Keep it simple and honest
+```typescript
+// Expected generation times in milliseconds per model (conservative estimates)
+const MODEL_EXPECTED_TIMES: Record<ModelType, number> = {
+  gpt: 60000,      // 60 seconds
+  claude: 90000,   // 90 seconds  
+  deepseek: 75000  // 75 seconds
+};
+```
 
----
+### 2. Add Progress State
+
+New states needed:
+- `progressPercentage: number` - Current progress (0-99)
+- `multiModelProgress: Record<ModelType, number>` - Per-model progress in multi-model mode
+
+### 3. Progress Calculation Effect
+
+A `useEffect` that updates every 500ms during generation:
+
+```typescript
+useEffect(() => {
+  if (!loading) {
+    return;
+  }
+  
+  const interval = setInterval(() => {
+    const elapsed = Date.now() - generationStartTime;
+    
+    if (isMultiModelStreaming) {
+      // Update each model's progress independently
+      const newProgress: Record<string, number> = {};
+      (['gpt', 'claude', 'deepseek'] as const).forEach(model => {
+        const expected = MODEL_EXPECTED_TIMES[model];
+        const progress = Math.min(99, Math.floor((elapsed / expected) * 100));
+        newProgress[model] = multiModelStreams[model].done ? 100 : progress;
+      });
+      setMultiModelProgress(newProgress);
+    } else {
+      // Single model progress
+      const expected = MODEL_EXPECTED_TIMES[selectedModel];
+      const progress = Math.min(99, Math.floor((elapsed / expected) * 100));
+      setProgressPercentage(progress);
+    }
+  }, 500);
+  
+  return () => clearInterval(interval);
+}, [loading, generationStartTime, selectedModel, isMultiModelStreaming, multiModelStreams]);
+```
+
+### 4. UI Updates
+
+#### Single Model (lines ~1516-1567)
+Add progress bar below "Working on it..." spinner:
+
+```tsx
+{loading && (
+  <div className="space-y-2">
+    <div className="flex items-center gap-2 text-muted-foreground">
+      <Loader2 className="h-4 w-4 animate-spin" />
+      <span>Working on it... {progressPercentage}%</span>
+    </div>
+    <Progress value={progressPercentage} className="h-2" />
+    <p className="text-xs text-muted-foreground">
+      {progressPercentage < 99 
+        ? `Estimated ${Math.ceil((MODEL_EXPECTED_TIMES[selectedModel] - (Date.now() - generationStartTime)) / 1000)}s remaining`
+        : "Almost there..."}
+    </p>
+  </div>
+)}
+```
+
+#### Multi-Model (lines ~1570-1644)
+Add progress bar to each model's panel header:
+
+```tsx
+{/* Progress bar under header */}
+<div className="px-2 pb-1">
+  <Progress 
+    value={stream.done ? 100 : (multiModelProgress[modelKey] || 0)} 
+    className="h-1"
+  />
+  <p className="text-[10px] text-muted-foreground mt-1">
+    {stream.done ? "Complete" : `${multiModelProgress[modelKey] || 0}%`}
+  </p>
+</div>
+```
+
+## Visual Design
+
+### Single Model View
+```text
+┌─────────────────────────────────────────────────────────┐
+│ Got it! Creating your website...                        │
+│                                                         │
+│ ⏳ Working on it... 45%                                 │
+│ ███████████████████░░░░░░░░░░░░░░░░░░░░░░ 45%           │
+│ Estimated 33s remaining                                 │
+│                                                         │
+│ 📄 Generating code... ▼                                 │
+│ [code preview...]                                       │
+│                                                         │
+│ [👁️ Live Preview]                                       │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Multi-Model View
+```text
+┌─────────────────┬─────────────────┬─────────────────────┐
+│ 🤖 GPT 5.2      │ 🌸 Claude       │ 🐋 DeepSeek        │
+│ ████████░░ 78%  │ █████░░░░ 52%   │ ███████░░ 68%      │
+│ ───────────────  │ ───────────────  │ ───────────────    │
+│ <!DOCTYPE html> │ <!DOCTYPE html> │ <!DOCTYPE html>    │
+│ ...streaming... │ ...streaming... │ ...streaming...    │
+│ [Live Preview]  │ [Live Preview]  │ [Live Preview]     │
+└─────────────────┴─────────────────┴─────────────────────┘
+```
 
 ## File Changes
 
-### File: `src/pages/WebGen.tsx`
+| File | Changes |
+|------|---------|
+| `src/pages/WebGen.tsx` | 1. Add `MODEL_EXPECTED_TIMES` constant<br>2. Add `progressPercentage` and `multiModelProgress` states<br>3. Add progress calculation `useEffect`<br>4. Add Progress component to single model generating UI<br>5. Add Progress component to each multi-model panel |
 
-**Change 1: Remove SLUG_PREFIXES (lines 207-212)**
+## Edge Cases
 
-Replace the complex prefix system with simple slug-only:
-```typescript
-// Remove SLUG_PREFIXES array entirely
-// Remove slugPrefix state
-```
+1. **Generation exceeds estimate**: Progress sticks at 99% until `done` is true
+2. **Fast generation**: Progress jumps to 100% immediately when complete
+3. **Model error**: Show error state instead of progress
+4. **Reset on new generation**: Progress resets to 0 when starting new generation
 
-**Change 2: Update Publish Dialog UI (around lines 1200-1230)**
+## Technical Notes
 
-Remove the prefix selector, just show:
-```typescript
-<Label>Your Website URL</Label>
-<div className="flex items-center gap-2 bg-white/5 rounded-lg p-3">
-  <span className="text-white/50">farabi.me/site/</span>
-  <Input
-    value={publishSlug}
-    onChange={(e) => setPublishSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-    placeholder="my-awesome-site"
-    className="flex-1 bg-transparent border-none"
-  />
-</div>
-<p className="text-xs text-white/40">3-50 characters, lowercase letters, numbers, and hyphens only</p>
-```
+- Progress updates every 500ms to match live preview interval
+- Uses `Date.now() - generationStartTime` for elapsed time
+- `multiModelStreams[model].done` flag triggers 100% completion
+- Conservative time estimates mean most generations complete before reaching 99%
+- The Progress component from `@radix-ui/react-progress` is already available
 
-**Change 3: Update publish function (around lines 1160-1180)**
-
-Remove prefix from the API call:
-```typescript
-const { data } = await supabase.functions.invoke('publish-website', {
-  body: {
-    title: publishTitle,
-    slug: publishSlug, // Just the slug, no prefix
-    html_content: generatedCode,
-    anonymous_id: anonymousId
-  }
-});
-```
-
-### File: `supabase/functions/publish-website/index.ts`
-
-**Simplify to remove prefix handling:**
-- Remove prefix validation (lines 36-44)
-- Use slug directly without prefix transformation
-- Return `https://farabi.me/site/{slug}`
-
----
-
-## Summary
-
-| Component | Current | After Fix |
-|-----------|---------|-----------|
-| URL Format | `farabi.me/site/{prefix}/{slug}` | `farabi.me/site/{slug}` |
-| Prefix Dropdown | 4 options (confusing) | Removed (simple) |
-| Example URL | `farabi.me/site/web/ariyan` | `farabi.me/site/ariyan` |
-
----
-
-## Result
-
-After publishing, user gets a clean, working URL like:
-- `https://farabi.me/site/ariyan`
-- `https://farabi.me/site/my-portfolio`
-- `https://farabi.me/site/cool-landing-page`
-
-All websites are immediately live and accessible!
