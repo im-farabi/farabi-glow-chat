@@ -12,20 +12,26 @@ import {
   Download,
   ExternalLink,
   Zap,
-  Brain,
   Send,
   ChevronDown,
   CheckCircle2,
   Gamepad2,
   Palette,
   FileCode,
-  Wand2
+  Wand2,
+  Beaker,
+  X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import WebGenBackground from '@/components/WebGenBackground';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+
+// Model icons
+import gptIcon from '@/assets/gpt-icon.png';
+import claudeIcon from '@/assets/claude-icon.png';
+import deepseekIcon from '@/assets/deepseek-icon.png';
 
 // Page SEO
 const useWebGenSEO = () => {
@@ -38,7 +44,7 @@ const useWebGenSEO = () => {
   }, []);
 };
 
-type ModelType = 'haiku' | 'kimi' | 'gemini';
+type ModelType = 'gpt' | 'claude' | 'deepseek';
 
 interface WebGenMessage {
   role: 'user' | 'assistant';
@@ -47,6 +53,22 @@ interface WebGenMessage {
   generatedCode?: string;
   generationTime?: number;
 }
+
+interface MultiModelResult {
+  model: string;
+  label: string;
+  success: boolean;
+  code: string | null;
+  time: number;
+  error?: string;
+}
+
+// Model options with icons
+const MODEL_OPTIONS = [
+  { id: 'gpt' as ModelType, name: 'GPT 5.2', icon: gptIcon, best: true },
+  { id: 'claude' as ModelType, name: 'Claude', icon: claudeIcon },
+  { id: 'deepseek' as ModelType, name: 'DeepSeek', icon: deepseekIcon }
+];
 
 // Rotating words for hero
 const ROTATING_WORDS = ['NEXT!', 'IMAGINATION!', 'WEB!', 'FUTURE!'];
@@ -70,7 +92,7 @@ const TYPE_OPTIONS = [
   { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' }
 ];
 
-// Website Stack Options - Simplified to 4 clear modes
+// Website Stack Options
 const STACK_OPTIONS = [
   { 
     id: 'game', 
@@ -133,6 +155,12 @@ const WebGen = () => {
   const [selectedStack, setSelectedStack] = useState<string | null>(null);
   const [isEnhancing, setIsEnhancing] = useState(false);
 
+  // Multi-model beta state
+  const [multiModelMode, setMultiModelMode] = useState(false);
+  const [multiModelResults, setMultiModelResults] = useState<MultiModelResult[]>([]);
+  const [multiModelBlobUrls, setMultiModelBlobUrls] = useState<Record<string, string>>({});
+  const [showMultiModelComparison, setShowMultiModelComparison] = useState(false);
+
   // Get modes array from selected stack
   const getSelectedModes = () => {
     if (!selectedStack) return [];
@@ -140,7 +168,7 @@ const WebGen = () => {
     return stack?.modes || [];
   };
 
-  // Enhance prompt using pollinations-chat (proven pattern from ImageGen)
+  // Enhance prompt using pollinations-chat
   const enhancePrompt = async () => {
     if (!inputValue.trim() || inputValue.length < 3) return;
     
@@ -157,23 +185,6 @@ Rules for website prompts:
 6. Keep prompts 50-150 words
 7. Use structured, clear language with sections
 
-Example transformation:
-"make me a game" → "Create a 2D browser-based arcade game with the following:
-
-GAME FEATURES:
-- Player character with keyboard controls (arrow keys)
-- Score system displayed in top corner
-- Multiple levels with increasing difficulty
-- Game over and restart functionality
-
-VISUAL STYLE:
-- Retro pixel art aesthetic
-- Neon color palette (cyan, pink, purple)
-- Particle effects on actions
-- Smooth animations
-
-Include start screen, in-game HUD, and game over screen."
-
 Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "Enhanced:".`;
 
       const { data, error } = await supabase.functions.invoke('pollinations-chat', {
@@ -187,7 +198,6 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
 
       if (error) throw error;
       
-      // Clean response - remove AI filler text
       let cleaned = (data?.text || '')
         .replace(/^["']|["']$/g, '')
         .replace(/^.*?(?:Enhanced|prompt|here|Here's|Here is):\s*/im, '')
@@ -216,7 +226,7 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
   };
   
   // Generation state
-  const [selectedModel, setSelectedModel] = useState<ModelType>('haiku');
+  const [selectedModel, setSelectedModel] = useState<ModelType>('gpt');
   const [userPrompt, setUserPrompt] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -226,12 +236,13 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
   const [generationStartTime, setGenerationStartTime] = useState<number>(0);
   const [generationTime, setGenerationTime] = useState<number>(0);
 
-  // Cleanup blob URL
+  // Cleanup blob URLs
   useEffect(() => {
     return () => {
       if (blobUrl) URL.revokeObjectURL(blobUrl);
+      Object.values(multiModelBlobUrls).forEach(url => URL.revokeObjectURL(url));
     };
-  }, [blobUrl]);
+  }, [blobUrl, multiModelBlobUrls]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -279,15 +290,12 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
     
     const selectedModes = getSelectedModes();
     
-    // Build mode-specific requirements based on new simplified modes
     let modeText = '';
     
     if (selectedModes.includes('game')) {
       modeText = `
 GAME MODE (Full-Featured):
-- Include Kaboom.js: <script src="https://unpkg.com/kaboom@3000/dist/kaboom.mjs" type="module"></script>
-- Include Three.js if 3D needed: <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-- Include GSAP: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+- Include Kaboom.js, Three.js if 3D needed, GSAP for animations
 - Create COMPLETE, PLAYABLE game with all logic in ONE HTML file
 - Player controls, scoring system, game states (menu, playing, game over)
 - Visual effects, particle animations, smooth transitions
@@ -297,8 +305,7 @@ GAME MODE (Full-Featured):
     if (selectedModes.includes('functional')) {
       modeText = `
 FUNCTIONAL MODE (JavaScript-Heavy):
-- Include Tailwind CSS: <script src="https://cdn.tailwindcss.com"></script>
-- Include Alpine.js: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+- Include Tailwind CSS and Alpine.js
 - Make EVERYTHING work: buttons, forms, navigation, modals
 - Proper JavaScript event handling and form validation
 - Dynamic content updates and state management
@@ -308,9 +315,7 @@ FUNCTIONAL MODE (JavaScript-Heavy):
     if (selectedModes.includes('designed')) {
       modeText = `
 DESIGNED MODE (Premium Design):
-- Include Tailwind CSS: <script src="https://cdn.tailwindcss.com"></script>
-- Include GSAP + ScrollTrigger: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+- Include Tailwind CSS, GSAP + ScrollTrigger
 - PREMIUM visual design with gradients, shadows, depth
 - Smooth hover effects and CSS transitions
 - Scroll-triggered reveal animations
@@ -338,6 +343,103 @@ DESIGN REQUIREMENTS:
 ${modeText}`;
   };
 
+  // Multi-model generation
+  const generateMultiModel = async (prompt: string) => {
+    setLoading(true);
+    setMultiModelResults([]);
+    setMultiModelBlobUrls({});
+    setShowMultiModelComparison(true);
+    setGenerationStartTime(Date.now());
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-gen`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ 
+            prompt: `Create a website: ${prompt}`, 
+            stream: false,
+            multiModel: true,
+            modes: getSelectedModes()
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate');
+      }
+
+      const data = await response.json();
+      const results = data.results as MultiModelResult[];
+      
+      setMultiModelResults(results);
+      
+      // Create blob URLs for successful results
+      const urls: Record<string, string> = {};
+      results.forEach(result => {
+        if (result.success && result.code) {
+          const blob = new Blob([result.code], { type: 'text/html' });
+          urls[result.model] = URL.createObjectURL(blob);
+        }
+      });
+      setMultiModelBlobUrls(urls);
+      
+      const elapsed = Date.now() - generationStartTime;
+      setGenerationTime(elapsed);
+      
+      toast({
+        title: "All models completed!",
+        description: `Generated ${results.filter(r => r.success).length}/3 websites`,
+      });
+    } catch (error) {
+      console.error('Multi-model generation error:', error);
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Failed to generate",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Select a result from multi-model comparison
+  const selectMultiModelResult = (result: MultiModelResult) => {
+    if (!result.success || !result.code) return;
+    
+    setGeneratedCode(result.code);
+    const blob = new Blob([result.code], { type: 'text/html' });
+    setBlobUrl(URL.createObjectURL(blob));
+    setShowMultiModelComparison(false);
+    setMultiModelMode(false);
+    
+    setMessages(prev => {
+      const updated = [...prev];
+      const lastIdx = updated.length - 1;
+      if (updated[lastIdx]?.type === 'generating') {
+        updated[lastIdx] = {
+          ...updated[lastIdx],
+          type: 'complete',
+          generatedCode: result.code!,
+          generationTime: result.time
+        };
+      }
+      return updated;
+    });
+    
+    setCurrentStep('complete');
+    
+    toast({
+      title: `Selected ${result.label}!`,
+      description: "Your website is ready to view",
+    });
+  };
+
   const generateWebsite = async (prompt: string, isEdit: boolean = false) => {
     setLoading(true);
     setGeneratedCode('');
@@ -353,7 +455,6 @@ ${modeText}`;
     const timeoutId = setTimeout(() => abortController.abort(), 90000);
 
     try {
-      // Build prompt - for edits, include existing code and specific instructions
       const fullPrompt = isEdit 
         ? `EXISTING CODE TO EDIT:
 \`\`\`html
@@ -378,7 +479,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
             stream: true,
             model: selectedModel,
             isEdit: isEdit,
-            modes: getSelectedModes()  // Pass selected modes array
+            modes: getSelectedModes()
           }),
           signal: abortController.signal
         }
@@ -480,7 +581,6 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
         });
       }
       
-      // Revert to options
       setMessages(prev => prev.slice(0, -1));
       setCurrentStep('options');
     } finally {
@@ -515,7 +615,11 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
     ]);
     setCurrentStep('generating');
     
-    generateWebsite(enhancedPrompt);
+    if (multiModelMode) {
+      generateMultiModel(enhancedPrompt);
+    } else {
+      generateWebsite(enhancedPrompt);
+    }
   };
 
   const handleEditRequest = () => {
@@ -560,8 +664,8 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
     if (blobUrl) window.open(blobUrl, '_blank');
   };
 
-  // Glass button component
-  const GlassButton = ({ 
+  // Luxury glass card component
+  const LuxuryCard = ({ 
     selected, 
     onClick, 
     children, 
@@ -575,14 +679,40 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
     <button
       onClick={onClick}
       className={cn(
-        "p-4 rounded-2xl backdrop-blur-xl border transition-all duration-300",
-        "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20",
-        "hover:scale-[1.02] hover:shadow-lg text-left",
-        selected && "bg-primary/20 border-primary/50 shadow-[0_0_20px_rgba(236,72,153,0.3)]",
+        "p-4 rounded-2xl backdrop-blur-sm border transition-all duration-300 text-left",
+        "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04] hover:border-white/[0.1]",
+        "hover:shadow-[0_0_40px_rgba(255,255,255,0.03)]",
+        selected && "bg-white/[0.05] border-white/[0.15] shadow-[0_0_30px_rgba(255,255,255,0.05)]",
         className
       )}
     >
       {children}
+    </button>
+  );
+
+  // Model selector card
+  const ModelCard = ({ 
+    model, 
+    selected, 
+    onClick 
+  }: { 
+    model: typeof MODEL_OPTIONS[0]; 
+    selected: boolean; 
+    onClick: () => void;
+  }) => (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-3 p-3 rounded-xl backdrop-blur-sm border transition-all duration-300",
+        "bg-white/[0.02] border-white/[0.05] hover:bg-white/[0.04] hover:border-white/[0.1]",
+        selected && "bg-white/[0.06] border-white/[0.2]"
+      )}
+    >
+      <img src={model.icon} alt={model.name} className="w-6 h-6 rounded" />
+      <span className="text-sm font-medium text-foreground">{model.name}</span>
+      {model.best && (
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-white/60">Best</span>
+      )}
     </button>
   );
 
@@ -591,29 +721,120 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
       <WebGenBackground />
       <Header showTemporaryToggle={false} />
       
+      {/* Multi-model comparison modal */}
+      {showMultiModelComparison && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-black/90 border border-white/10 rounded-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-white/10">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Compare Results</h2>
+                <p className="text-sm text-muted-foreground">Choose your favorite version</p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => {
+                  setShowMultiModelComparison(false);
+                  setCurrentStep('options');
+                }}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            {/* Results grid */}
+            <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+              {loading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="text-center space-y-4">
+                    <Loader2 className="h-10 w-10 animate-spin text-white/50 mx-auto" />
+                    <p className="text-white/60">Generating with all 3 models...</p>
+                    <p className="text-sm text-white/40">This may take up to 90 seconds</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {multiModelResults.map((result) => (
+                    <div 
+                      key={result.model}
+                      className={cn(
+                        "rounded-xl border overflow-hidden",
+                        result.success 
+                          ? "border-white/10 bg-white/[0.02]" 
+                          : "border-red-500/20 bg-red-500/5"
+                      )}
+                    >
+                      {/* Model header */}
+                      <div className="flex items-center justify-between p-3 border-b border-white/5">
+                        <div className="flex items-center gap-2">
+                          <img 
+                            src={MODEL_OPTIONS.find(m => m.id === result.model)?.icon} 
+                            alt={result.label}
+                            className="w-5 h-5 rounded"
+                          />
+                          <span className="font-medium text-foreground">{result.label}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {result.success ? `${(result.time / 1000).toFixed(1)}s` : 'Failed'}
+                        </span>
+                      </div>
+                      
+                      {/* Preview */}
+                      {result.success && result.code ? (
+                        <>
+                          <div className="aspect-[4/3] bg-white">
+                            <iframe 
+                              src={multiModelBlobUrls[result.model]}
+                              className="w-full h-full border-0"
+                              title={`Preview ${result.label}`}
+                            />
+                          </div>
+                          <div className="p-3">
+                            <Button 
+                              onClick={() => selectMultiModelResult(result)}
+                              className="w-full bg-white/10 hover:bg-white/20 border border-white/10"
+                            >
+                              Use This
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="aspect-[4/3] flex items-center justify-center text-red-400">
+                          <div className="text-center p-4">
+                            <p className="text-sm">{result.error || 'Generation failed'}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Messages Area */}
         <ScrollArea className="flex-1">
           <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
             
-            {/* Welcome Screen - Premium Hero */}
+            {/* Welcome Screen - Luxury Hero */}
             {messages.length === 0 && (
               <div className="flex min-h-[70vh] items-center justify-center">
                 <div className="text-center space-y-8 max-w-4xl px-4">
                   {/* Tagline */}
-                  <p className="text-xl md:text-2xl">
-                    <span className="text-muted-foreground">Cannot code? </span>
-                    <span className="bg-gradient-to-r from-primary via-pink-400 to-secondary bg-clip-text text-transparent font-semibold">
-                      Just an Excuse!
-                    </span>
+                  <p className="text-lg md:text-xl text-white/40 tracking-wide">
+                    Cannot code? <span className="text-white/80 font-medium">Just an Excuse!</span>
                   </p>
                   
                   {/* Main headline with rotating word */}
-                  <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-tight">
-                    <span className="text-foreground">Build the </span>
+                  <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-tight tracking-tight">
+                    <span className="text-white">Build the </span>
                     <span 
                       key={wordIndex}
-                      className="inline-block bg-gradient-to-r from-primary via-pink-400 to-secondary bg-clip-text text-transparent font-black animate-fade-in"
+                      className="inline-block text-white font-black animate-fade-in"
                     >
                       {ROTATING_WORDS[wordIndex]}
                     </span>
@@ -621,60 +842,29 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                   
                   {/* Large premium input */}
                   <div className="relative max-w-3xl mx-auto mt-12">
-                    {/* Glow behind input */}
-                    <div className="absolute inset-0 -m-6 bg-gradient-to-br from-primary/25 to-secondary/25 blur-3xl rounded-[2rem]" />
-                    
                     {/* Glass input container */}
-                    <div className="relative backdrop-blur-2xl bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
+                    <div className="relative backdrop-blur-sm bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6">
                       <Textarea
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Design your dream website..."
-                        className="w-full min-h-[120px] md:min-h-[150px] text-lg md:text-xl bg-transparent border-0 resize-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
+                        className="w-full min-h-[120px] md:min-h-[150px] text-lg md:text-xl bg-transparent border-0 resize-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-white/30"
                         rows={4}
                       />
                       
                       {/* Bottom controls */}
-                      <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
+                      <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/[0.05]">
                         {/* Model selector */}
                         <div className="flex gap-2">
-                          <Button
-                            variant={selectedModel === 'haiku' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setSelectedModel('haiku')}
-                            className={cn(
-                              "gap-1.5 text-xs",
-                              selectedModel === 'haiku' && "bg-primary/20 text-primary hover:bg-primary/30"
-                            )}
-                          >
-                            <Sparkles className="h-3.5 w-3.5" />
-                            Haiku
-                          </Button>
-                          <Button
-                            variant={selectedModel === 'kimi' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setSelectedModel('kimi')}
-                            className={cn(
-                              "gap-1.5 text-xs",
-                              selectedModel === 'kimi' && "bg-primary/20 text-primary hover:bg-primary/30"
-                            )}
-                          >
-                            <Brain className="h-3.5 w-3.5" />
-                            Kimi
-                          </Button>
-                          <Button
-                            variant={selectedModel === 'gemini' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setSelectedModel('gemini')}
-                            className={cn(
-                              "gap-1.5 text-xs",
-                              selectedModel === 'gemini' && "bg-primary/20 text-primary hover:bg-primary/30"
-                            )}
-                          >
-                            <Zap className="h-3.5 w-3.5" />
-                            Gemini
-                          </Button>
+                          {MODEL_OPTIONS.map(model => (
+                            <ModelCard
+                              key={model.id}
+                              model={model}
+                              selected={selectedModel === model.id}
+                              onClick={() => setSelectedModel(model.id)}
+                            />
+                          ))}
                         </div>
                         
                         {/* Action buttons */}
@@ -684,7 +874,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                             size="sm"
                             onClick={enhancePrompt}
                             disabled={!inputValue.trim() || inputValue.length < 3 || isEnhancing}
-                            className="gap-1.5 text-muted-foreground hover:text-primary"
+                            className="gap-1.5 text-white/40 hover:text-white hover:bg-white/5"
                           >
                             {isEnhancing ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -696,7 +886,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                           <Button 
                             onClick={handleSendPrompt}
                             disabled={!inputValue.trim()}
-                            className="gap-1.5 bg-gradient-to-r from-primary to-secondary hover:shadow-[0_0_25px_rgba(236,72,153,0.5)] transition-all"
+                            className="gap-1.5 bg-white text-black hover:bg-white/90"
                           >
                             <Send className="h-4 w-4" />
                             Build
@@ -718,8 +908,8 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                 <div className={cn(
                   "max-w-[85%] rounded-2xl p-4",
                   msg.role === 'user' 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-card/60 backdrop-blur-xl border border-border/50"
+                    ? "bg-white text-black" 
+                    : "bg-white/[0.02] backdrop-blur-sm border border-white/[0.05]"
                 )}>
                   {/* User message */}
                   {msg.role === 'user' && (
@@ -731,16 +921,16 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                     <div className="space-y-6">
                       {/* Theme Selection */}
                       <div className="space-y-3">
-                        <p className="font-medium text-foreground">What theme would you like?</p>
+                        <p className="font-medium text-foreground text-sm uppercase tracking-wide text-white/60">Theme</p>
                         <div className="grid grid-cols-3 gap-3">
                           {THEME_OPTIONS.map(option => (
-                            <GlassButton 
+                            <LuxuryCard 
                               key={option.id}
                               selected={selectedTheme === option.id}
                               onClick={() => setSelectedTheme(option.id)}
                             >
-                              <span className="font-medium text-foreground">{option.label}</span>
-                            </GlassButton>
+                              <span className="font-medium text-white/90">{option.label}</span>
+                            </LuxuryCard>
                           ))}
                         </div>
                         {selectedTheme === 'other' && (
@@ -749,99 +939,126 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                             value={customTheme}
                             onChange={(e) => setCustomTheme(e.target.value)}
                             placeholder="Describe your theme..."
-                            className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                            className="w-full p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-foreground placeholder:text-white/30 focus:outline-none focus:border-white/20"
                           />
                         )}
                       </div>
 
                       {/* Font Selection */}
                       <div className="space-y-3">
-                        <p className="font-medium text-foreground">Which font?</p>
+                        <p className="font-medium text-foreground text-sm uppercase tracking-wide text-white/60">Font</p>
                         <div className="grid grid-cols-3 gap-3">
                           {FONT_OPTIONS.map(option => (
-                            <GlassButton 
+                            <LuxuryCard 
                               key={option.id}
                               selected={selectedFont === option.id}
                               onClick={() => setSelectedFont(option.id)}
                             >
-                              <span className="font-medium text-foreground" style={{ fontFamily: option.id }}>
+                              <span className="font-medium text-white/90" style={{ fontFamily: option.id }}>
                                 {option.label}
                               </span>
-                            </GlassButton>
+                            </LuxuryCard>
                           ))}
                         </div>
                       </div>
 
                       {/* Website Type */}
                       <div className="space-y-3">
-                        <p className="font-medium text-foreground">What kind of website?</p>
+                        <p className="font-medium text-foreground text-sm uppercase tracking-wide text-white/60">Quality</p>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           {TYPE_OPTIONS.map(option => (
-                            <GlassButton 
+                            <LuxuryCard 
                               key={option.id}
                               selected={selectedType === option.id}
                               onClick={() => setSelectedType(option.id)}
                             >
                               <div>
-                                <p className="font-medium text-foreground">{option.label}</p>
-                                <p className="text-xs text-muted-foreground">{option.desc}</p>
+                                <p className="font-medium text-white/90">{option.label}</p>
+                                <p className="text-xs text-white/40">{option.desc}</p>
                               </div>
-                            </GlassButton>
+                            </LuxuryCard>
                           ))}
                         </div>
                       </div>
 
-                      {/* Website Stack (single-select) */}
+                      {/* Website Stack */}
                       <div className="space-y-3">
-                        <p className="font-medium text-foreground">Website Stack</p>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <p className="font-medium text-foreground text-sm uppercase tracking-wide text-white/60">Stack</p>
+                        <div className="grid grid-cols-2 gap-3">
                           {STACK_OPTIONS.map(option => {
                             const Icon = option.icon;
                             const isSelected = selectedStack === option.id;
                             return (
-                              <GlassButton 
+                              <LuxuryCard 
                                 key={option.id}
                                 selected={isSelected}
                                 onClick={() => setSelectedStack(option.id)}
                               >
-                                <div className="flex items-start gap-2">
-                                  <Icon className={cn(
-                                    "h-5 w-5 mt-0.5 shrink-0",
-                                    isSelected ? "text-primary" : "text-muted-foreground"
-                                  )} />
+                                <div className="flex items-start gap-3">
+                                  <div className={cn(
+                                    "p-2 rounded-lg",
+                                    isSelected ? "bg-white/10" : "bg-white/5"
+                                  )}>
+                                    <Icon className={cn(
+                                      "h-5 w-5",
+                                      isSelected ? "text-white" : "text-white/40"
+                                    )} />
+                                  </div>
                                   <div>
-                                    <p className="font-medium text-foreground">{option.label}</p>
-                                    <p className="text-xs text-muted-foreground">{option.desc}</p>
+                                    <p className="font-medium text-white/90">{option.label}</p>
+                                    <p className="text-xs text-white/40">{option.desc}</p>
                                   </div>
                                 </div>
-                              </GlassButton>
+                              </LuxuryCard>
                             );
                           })}
                         </div>
+                      </div>
+
+                      {/* Beta Multi-Model Toggle */}
+                      <div className="pt-2">
+                        <button
+                          onClick={() => setMultiModelMode(!multiModelMode)}
+                          className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-xl border transition-all",
+                            multiModelMode 
+                              ? "bg-white/10 border-white/20 text-white" 
+                              : "bg-transparent border-white/10 text-white/50 hover:text-white/70 hover:border-white/20"
+                          )}
+                        >
+                          <Beaker className="h-4 w-4" />
+                          <span className="text-sm font-medium">BETA: Generate with 3 Models</span>
+                          {multiModelMode && <Check className="h-4 w-4 ml-1" />}
+                        </button>
+                        {multiModelMode && (
+                          <p className="text-xs text-white/40 mt-2 ml-1">
+                            Compare GPT 5.2, Claude, and DeepSeek side by side
+                          </p>
+                        )}
                       </div>
 
                       {/* Submit Button */}
                       <Button 
                         onClick={handleStartGeneration}
                         disabled={!selectedTheme || !selectedFont || !selectedType || !selectedStack || (selectedTheme === 'other' && !customTheme.trim())}
-                        className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all"
+                        className="w-full h-12 bg-white text-black hover:bg-white/90 font-medium"
                         size="lg"
                       >
                         <Sparkles className="mr-2 h-5 w-5" />
-                        Generate Website
+                        {multiModelMode ? 'Generate with 3 AI Models' : 'Generate Website'}
                       </Button>
                     </div>
                   )}
 
                   {/* Generating message */}
-                  {msg.type === 'generating' && (
+                  {msg.type === 'generating' && !showMultiModelComparison && (
                     <div className="space-y-4">
                       <p className="text-lg text-foreground">
                         Got it! I'll start creating your website. It might take a while, please wait!
                       </p>
                       
                       {loading && (
-                        <div className="flex items-center gap-2 text-primary">
+                        <div className="flex items-center gap-2 text-white/60">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           <span>Working on it...</span>
                         </div>
@@ -849,7 +1066,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                       
                       {/* Collapsible code section */}
                       <Collapsible open={showCode} onOpenChange={setShowCode}>
-                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-white/40 hover:text-white/60 transition-colors">
                           <Code2 className="h-4 w-4" />
                           <span>Generating code...</span>
                           <ChevronDown className={cn(
@@ -861,12 +1078,12 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                         <CollapsibleContent>
                           <div 
                             ref={codeContainerRef}
-                            className="mt-3 max-h-[300px] overflow-y-auto rounded-lg bg-black/50 border border-border/50 p-4"
+                            className="mt-3 max-h-[300px] overflow-y-auto rounded-lg bg-black/50 border border-white/5 p-4"
                           >
-                            <pre className="text-sm font-mono whitespace-pre-wrap break-words text-foreground/80">
+                            <pre className="text-sm font-mono whitespace-pre-wrap break-words text-white/70">
                               <code>{generatedCode}</code>
                               {loading && (
-                                <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 align-middle" />
+                                <span className="inline-block w-2 h-4 bg-white/50 animate-pulse ml-0.5 align-middle" />
                               )}
                             </pre>
                           </div>
@@ -878,25 +1095,25 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                   {/* Complete message */}
                   {msg.type === 'complete' && (
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-lg font-bold text-green-500">
+                      <div className="flex items-center gap-2 text-lg font-bold text-green-400">
                         <CheckCircle2 className="h-6 w-6" />
                         DONE!!!
                       </div>
                       <p className="text-foreground">Click the View App button to visit your website!</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-white/40">
                         Generated in {((msg.generationTime || generationTime) / 1000).toFixed(1)} seconds
                       </p>
                       
                       <div className="flex flex-wrap gap-3">
-                        <Button onClick={openInNewTab} className="bg-gradient-to-r from-primary to-secondary">
+                        <Button onClick={openInNewTab} className="bg-white text-black hover:bg-white/90">
                           <ExternalLink className="mr-2 h-4 w-4" />
                           View App
                         </Button>
-                        <Button variant="outline" onClick={copyCode}>
+                        <Button variant="outline" onClick={copyCode} className="border-white/10 hover:bg-white/5">
                           {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
                           {copied ? 'Copied' : 'Copy Code'}
                         </Button>
-                        <Button variant="outline" onClick={downloadCode}>
+                        <Button variant="outline" onClick={downloadCode} className="border-white/10 hover:bg-white/5">
                           <Download className="mr-2 h-4 w-4" />
                           Download
                         </Button>
@@ -904,15 +1121,15 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
 
                       {/* Show code preview */}
                       <Collapsible>
-                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-white/40 hover:text-white/60 transition-colors">
                           <Code2 className="h-4 w-4" />
                           <span>View generated code</span>
                           <ChevronDown className="h-4 w-4" />
                         </CollapsibleTrigger>
                         
                         <CollapsibleContent>
-                          <div className="mt-3 max-h-[300px] overflow-y-auto rounded-lg bg-black/50 border border-border/50 p-4">
-                            <pre className="text-sm font-mono whitespace-pre-wrap break-words text-foreground/80">
+                          <div className="mt-3 max-h-[300px] overflow-y-auto rounded-lg bg-black/50 border border-white/5 p-4">
+                            <pre className="text-sm font-mono whitespace-pre-wrap break-words text-white/70">
                               <code>{msg.generatedCode || generatedCode}</code>
                             </pre>
                           </div>
@@ -930,38 +1147,18 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
         
         {/* Input Area */}
         {(currentStep === 'prompt' || currentStep === 'complete') && (
-          <div className="p-4 border-t border-border/50 bg-background/80 backdrop-blur-xl">
+          <div className="p-4 border-t border-white/[0.05] bg-black/50 backdrop-blur-sm">
             <div className="max-w-3xl mx-auto space-y-3">
-              {/* Model selector - Haiku first */}
+              {/* Model selector */}
               <div className="flex gap-2">
-                <Button
-                  variant={selectedModel === 'haiku' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedModel('haiku')}
-                  className="gap-1"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Haiku
-                  <span className="text-xs opacity-70">(Best)</span>
-                </Button>
-                <Button
-                  variant={selectedModel === 'kimi' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedModel('kimi')}
-                  className="gap-1"
-                >
-                  <Brain className="h-3.5 w-3.5" />
-                  Kimi
-                </Button>
-                <Button
-                  variant={selectedModel === 'gemini' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedModel('gemini')}
-                  className="gap-1"
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  Gemini
-                </Button>
+                {MODEL_OPTIONS.map(model => (
+                  <ModelCard
+                    key={model.id}
+                    model={model}
+                    selected={selectedModel === model.id}
+                    onClick={() => setSelectedModel(model.id)}
+                  />
+                ))}
               </div>
               
               <div className="flex gap-3 items-end">
@@ -974,7 +1171,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                       ? "Want to make changes? e.g., 'Remove the About Me button'" 
                       : "Describe your dream website..."
                     }
-                    className="w-full min-h-[56px] max-h-[200px] resize-none bg-card/50 backdrop-blur-xl border-border/50 pr-12"
+                    className="w-full min-h-[56px] max-h-[200px] resize-none bg-white/[0.02] border-white/[0.05] pr-12 placeholder:text-white/30"
                     rows={1}
                   />
                   {/* Enhance button - only show on prompt step */}
@@ -985,7 +1182,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                       size="sm"
                       onClick={enhancePrompt}
                       disabled={!inputValue.trim() || inputValue.length < 3 || isEnhancing}
-                      className="absolute right-2 bottom-2 h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      className="absolute right-2 bottom-2 h-8 w-8 p-0 text-white/30 hover:text-white hover:bg-white/5"
                       title="Enhance prompt"
                     >
                       {isEnhancing ? (
@@ -999,7 +1196,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                 <Button 
                   onClick={currentStep === 'complete' ? handleEditRequest : handleSendPrompt}
                   disabled={!inputValue.trim() || loading}
-                  className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-secondary hover:shadow-[0_0_20px_rgba(236,72,153,0.5)]"
+                  className="h-14 w-14 rounded-full bg-white text-black hover:bg-white/90"
                 >
                   <Send className="h-5 w-5" />
                 </Button>
@@ -1009,10 +1206,10 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
         )}
 
         {/* Show loading state during generation */}
-        {currentStep === 'generating' && (
-          <div className="p-4 border-t border-border/50 bg-background/80 backdrop-blur-xl">
-            <div className="max-w-3xl mx-auto flex items-center justify-center gap-3 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        {currentStep === 'generating' && !showMultiModelComparison && (
+          <div className="p-4 border-t border-white/[0.05] bg-black/50 backdrop-blur-sm">
+            <div className="max-w-3xl mx-auto flex items-center justify-center gap-3 text-white/50">
+              <Loader2 className="h-5 w-5 animate-spin" />
               <span>Generating your website...</span>
             </div>
           </div>
