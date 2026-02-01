@@ -41,6 +41,7 @@ import NewVideo from "./pages/NewVideo";
 import MailPage from "./pages/MailPage";
 import WebGen from "./pages/WebGen";
 import Study from "./pages/Study";
+import SiteView from "./pages/SiteView";
 import { getCursorPreference } from "./lib/storage";
 import { useCursorEffects } from "./hooks/useCursorEffects";
 
@@ -98,6 +99,7 @@ const App = () => {
           <Route path="/donate" element={<DonateRedirect />} />
           <Route path="/mail" element={<MailPage />} />
           <Route path="/web" element={<WebGen />} />
+          <Route path="/site/*" element={<SiteView />} />
           <Route path="/study" element={<Study />} />
           <Route path="/support" element={<Support />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

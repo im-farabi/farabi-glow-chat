@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.apifree-image]
 verify_jwt = false
+
+[functions.publish-website]
+verify_jwt = false
