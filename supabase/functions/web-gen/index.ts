@@ -157,19 +157,42 @@ serve(async (req) => {
         try {
           const upstreamStream = await callAPIStream(apiKey, prompt, modelConfig);
           
-          // Transform SSE stream to extract content
+          // Transform SSE stream to extract content with proper line buffering
+          let buffer = '';
           const transformStream = new TransformStream({
             transform(chunk, controller) {
-              const text = new TextDecoder().decode(chunk);
-              const lines = text.split('\n');
+              // Append new chunk to buffer
+              buffer += new TextDecoder().decode(chunk);
+              
+              // Process complete lines only
+              const lines = buffer.split('\n');
+              // Keep the last incomplete line in buffer
+              buffer = lines.pop() || '';
               
               for (const line of lines) {
                 if (line.startsWith('data: ')) {
-                  const data = line.slice(6);
+                  const data = line.slice(6).trim();
                   if (data === '[DONE]') {
                     controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
-                    return;
+                    continue;
                   }
+                  try {
+                    const parsed = JSON.parse(data);
+                    const content = parsed.choices?.[0]?.delta?.content || '';
+                    if (content) {
+                      controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`));
+                    }
+                  } catch {
+                    // Skip invalid JSON - line may have been partial
+                  }
+                }
+              }
+            },
+            flush(controller) {
+              // Process any remaining buffered content
+              if (buffer.startsWith('data: ')) {
+                const data = buffer.slice(6).trim();
+                if (data && data !== '[DONE]') {
                   try {
                     const parsed = JSON.parse(data);
                     const content = parsed.choices?.[0]?.delta?.content || '';
@@ -181,6 +204,7 @@ serve(async (req) => {
                   }
                 }
               }
+              controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
             }
           });
 
