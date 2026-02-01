@@ -7,110 +7,150 @@ const corsHeaders = {
 
 const API_URL = 'https://api.apifree.ai/v1/chat/completions';
 
-// Model configurations - no token limits, let API use full capacity
-const MODELS = {
-  haiku: { name: 'anthropic/claude-haiku-4.5' },
-  kimi: { name: 'moonshotai/kimi-k2-instruct' }
+// Model configurations with Gemini as primary
+const MODELS: Record<string, { name: string; label: string }> = {
+  gemini: { 
+    name: 'google/gemini-2.5-flash-lite',
+    label: 'Gemini Flash'
+  },
+  haiku: { 
+    name: 'anthropic/claude-haiku-4.5',
+    label: 'Claude Haiku'
+  },
+  kimi: { 
+    name: 'moonshotai/kimi-k2-instruct',
+    label: 'Kimi K2'
+  }
 };
 
-const SYSTEM_PROMPT = `You are an expert web developer creating BEAUTIFUL, FUNCTIONAL websites. Return ONLY valid HTML code - no markdown, no backticks, no explanations.
+// Fallback order when a model fails
+const FALLBACK_ORDER = ['gemini', 'haiku', 'kimi'];
 
-CRITICAL - NEVER TRUNCATE YOUR OUTPUT:
-- Complete ALL code - do not stop mid-output
-- Ensure every opening tag has a closing tag
-- Complete ALL CSS rules - no partial properties like "color: var(--"
-- Complete ALL JavaScript functions
-- End with </html>
+// Simplified system prompt to reduce truncation
+const SYSTEM_PROMPT = `You are an expert web developer. Generate COMPLETE HTML code only.
 
-REQUIREMENTS:
-1. Start with <!DOCTYPE html> - complete valid HTML5 document
-2. Include EXTENSIVE CSS in <style> tag in <head>:
-   - Modern gradients and color schemes
-   - Glassmorphism effects (backdrop-blur, semi-transparent backgrounds)
-   - Smooth animations and transitions
-   - Flexbox and CSS Grid layouts
-   - Responsive design with media queries
-   - Custom scrollbars
-   - Hover effects and micro-interactions
-   - Google Fonts for typography
+CRITICAL RULES:
+1. Return ONLY valid HTML - no markdown, no backticks, no explanations
+2. Start with <!DOCTYPE html>
+3. End with </html>
+4. Include all CSS in a <style> tag in <head>
+5. Include all JavaScript in a <script> tag before </body>
+6. Dark theme by default unless specified otherwise
+7. Make it responsive and modern with CSS Grid/Flexbox
+8. Use Google Fonts and Font Awesome from CDN
+9. Add smooth animations and hover effects
 
-3. Include FUNCTIONAL JavaScript in <script> before </body>:
-   - Interactive elements (menus, modals, tabs)
-   - Form validation if forms exist
-   - Smooth scroll behavior
-   - Dynamic content updates
-   - Animation triggers
+NEVER truncate. Complete every tag. Output must start with <!DOCTYPE html> and end with </html>.`;
 
-4. Use CDN resources:
-   - Google Fonts: <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-   - Font Awesome: <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
-5. Default to DARK THEME unless user asks for light theme
-6. Mobile-first responsive design
-7. NO placeholder content - real, complete working code
-8. ALWAYS end with </script></body></html>
-
-OUTPUT: Complete HTML document with embedded CSS and JavaScript. Nothing else.`;
-
-async function callAPIStream(apiKey: string, prompt: string, modelConfig: { name: string }): Promise<ReadableStream> {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+// Create transform stream with proper UTF-8 handling and line buffering
+function createTransformStream() {
+  let buffer = '';
+  const decoder = new TextDecoder('utf-8', { fatal: false });
+  
+  return new TransformStream({
+    transform(chunk: Uint8Array, controller: TransformStreamDefaultController) {
+      // Decode with streaming=true to handle multi-byte characters split across chunks
+      buffer += decoder.decode(chunk, { stream: true });
+      
+      // Process complete lines only
+      let newlineIndex;
+      while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, newlineIndex);
+        buffer = buffer.slice(newlineIndex + 1);
+        
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') {
+            controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+            continue;
+          }
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`));
+            }
+          } catch {
+            // Skip malformed JSON - line may have been partial
+          }
+        }
+      }
     },
-    body: JSON.stringify({
-      model: modelConfig.name,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt }
-      ],
-      stream: true
-    })
+    flush(controller: TransformStreamDefaultController) {
+      // Flush remaining decoder buffer
+      buffer += decoder.decode();
+      
+      // Process any remaining buffered content
+      if (buffer.startsWith('data: ')) {
+        const data = buffer.slice(6).trim();
+        if (data && data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`));
+            }
+          } catch {
+            // Skip invalid JSON
+          }
+        }
+      }
+      controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+    }
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API Error ${response.status}: ${errorText}`);
-  }
-
-  return response.body!;
 }
 
-async function callAPINonStream(apiKey: string, prompt: string, modelConfig: { name: string }): Promise<string> {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: modelConfig.name,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt }
-      ],
-      stream: false
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API Error ${response.status}: ${errorText}`);
-  }
-
-  const data = await response.json();
+// Call API with timeout
+async function callAPIStream(
+  apiKey: string, 
+  prompt: string, 
+  modelConfig: { name: string },
+  timeoutMs: number = 60000
+): Promise<ReadableStream> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
-  if (data.error) {
-    throw new Error(data.error.message || 'API returned an error');
+  try {
+    console.log(`[web-gen] Calling ${modelConfig.name}...`);
+    
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: modelConfig.name,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `Create a website: ${prompt}` }
+        ],
+        stream: true,
+        max_tokens: 8192,
+        temperature: 0.7
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error ${response.status}: ${errorText.slice(0, 200)}`);
+    }
+    
+    if (!response.body) {
+      throw new Error('No response body');
+    }
+    
+    return response.body;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Timeout after ${timeoutMs}ms`);
+    }
+    throw error;
   }
-
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('No content in response');
-  }
-
-  return content;
 }
 
 serve(async (req) => {
@@ -119,7 +159,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, stream = true, model = 'claude' } = await req.json();
+    const { prompt, stream = true, model = 'gemini' } = await req.json();
 
     if (!prompt || typeof prompt !== 'string') {
       return new Response(JSON.stringify({ error: 'Prompt is required' }), {
@@ -128,10 +168,7 @@ serve(async (req) => {
       });
     }
 
-    // Select model configuration (default to Claude for faster streaming)
-    const modelConfig = MODELS[model as keyof typeof MODELS] || MODELS.haiku;
-    console.log(`[web-gen] Using model: ${modelConfig.name}`);
-
+    // Get API keys
     const apiKeys = [
       Deno.env.get('APIFREE_API_KEY_1'),
       Deno.env.get('APIFREE_API_KEY_2'),
@@ -145,117 +182,97 @@ serve(async (req) => {
       });
     }
 
+    // Shuffle keys for load balancing
     const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5);
+    
+    // Build model fallback chain: user's choice first, then others
+    const modelsToTry = [model, ...FALLBACK_ORDER.filter(m => m !== model)];
+    
     let lastError: Error | null = null;
 
-    // Streaming mode
-    if (stream) {
+    // Try each model in order, with all API keys
+    for (const modelKey of modelsToTry) {
+      const modelConfig = MODELS[modelKey];
+      if (!modelConfig) continue;
+      
+      console.log(`[web-gen] Trying model: ${modelConfig.name}`);
+      
       for (let i = 0; i < shuffledKeys.length; i++) {
         const apiKey = shuffledKeys[i];
-        console.log(`[Stream] Trying key ${i + 1} with ${modelConfig.name}`);
         
         try {
-          const upstreamStream = await callAPIStream(apiKey, prompt, modelConfig);
-          
-          // Transform SSE stream to extract content with proper line buffering
-          let buffer = '';
-          const transformStream = new TransformStream({
-            transform(chunk, controller) {
-              // Append new chunk to buffer
-              buffer += new TextDecoder().decode(chunk);
-              
-              // Process complete lines only
-              const lines = buffer.split('\n');
-              // Keep the last incomplete line in buffer
-              buffer = lines.pop() || '';
-              
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  const data = line.slice(6).trim();
-                  if (data === '[DONE]') {
-                    controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
-                    continue;
-                  }
-                  try {
-                    const parsed = JSON.parse(data);
-                    const content = parsed.choices?.[0]?.delta?.content || '';
-                    if (content) {
-                      controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`));
-                    }
-                  } catch {
-                    // Skip invalid JSON - line may have been partial
-                  }
-                }
+          if (stream) {
+            const upstreamStream = await callAPIStream(apiKey, prompt, modelConfig);
+            const transformStream = createTransformStream();
+            
+            console.log(`[web-gen] Success with ${modelConfig.name}, key ${i + 1}`);
+            
+            return new Response(upstreamStream.pipeThrough(transformStream), {
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
               }
-            },
-            flush(controller) {
-              // Process any remaining buffered content
-              if (buffer.startsWith('data: ')) {
-                const data = buffer.slice(6).trim();
-                if (data && data !== '[DONE]') {
-                  try {
-                    const parsed = JSON.parse(data);
-                    const content = parsed.choices?.[0]?.delta?.content || '';
-                    if (content) {
-                      controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`));
-                    }
-                  } catch {
-                    // Skip invalid JSON
-                  }
-                }
-              }
-              controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
-            }
-          });
+            });
+          } else {
+            // Non-streaming mode
+            const response = await fetch(API_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify({
+                model: modelConfig.name,
+                messages: [
+                  { role: 'system', content: SYSTEM_PROMPT },
+                  { role: 'user', content: `Create a website: ${prompt}` }
+                ],
+                stream: false,
+                max_tokens: 8192
+              })
+            });
 
-          return new Response(upstreamStream.pipeThrough(transformStream), {
-            headers: {
-              ...corsHeaders,
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              'Connection': 'keep-alive'
+            if (!response.ok) {
+              throw new Error(`API Error ${response.status}`);
             }
-          });
-        } catch (error) {
-          console.error(`[Stream] Key ${i + 1} failed:`, error);
-          lastError = error instanceof Error ? error : new Error(String(error));
-        }
-      }
-    } else {
-      // Non-streaming mode
-      for (let i = 0; i < shuffledKeys.length; i++) {
-        const apiKey = shuffledKeys[i];
-        console.log(`Trying key ${i + 1} with ${modelConfig.name}`);
-        
-        try {
-          const code = await callAPINonStream(apiKey, prompt, modelConfig);
-          
-          if (!code.includes('<!DOCTYPE html') && !code.includes('<html')) {
-            lastError = new Error('Response is not valid HTML');
-            continue;
+
+            const data = await response.json();
+            const code = data.choices?.[0]?.message?.content;
+            
+            if (!code || !code.includes('<!DOCTYPE')) {
+              throw new Error('Response is not valid HTML');
+            }
+            
+            console.log(`[web-gen] Success with ${modelConfig.name}, length: ${code.length}`);
+            
+            return new Response(JSON.stringify({ code }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
           }
-          
-          console.log(`Success with key ${i + 1}, length: ${code.length}`);
-          
-          return new Response(JSON.stringify({ code }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
         } catch (error) {
-          console.error(`Key ${i + 1} failed:`, error);
+          console.error(`[web-gen] ${modelConfig.name} key ${i + 1} failed:`, error instanceof Error ? error.message : error);
           lastError = error instanceof Error ? error : new Error(String(error));
+          // Continue to next key
         }
       }
+      
+      // All keys failed for this model, try next model
+      console.log(`[web-gen] All keys failed for ${modelConfig.name}, trying next model...`);
     }
 
+    // All models and keys failed
+    console.error('[web-gen] All models and keys failed');
     return new Response(JSON.stringify({ 
-      error: lastError?.message || 'All API keys failed' 
+      error: lastError?.message || 'All AI models failed. Please try again.' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('web-gen error:', error);
+    console.error('[web-gen] Error:', error);
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Unknown error' 
     }), {
