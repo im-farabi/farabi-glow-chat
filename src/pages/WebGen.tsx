@@ -166,9 +166,17 @@ DESIGN REQUIREMENTS:
     const timeoutId = setTimeout(() => abortController.abort(), 90000);
 
     try {
+      // Build prompt - for edits, include existing code and specific instructions
       const fullPrompt = isEdit 
-        ? `EXISTING CODE:\n${generatedCode}\n\nUSER REQUEST:\n${prompt}\n\nModify the existing code according to the user's request. Return the complete updated HTML.`
-        : prompt;
+        ? `EXISTING CODE TO EDIT:
+\`\`\`html
+${generatedCode}
+\`\`\`
+
+USER'S SPECIFIC REQUEST: "${prompt}"
+
+IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY the same - same structure, same styles, same colors, same fonts. Return the full HTML with the minimal targeted edit.`
+        : `Create a website: ${prompt}`;
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-gen`,
@@ -181,7 +189,8 @@ DESIGN REQUIREMENTS:
           body: JSON.stringify({ 
             prompt: fullPrompt, 
             stream: true,
-            model: selectedModel
+            model: selectedModel,
+            isEdit: isEdit  // Pass flag to use targeted edit system prompt
           }),
           signal: abortController.signal
         }
