@@ -85,6 +85,7 @@ const WebGen = () => {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [selectedModel, setSelectedModel] = useState<ModelType>('haiku');
   const codeContainerRef = useRef<HTMLDivElement>(null);
+  const [userScrolled, setUserScrolled] = useState(false);
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -95,16 +96,38 @@ const WebGen = () => {
     };
   }, [blobUrl]);
 
-  // Auto-scroll code container during streaming
+  // Reset userScrolled when new generation starts
   useEffect(() => {
-    if (codeContainerRef.current && generatedCode) {
-      requestAnimationFrame(() => {
-        if (codeContainerRef.current) {
-          codeContainerRef.current.scrollTop = codeContainerRef.current.scrollHeight;
-        }
-      });
+    if (loading) {
+      setUserScrolled(false);
     }
-  }, [generatedCode]);
+  }, [loading]);
+
+  // Detect if user manually scrolls up
+  const handleCodeScroll = () => {
+    if (!codeContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = codeContainerRef.current;
+    // If user scrolls more than 100px from bottom, they're reviewing
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setUserScrolled(!isNearBottom);
+  };
+
+  // Auto-scroll code container during streaming (only if user hasn't scrolled away)
+  useEffect(() => {
+    if (codeContainerRef.current && generatedCode && !userScrolled) {
+      const timeoutId = setTimeout(() => {
+        requestAnimationFrame(() => {
+          if (codeContainerRef.current) {
+            codeContainerRef.current.scrollTo({
+              top: codeContainerRef.current.scrollHeight,
+              behavior: 'auto'
+            });
+          }
+        });
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [generatedCode, userScrolled]);
 
   // Loading message animation
   useEffect(() => {
@@ -509,7 +532,8 @@ const WebGen = () => {
                   {generatedCode || loading ? (
                     <div 
                       ref={codeContainerRef}
-                      className="h-full overflow-auto rounded-lg bg-background/80 border border-border/50"
+                      onScroll={handleCodeScroll}
+                      className="h-full overflow-y-scroll rounded-lg bg-background/80 border border-border/50"
                     >
                       <pre className="p-4 text-sm text-foreground font-mono whitespace-pre-wrap break-words">
                         <code>{generatedCode}</code>
