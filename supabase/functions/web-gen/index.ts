@@ -65,7 +65,7 @@ CRITICAL RULES:
 1. Return ONLY valid HTML - no markdown, no backticks, no explanations
 2. Start with <!DOCTYPE html>
 3. End with </html>
-4. Include all CSS in <style> or use Tailwind CDN
+4. Include all CSS in <style> or use appropriate CDN
 5. Include all JavaScript in <script> tags
 6. Dark theme by default unless specified otherwise
 7. Make it responsive and modern
@@ -73,89 +73,89 @@ CRITICAL RULES:
 
 NEVER truncate. Complete every tag. Output must start with <!DOCTYPE html> and end with </html>.`;
 
-  // Standard mode (no special requirements)
-  if (modes.includes('standard') || modes.length === 0) {
-    return `You are an expert web developer. Generate COMPLETE HTML code only.
-${baseRules}`;
-  }
-
-  // Build combined prompt for multiple modes
-  let prompt = `You are an expert web developer creating a website with the following technologies:\n\n`;
-  
-  if (modes.includes('interactive')) {
-    prompt += `TAILWIND + ALPINE.JS (Interactive Mode):
-- Include: <script src="https://cdn.tailwindcss.com"></script>
-- Include: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-- Use x-data for reactive state, x-show with x-transition for animations
-- Use @click for handlers, :class for dynamic classes
-- Create dark mode toggle and responsive mobile menu
-- Use Tailwind utility classes, dark: variants, responsive variants (sm:, md:, lg:)
-
-`;
-  }
-  
+  // GAME MODE - Full-featured games with everything
   if (modes.includes('game')) {
-    prompt += `KABOOM.JS (Game Mode):
-- Include: <script src="https://unpkg.com/kaboom@3000/dist/kaboom.mjs" type="module"></script>
-- Create a COMPLETE, PLAYABLE 2D game
-- Use kaboom() initialization with canvas
-- Use add() to create game objects with rect(), color(), pos(), area()
-- Use onKeyDown/onKeyPress for player controls
-- Use onCollide() for collision detection
-- Track and display score with text()
-- Include clear game instructions on screen
-- Add game states: menu, playing, gameover
+    return `You are an expert game developer. Generate a COMPLETE, PLAYABLE game in one HTML file.
 
-`;
-  }
-  
-  if (modes.includes('threejs')) {
-    // Simplified 3D prompt for better success rate
-    prompt += `THREE.JS (3D Experience - SIMPLIFIED):
-- Include: <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-- Create a simple but visually impressive 3D scene
-- Use PerspectiveCamera and WebGLRenderer
-- Add AmbientLight and one DirectionalLight
-- Create ONE main geometry (TorusKnot, Icosahedron, or Sphere)
-- Use MeshStandardMaterial with metalness and roughness
-- Rotate the geometry in animation loop with requestAnimationFrame
-- Keep JavaScript under 50 lines total
-- NO OrbitControls (keep it simple)
+GAME MODE REQUIREMENTS:
+- Include Kaboom.js: <script src="https://unpkg.com/kaboom@3000/dist/kaboom.mjs" type="module"></script>
+- Include Three.js if 3D elements needed: <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+- Include GSAP for smooth animations: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+- Create a COMPLETE, PLAYABLE experience
+- ALL code in ONE HTML file
+- Player controls (keyboard/mouse)
+- Scoring system displayed on screen
+- Game states: menu, playing, game over, restart
+- Visual effects: particles, animations, transitions
+- Sound effects if applicable
+- Clear on-screen instructions
+- Make it FUN and POLISHED
 
-`;
-  }
-  
-  if (modes.includes('animated')) {
-    prompt += `GSAP (Animated Mode):
-- Include: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-- Include: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-- Use gsap.from() and gsap.to() for element animations
-- Use ScrollTrigger.create() for scroll-based animations
-- Use stagger property for sequential animations
-- Create timelines with gsap.timeline() for complex sequences
-- Use professional easing: "power2.out", "elastic.out", "bounce.out"
-- Animate on page load and on scroll
-
-`;
-  }
-
-  // Special handling for Interactive + Animated combo (the only allowed combo)
-  if (modes.includes('interactive') && modes.includes('animated')) {
-    prompt += `\nCRITICAL COMBO RULES (Interactive + Animated):
-- GSAP: Use ONLY for entrance animations on page load and scroll-triggered reveals
-- Alpine.js: Use ONLY for UI state management (mobile menu, dark mode toggle, tabs, accordions)
-- NEVER animate the same element with both libraries
-- Alpine handles: x-show, x-transition for UI toggles
-- GSAP handles: gsap.from() for initial animations, ScrollTrigger for scroll effects
-- This separation prevents DOM conflicts
-
-`;
-  }
-
-  prompt += `Generate COMPLETE HTML code combining all the above technologies seamlessly.
 ${baseRules}`;
+  }
+  
+  // FUNCTIONAL MODE - JavaScript-heavy, everything works
+  if (modes.includes('functional')) {
+    return `You are an expert web developer. Generate a FULLY FUNCTIONAL website where everything works.
 
-  return prompt;
+FUNCTIONAL MODE REQUIREMENTS:
+- Include Tailwind CSS: <script src="https://cdn.tailwindcss.com"></script>
+- Include Alpine.js: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+- Make EVERYTHING work: buttons, forms, navigation, modals, tabs
+- Proper JavaScript event handling
+- Form validation with feedback
+- Dynamic content updates
+- State management with Alpine x-data
+- Mobile responsive navigation
+- Dark mode toggle (functional)
+- All interactive elements must work properly
+
+${baseRules}`;
+  }
+  
+  // DESIGNED MODE - Premium visual design with animations
+  if (modes.includes('designed')) {
+    return `You are an expert web designer. Generate a BEAUTIFULLY DESIGNED website with premium animations.
+
+DESIGNED MODE REQUIREMENTS:
+- Include Tailwind CSS: <script src="https://cdn.tailwindcss.com"></script>
+- Include GSAP: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+- Include ScrollTrigger: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+- PREMIUM visual design: gradients, shadows, depth, layering
+- Smooth hover effects on all interactive elements
+- CSS transitions (300ms ease)
+- Scroll-triggered reveal animations with GSAP
+- Professional typography with Google Fonts
+- Generous whitespace and visual hierarchy
+- Modern, luxurious, expensive-looking aesthetic
+- Subtle micro-interactions
+- Polished and production-ready appearance
+
+${baseRules}`;
+  }
+  
+  // CLASSIC MODE - Pure HTML/CSS/JS, no frameworks
+  if (modes.includes('classic')) {
+    return `You are an expert web developer. Generate a clean, traditional website using ONLY pure HTML, CSS, and vanilla JavaScript.
+
+CLASSIC MODE REQUIREMENTS:
+- HTML5 semantic elements (header, main, section, article, footer)
+- Custom CSS in <style> tag - NO frameworks
+- Vanilla JavaScript only - NO libraries
+- Clean, traditional structure
+- CSS Grid and Flexbox for layout
+- Responsive with media queries
+- Simple, effective, fast-loading
+- Classic web development approach
+- Accessibility best practices
+- Works in all modern browsers
+
+${baseRules}`;
+  }
+
+  // Default fallback (standard mode)
+  return `You are an expert web developer. Generate COMPLETE HTML code only.
+${baseRules}`;
 }
 
 // Create transform stream with proper UTF-8 handling and line buffering

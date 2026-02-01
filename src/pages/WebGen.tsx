@@ -11,15 +11,14 @@ import {
   Check, 
   Download,
   ExternalLink,
-  Globe,
   Zap,
   Brain,
   Send,
   ChevronDown,
   CheckCircle2,
   Gamepad2,
-  Box,
-  MousePointer,
+  Palette,
+  FileCode,
   Wand2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +48,9 @@ interface WebGenMessage {
   generationTime?: number;
 }
 
+// Rotating words for hero
+const ROTATING_WORDS = ['NEXT!', 'IMAGINATION!', 'WEB!', 'FUTURE!'];
+
 // Options
 const THEME_OPTIONS = [
   { id: 'blue-black', label: 'Blue & Black' },
@@ -68,14 +70,36 @@ const TYPE_OPTIONS = [
   { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' }
 ];
 
-// Website Stack Options (single-select, pre-tested combinations)
+// Website Stack Options - Simplified to 4 clear modes
 const STACK_OPTIONS = [
-  { id: 'standard', label: 'Standard', desc: 'Classic HTML/CSS/JS', modes: ['standard'], icon: Globe },
-  { id: 'interactive', label: 'Interactive', desc: 'Tailwind + Alpine.js', modes: ['interactive'], icon: MousePointer },
-  { id: 'animated', label: 'Animated', desc: 'GSAP scroll animations', modes: ['animated'], icon: Sparkles },
-  { id: 'interactive-animated', label: 'Interactive + Animated', desc: 'Dynamic UI with animations', modes: ['interactive', 'animated'], icon: Zap, badge: 'Combo' },
-  { id: 'game', label: 'Game Mode', desc: 'Kaboom.js 2D games', modes: ['game'], icon: Gamepad2 },
-  { id: 'threejs', label: '3D Experience', desc: 'Three.js visuals', modes: ['threejs'], icon: Box }
+  { 
+    id: 'game', 
+    label: 'Game Mode', 
+    desc: 'Games with animations, interactions & 3D',
+    modes: ['game'],
+    icon: Gamepad2 
+  },
+  { 
+    id: 'functional', 
+    label: 'Functional Mode', 
+    desc: 'Everything works properly with JavaScript',
+    modes: ['functional'],
+    icon: Zap 
+  },
+  { 
+    id: 'designed', 
+    label: 'Designed Mode', 
+    desc: 'Beautiful HTML/CSS with premium animations',
+    modes: ['designed'],
+    icon: Palette 
+  },
+  { 
+    id: 'classic', 
+    label: 'Classic Mode', 
+    desc: 'Traditional HTML, CSS, and vanilla JS',
+    modes: ['classic'],
+    icon: FileCode 
+  }
 ];
 
 const WebGen = () => {
@@ -84,6 +108,17 @@ const WebGen = () => {
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const codeContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Rotating word state
+  const [wordIndex, setWordIndex] = useState(0);
+  
+  // Rotate words every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWordIndex(prev => (prev + 1) % ROTATING_WORDS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
   
   // Chat state
   const [messages, setMessages] = useState<WebGenMessage[]>([]);
@@ -244,60 +279,55 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
     
     const selectedModes = getSelectedModes();
     
-    // Build mode-specific requirements
-    const modeRequirements: string[] = [];
-    
-    if (selectedModes.includes('interactive')) {
-      modeRequirements.push(`
-INTERACTIVE MODE (Tailwind + Alpine.js):
-- Use Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>
-- Use Alpine.js via CDN: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-- Use x-data, x-show, x-on:click, x-transition for interactivity
-- Create dark mode toggle and mobile menu with Alpine`);
-    }
+    // Build mode-specific requirements based on new simplified modes
+    let modeText = '';
     
     if (selectedModes.includes('game')) {
-      modeRequirements.push(`
-GAME MODE (Kaboom.js):
-- Use Kaboom.js: <script src="https://unpkg.com/kaboom@3000/dist/kaboom.mjs" type="module"></script>
-- Create a PLAYABLE 2D game with player movement, collision, and scoring
-- Use kaboom(), add(), onKeyDown(), onCollide() for game logic
-- Include game instructions and score display`);
+      modeText = `
+GAME MODE (Full-Featured):
+- Include Kaboom.js: <script src="https://unpkg.com/kaboom@3000/dist/kaboom.mjs" type="module"></script>
+- Include Three.js if 3D needed: <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+- Include GSAP: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+- Create COMPLETE, PLAYABLE game with all logic in ONE HTML file
+- Player controls, scoring system, game states (menu, playing, game over)
+- Visual effects, particle animations, smooth transitions
+- Include clear on-screen instructions`;
     }
     
-    if (selectedModes.includes('threejs')) {
-      modeRequirements.push(`
-3D EXPERIENCE MODE (Three.js - SIMPLE):
-- Use Three.js: <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-- Create a simple but impressive 3D scene (one main geometry)
-- Add lighting: AmbientLight + DirectionalLight
-- Use requestAnimationFrame for smooth rotation
-- Keep JavaScript under 50 lines`);
+    if (selectedModes.includes('functional')) {
+      modeText = `
+FUNCTIONAL MODE (JavaScript-Heavy):
+- Include Tailwind CSS: <script src="https://cdn.tailwindcss.com"></script>
+- Include Alpine.js: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+- Make EVERYTHING work: buttons, forms, navigation, modals
+- Proper JavaScript event handling and form validation
+- Dynamic content updates and state management
+- Responsive and fully interactive`;
     }
     
-    if (selectedModes.includes('animated')) {
-      modeRequirements.push(`
-ANIMATED MODE (GSAP):
-- Use GSAP: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-- Use ScrollTrigger: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-- Create buttery-smooth animations with gsap.from(), gsap.to(), timelines
-- Add scroll-triggered animations for sections`);
+    if (selectedModes.includes('designed')) {
+      modeText = `
+DESIGNED MODE (Premium Design):
+- Include Tailwind CSS: <script src="https://cdn.tailwindcss.com"></script>
+- Include GSAP + ScrollTrigger: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+- PREMIUM visual design with gradients, shadows, depth
+- Smooth hover effects and CSS transitions
+- Scroll-triggered reveal animations
+- Professional typography and spacing
+- Modern, luxurious aesthetic`;
     }
-
-    // Add special instructions for combo stacks
-    if (selectedModes.includes('interactive') && selectedModes.includes('animated')) {
-      modeRequirements.push(`
-IMPORTANT COMBO RULES:
-- Use GSAP ONLY for entrance animations and scroll effects
-- Use Alpine.js ONLY for UI state (toggles, menus, tabs)
-- Do NOT animate the same elements with both libraries
-- Alpine handles: mobile menu, dark mode, tabs, accordions
-- GSAP handles: page load animations, scroll reveals`);
+    
+    if (selectedModes.includes('classic')) {
+      modeText = `
+CLASSIC MODE (Pure Basics):
+- HTML5 semantic elements only
+- Custom CSS (NO frameworks)
+- Vanilla JavaScript only
+- Clean, traditional structure
+- Responsive with media queries
+- Simple, effective, and fast`;
     }
-
-    const modeText = modeRequirements.length > 0 
-      ? modeRequirements.join('\n') 
-      : '';
 
     return `${userPrompt}
 
@@ -566,43 +596,113 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
         <ScrollArea className="flex-1">
           <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
             
-            {/* Welcome Screen - Premium Glass Card */}
+            {/* Welcome Screen - Premium Hero */}
             {messages.length === 0 && (
-              <div className="flex h-[60vh] items-center justify-center">
-                <div className="relative">
-                  {/* Glow behind card */}
-                  <div className="absolute inset-0 -m-8 bg-gradient-to-br from-primary/30 to-secondary/30 blur-3xl rounded-full" />
+              <div className="flex min-h-[70vh] items-center justify-center">
+                <div className="text-center space-y-8 max-w-4xl px-4">
+                  {/* Tagline */}
+                  <p className="text-xl md:text-2xl">
+                    <span className="text-muted-foreground">Cannot code? </span>
+                    <span className="bg-gradient-to-r from-primary via-pink-400 to-secondary bg-clip-text text-transparent font-semibold">
+                      Just an Excuse!
+                    </span>
+                  </p>
                   
-                  {/* Glass card */}
-                  <div className="relative text-center space-y-6 p-8 md:p-12 rounded-3xl backdrop-blur-2xl bg-white/[0.03] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-                    {/* Animated icon with glow */}
-                    <div className="relative inline-block">
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary blur-2xl opacity-60 animate-pulse-slow" />
-                      <div className="relative inline-flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary shadow-[0_0_40px_rgba(236,72,153,0.5)]">
-                        <Globe className="h-12 w-12 text-white" />
+                  {/* Main headline with rotating word */}
+                  <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-tight">
+                    <span className="text-foreground">Build the </span>
+                    <span 
+                      key={wordIndex}
+                      className="inline-block bg-gradient-to-r from-primary via-pink-400 to-secondary bg-clip-text text-transparent font-black animate-fade-in"
+                    >
+                      {ROTATING_WORDS[wordIndex]}
+                    </span>
+                  </h1>
+                  
+                  {/* Large premium input */}
+                  <div className="relative max-w-3xl mx-auto mt-12">
+                    {/* Glow behind input */}
+                    <div className="absolute inset-0 -m-6 bg-gradient-to-br from-primary/25 to-secondary/25 blur-3xl rounded-[2rem]" />
+                    
+                    {/* Glass input container */}
+                    <div className="relative backdrop-blur-2xl bg-white/[0.03] border border-white/10 rounded-3xl p-6 shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
+                      <Textarea
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Design your dream website..."
+                        className="w-full min-h-[120px] md:min-h-[150px] text-lg md:text-xl bg-transparent border-0 resize-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
+                        rows={4}
+                      />
+                      
+                      {/* Bottom controls */}
+                      <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/5">
+                        {/* Model selector */}
+                        <div className="flex gap-2">
+                          <Button
+                            variant={selectedModel === 'haiku' ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setSelectedModel('haiku')}
+                            className={cn(
+                              "gap-1.5 text-xs",
+                              selectedModel === 'haiku' && "bg-primary/20 text-primary hover:bg-primary/30"
+                            )}
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Haiku
+                          </Button>
+                          <Button
+                            variant={selectedModel === 'kimi' ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setSelectedModel('kimi')}
+                            className={cn(
+                              "gap-1.5 text-xs",
+                              selectedModel === 'kimi' && "bg-primary/20 text-primary hover:bg-primary/30"
+                            )}
+                          >
+                            <Brain className="h-3.5 w-3.5" />
+                            Kimi
+                          </Button>
+                          <Button
+                            variant={selectedModel === 'gemini' ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setSelectedModel('gemini')}
+                            className={cn(
+                              "gap-1.5 text-xs",
+                              selectedModel === 'gemini' && "bg-primary/20 text-primary hover:bg-primary/30"
+                            )}
+                          >
+                            <Zap className="h-3.5 w-3.5" />
+                            Gemini
+                          </Button>
+                        </div>
+                        
+                        {/* Action buttons */}
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={enhancePrompt}
+                            disabled={!inputValue.trim() || inputValue.length < 3 || isEnhancing}
+                            className="gap-1.5 text-muted-foreground hover:text-primary"
+                          >
+                            {isEnhancing ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Wand2 className="h-4 w-4" />
+                            )}
+                            Enhance
+                          </Button>
+                          <Button 
+                            onClick={handleSendPrompt}
+                            disabled={!inputValue.trim()}
+                            className="gap-1.5 bg-gradient-to-r from-primary to-secondary hover:shadow-[0_0_25px_rgba(236,72,153,0.5)] transition-all"
+                          >
+                            <Send className="h-4 w-4" />
+                            Build
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <h2 className="text-3xl md:text-4xl font-bold">
-                        <span className="text-foreground">AI Website </span>
-                        <span className="bg-gradient-to-r from-primary via-pink-400 to-secondary bg-clip-text text-transparent">Generator</span>
-                      </h2>
-                      <p className="text-muted-foreground text-lg">
-                        Describe what you want to build
-                      </p>
-                    </div>
-                    
-                    {/* Feature badges */}
-                    <div className="flex flex-wrap justify-center gap-2 pt-2">
-                      {['HTML/CSS/JS', 'Tailwind', 'Three.js', 'Games'].map((tech) => (
-                        <span 
-                          key={tech}
-                          className="px-3 py-1 text-xs rounded-full bg-white/5 border border-white/10 text-muted-foreground"
-                        >
-                          {tech}
-                        </span>
-                      ))}
                     </div>
                   </div>
                 </div>
@@ -710,14 +810,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                                     isSelected ? "text-primary" : "text-muted-foreground"
                                   )} />
                                   <div>
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-medium text-foreground">{option.label}</p>
-                                      {option.badge && (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/30 text-primary border border-primary/40">
-                                          {option.badge}
-                                        </span>
-                                      )}
-                                    </div>
+                                    <p className="font-medium text-foreground">{option.label}</p>
                                     <p className="text-xs text-muted-foreground">{option.desc}</p>
                                   </div>
                                 </div>
