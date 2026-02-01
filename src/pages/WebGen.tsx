@@ -35,6 +35,7 @@ import Header from '@/components/Header';
 import WebGenBackground from '@/components/WebGenBackground';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { Progress } from '@/components/ui/progress';
 
 // Model icons
 import gptIcon from '@/assets/gpt-icon.png';
@@ -84,6 +85,13 @@ const MODEL_OPTIONS = [
   { id: 'claude' as ModelType, name: 'Claude', icon: claudeIcon },
   { id: 'deepseek' as ModelType, name: 'DeepSeek', icon: deepseekIcon }
 ];
+
+// Expected generation times in milliseconds per model (based on benchmarking)
+const MODEL_EXPECTED_TIMES: Record<ModelType, number> = {
+  gpt: 60000,      // 60 seconds (~100 tokens/sec)
+  claude: 90000,   // 90 seconds (~60 tokens/sec)
+  deepseek: 75000  // 75 seconds (~80 tokens/sec)
+};
 
 // Rotating words for hero
 const ROTATING_WORDS = ['NEXT!', 'IMAGINATION!', 'WEB!', 'FUTURE!'];
@@ -281,6 +289,14 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
   const [copied, setCopied] = useState(false);
   const [generationStartTime, setGenerationStartTime] = useState<number>(0);
   const [generationTime, setGenerationTime] = useState<number>(0);
+  
+  // Progress bar state
+  const [progressPercentage, setProgressPercentage] = useState<number>(0);
+  const [multiModelProgress, setMultiModelProgress] = useState<Record<ModelType, number>>({
+    gpt: 0,
+    claude: 0,
+    deepseek: 0
+  });
 
   // Cleanup blob URLs
   useEffect(() => {
@@ -356,6 +372,38 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
       }
     }
   }, [showLivePreview, livePreviewModel]);
+
+  // Progress bar calculation effect
+  useEffect(() => {
+    if (!loading) {
+      // Reset progress when not loading
+      setProgressPercentage(0);
+      setMultiModelProgress({ gpt: 0, claude: 0, deepseek: 0 });
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - generationStartTime;
+      
+      if (isMultiModelStreaming) {
+        // Update each model's progress independently
+        const newProgress: Record<ModelType, number> = { gpt: 0, claude: 0, deepseek: 0 };
+        (['gpt', 'claude', 'deepseek'] as const).forEach(model => {
+          const expected = MODEL_EXPECTED_TIMES[model];
+          const progress = Math.min(99, Math.floor((elapsed / expected) * 100));
+          newProgress[model] = multiModelStreams[model].done ? 100 : progress;
+        });
+        setMultiModelProgress(newProgress);
+      } else {
+        // Single model progress
+        const expected = MODEL_EXPECTED_TIMES[selectedModel];
+        const progress = Math.min(99, Math.floor((elapsed / expected) * 100));
+        setProgressPercentage(progress);
+      }
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, [loading, generationStartTime, selectedModel, isMultiModelStreaming, multiModelStreams]);
 
   // Cleanup live preview
   const closeLivePreview = useCallback(() => {
@@ -539,6 +587,7 @@ ${modeText}`;
     setMultiModelResults([]);
     setMultiModelBlobUrls({});
     setGenerationStartTime(Date.now());
+    setMultiModelProgress({ gpt: 0, claude: 0, deepseek: 0 });
     
     // Reset stream states
     setMultiModelStreams({
@@ -731,6 +780,7 @@ ${modeText}`;
     setGeneratedCode('');
     setShowCode(false);
     setGenerationStartTime(Date.now());
+    setProgressPercentage(0);
     
     if (blobUrl) {
       URL.revokeObjectURL(blobUrl);
@@ -1521,9 +1571,17 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                       </p>
                       
                       {loading && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Working on it...</span>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Working on it... {progressPercentage}%</span>
+                          </div>
+                          <Progress value={progressPercentage} className="h-2" />
+                          <p className="text-xs text-muted-foreground">
+                            {progressPercentage < 99 
+                              ? `Estimated ${Math.max(0, Math.ceil((MODEL_EXPECTED_TIMES[selectedModel] - (Date.now() - generationStartTime)) / 1000))}s remaining`
+                              : "Almost there..."}
+                          </p>
                         </div>
                       )}
                       
@@ -1602,12 +1660,17 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                                   />
                                   <span className="text-sm font-medium text-foreground">{modelInfo?.name}</span>
                                 </div>
-                                {stream.loading && !stream.done && (
-                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                                )}
-                                {stream.done && !stream.error && (
-                                  <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                                )}
+                                <span className="text-xs text-muted-foreground">
+                                  {stream.done ? '100%' : `${multiModelProgress[modelKey]}%`}
+                                </span>
+                              </div>
+                              
+                              {/* Progress bar under header */}
+                              <div className="px-2 pb-1">
+                                <Progress 
+                                  value={stream.done ? 100 : (multiModelProgress[modelKey] || 0)} 
+                                  className="h-1"
+                                />
                               </div>
                               
                               {/* Code preview */}
