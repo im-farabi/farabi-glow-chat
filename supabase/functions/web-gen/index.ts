@@ -58,41 +58,90 @@ CRITICAL RULES FOR EDITING:
 The user will provide existing code and a specific change request. Make ONLY that change.
 Output must start with <!DOCTYPE html> and end with </html>.`;
 
-// System prompt for Tailwind + Alpine.js websites
-const ALPINE_SYSTEM_PROMPT = `You are an expert web developer creating modern websites with Tailwind CSS and Alpine.js.
-
-Generate COMPLETE HTML code with these REQUIRED technologies:
-1. Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>
-2. Alpine.js via CDN: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-3. Google Fonts for typography
-4. Font Awesome via CDN for icons
-
-ALPINE.JS FEATURES TO USE:
-- x-data for reactive state (e.g., x-data="{ open: false, dark: true }")
-- x-show with x-transition for smooth show/hide animations
-- x-on:click or @click for click handlers
-- x-bind or :class for dynamic classes
-- x-init for initialization logic
-- Create a dark mode toggle using Alpine state
-- Create mobile hamburger menu with x-show
-
-TAILWIND BEST PRACTICES:
-- Use utility classes for all styling
-- Use dark: variants for dark mode (dark:bg-gray-900 dark:text-white)
-- Use responsive variants (sm:, md:, lg:)
-- Use hover: and focus: states
-- Use gradient backgrounds: bg-gradient-to-r from-blue-500 to-purple-600
-- Use transitions: transition-all duration-300
-
+// Build dynamic system prompt based on selected modes
+function buildSystemPrompt(modes: string[]): string {
+  const baseRules = `
 CRITICAL RULES:
 1. Return ONLY valid HTML - no markdown, no backticks, no explanations
 2. Start with <!DOCTYPE html>
 3. End with </html>
-4. Include Tailwind config in <script> for custom colors if needed
-5. Make it fully responsive and interactive
-6. Dark theme by default
+4. Include all CSS in <style> or use Tailwind CDN
+5. Include all JavaScript in <script> tags
+6. Dark theme by default unless specified otherwise
+7. Make it responsive and modern
+8. Use Google Fonts and Font Awesome from CDN
 
 NEVER truncate. Complete every tag. Output must start with <!DOCTYPE html> and end with </html>.`;
+
+  // Standard mode (no special requirements)
+  if (modes.includes('standard') || modes.length === 0) {
+    return `You are an expert web developer. Generate COMPLETE HTML code only.
+${baseRules}`;
+  }
+
+  // Build combined prompt for multiple modes
+  let prompt = `You are an expert web developer creating a website with the following technologies:\n\n`;
+  
+  if (modes.includes('interactive')) {
+    prompt += `TAILWIND + ALPINE.JS (Interactive Mode):
+- Include: <script src="https://cdn.tailwindcss.com"></script>
+- Include: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+- Use x-data for reactive state, x-show with x-transition for animations
+- Use @click for handlers, :class for dynamic classes
+- Create dark mode toggle and responsive mobile menu
+- Use Tailwind utility classes, dark: variants, responsive variants (sm:, md:, lg:)
+
+`;
+  }
+  
+  if (modes.includes('game')) {
+    prompt += `KABOOM.JS (Game Mode):
+- Include: <script src="https://unpkg.com/kaboom@3000/dist/kaboom.mjs" type="module"></script>
+- Create a COMPLETE, PLAYABLE 2D game
+- Use kaboom() initialization with canvas
+- Use add() to create game objects with rect(), color(), pos(), area()
+- Use onKeyDown/onKeyPress for player controls
+- Use onCollide() for collision detection
+- Track and display score with text()
+- Include clear game instructions on screen
+- Add game states: menu, playing, gameover
+
+`;
+  }
+  
+  if (modes.includes('threejs')) {
+    prompt += `THREE.JS (3D Experience Mode):
+- Include: <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+- Include: <script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+- Create Scene, Camera (PerspectiveCamera), and WebGLRenderer
+- Add proper lighting (AmbientLight, DirectionalLight, PointLight)
+- Create geometries with materials (MeshStandardMaterial, MeshPhongMaterial)
+- Implement animation loop with requestAnimationFrame
+- Add OrbitControls for camera interaction
+- Make canvas responsive to window resize
+
+`;
+  }
+  
+  if (modes.includes('animated')) {
+    prompt += `GSAP (Animated Mode):
+- Include: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+- Include: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+- Use gsap.from() and gsap.to() for element animations
+- Use ScrollTrigger.create() for scroll-based animations
+- Use stagger property for sequential animations
+- Create timelines with gsap.timeline() for complex sequences
+- Use professional easing: "power2.out", "elastic.out", "bounce.out"
+- Animate on page load and on scroll
+
+`;
+  }
+
+  prompt += `Generate COMPLETE HTML code combining all the above technologies seamlessly.
+${baseRules}`;
+
+  return prompt;
+}
 
 // Create transform stream with proper UTF-8 handling and line buffering
 function createTransformStream() {
@@ -212,12 +261,10 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, stream = true, model = 'gemini', isEdit = false, isAlpine = false } = await req.json();
+    const { prompt, stream = true, model = 'gemini', isEdit = false, modes = [] } = await req.json();
     
     // Choose the appropriate system prompt
-    const systemPrompt = isEdit ? EDIT_SYSTEM_PROMPT 
-                       : isAlpine ? ALPINE_SYSTEM_PROMPT 
-                       : SYSTEM_PROMPT;
+    const systemPrompt = isEdit ? EDIT_SYSTEM_PROMPT : buildSystemPrompt(modes as string[]);
 
     if (!prompt || typeof prompt !== 'string') {
       return new Response(JSON.stringify({ error: 'Prompt is required' }), {

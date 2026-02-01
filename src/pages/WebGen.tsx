@@ -16,7 +16,10 @@ import {
   Brain,
   Send,
   ChevronDown,
-  CheckCircle2
+  CheckCircle2,
+  Gamepad2,
+  Box,
+  MousePointer
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
@@ -60,8 +63,16 @@ const FONT_OPTIONS = [
 const TYPE_OPTIONS = [
   { id: 'premium', label: 'Rich & Premium', desc: 'Luxurious, polished design' },
   { id: 'detailed', label: 'Fully Detailed', desc: 'Complete with all features' },
-  { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' },
-  { id: 'alpine', label: 'Tailwind + Alpine ⭐', desc: 'Modern, interactive & reactive' }
+  { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' }
+];
+
+// Website Mode Options (multi-select enabled)
+const MODE_OPTIONS = [
+  { id: 'standard', label: 'Standard', desc: 'Classic HTML/CSS/JS', icon: Globe },
+  { id: 'interactive', label: 'Interactive ⭐', desc: 'Tailwind + Alpine.js', icon: MousePointer },
+  { id: 'game', label: 'Game Mode', desc: 'Kaboom.js for 2D games', icon: Gamepad2 },
+  { id: 'threejs', label: '3D Experience', desc: 'Three.js for 3D visuals', icon: Box },
+  { id: 'animated', label: 'Animated', desc: 'GSAP premium animations', icon: Sparkles }
 ];
 
 const WebGen = () => {
@@ -81,6 +92,23 @@ const WebGen = () => {
   const [customTheme, setCustomTheme] = useState('');
   const [selectedFont, setSelectedFont] = useState('');
   const [selectedType, setSelectedType] = useState('');
+  const [selectedModes, setSelectedModes] = useState<string[]>([]);
+
+  // Toggle mode selection (multi-select)
+  const toggleMode = (modeId: string) => {
+    setSelectedModes(prev => {
+      // If selecting 'standard', clear all others
+      if (modeId === 'standard') {
+        return prev.includes('standard') ? [] : ['standard'];
+      }
+      // If selecting another mode, remove 'standard' if present
+      const withoutStandard = prev.filter(m => m !== 'standard');
+      if (withoutStandard.includes(modeId)) {
+        return withoutStandard.filter(m => m !== modeId);
+      }
+      return [...withoutStandard, modeId];
+    });
+  };
   
   // Generation state
   const [selectedModel, setSelectedModel] = useState<ModelType>('haiku');
@@ -142,35 +170,58 @@ const WebGen = () => {
     
     const typeText = selectedType === 'premium' ? 'rich, premium, luxurious design with smooth animations, gradients, and visual effects'
                    : selectedType === 'detailed' ? 'fully detailed website with all features, sections, and functionality'
-                   : selectedType === 'alpine' ? 'modern Tailwind CSS + Alpine.js website with reactive components and utility-first styling'
                    : 'simple static site for testing purposes, minimal but functional';
     
-    // Check if Alpine type is selected to use special prompt format
-    const isAlpine = selectedType === 'alpine';
-
-    if (isAlpine) {
-      return `${userPrompt}
-
-DESIGN REQUIREMENTS:
-- Color Theme: ${themeText}
-- Font Family: ${selectedFont} (import from Google Fonts)
-- Style: Modern Tailwind CSS + Alpine.js website
-
-TECHNOLOGY STACK (REQUIRED):
+    // Build mode-specific requirements
+    const modeRequirements: string[] = [];
+    
+    if (selectedModes.includes('interactive')) {
+      modeRequirements.push(`
+INTERACTIVE MODE (Tailwind + Alpine.js):
 - Use Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>
 - Use Alpine.js via CDN: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-- Use Font Awesome via CDN for icons
 - Use x-data, x-show, x-on:click, x-transition for interactivity
-- Create dark mode toggle with x-data="{ dark: true }"
-- Add mobile menu with x-show and transitions`;
+- Create dark mode toggle and mobile menu with Alpine`);
     }
+    
+    if (selectedModes.includes('game')) {
+      modeRequirements.push(`
+GAME MODE (Kaboom.js):
+- Use Kaboom.js: <script src="https://unpkg.com/kaboom@3000/dist/kaboom.mjs" type="module"></script>
+- Create a PLAYABLE 2D game with player movement, collision, and scoring
+- Use kaboom(), add(), onKeyDown(), onCollide() for game logic
+- Include game instructions and score display`);
+    }
+    
+    if (selectedModes.includes('threejs')) {
+      modeRequirements.push(`
+3D EXPERIENCE MODE (Three.js):
+- Use Three.js: <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+- Use OrbitControls: <script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+- Create immersive 3D scene with lighting, geometry, and camera controls
+- Add smooth animations with requestAnimationFrame`);
+    }
+    
+    if (selectedModes.includes('animated')) {
+      modeRequirements.push(`
+ANIMATED MODE (GSAP):
+- Use GSAP: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+- Use ScrollTrigger: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+- Create buttery-smooth animations with gsap.from(), gsap.to(), timelines
+- Add scroll-triggered animations for sections`);
+    }
+
+    const modeText = modeRequirements.length > 0 
+      ? modeRequirements.join('\n') 
+      : '';
 
     return `${userPrompt}
 
 DESIGN REQUIREMENTS:
 - Color Theme: ${themeText}
 - Font Family: ${selectedFont} (import from Google Fonts)
-- Style: ${typeText}`;
+- Style: ${typeText}
+${modeText}`;
   };
 
   const generateWebsite = async (prompt: string, isEdit: boolean = false) => {
@@ -213,7 +264,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
             stream: true,
             model: selectedModel,
             isEdit: isEdit,
-            isAlpine: selectedType === 'alpine'  // Pass flag for Tailwind + Alpine prompt
+            modes: selectedModes  // Pass selected modes array
           }),
           signal: abortController.signal
         }
@@ -325,10 +376,10 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
   };
 
   const handleStartGeneration = () => {
-    if (!selectedTheme || !selectedFont || !selectedType) {
+    if (!selectedTheme || !selectedFont || !selectedType || selectedModes.length === 0) {
       toast({
         title: "Please select all options",
-        description: "Choose a theme, font, and website type",
+        description: "Choose a theme, font, website type, and at least one mode",
         variant: "destructive"
       });
       return;
@@ -531,10 +582,49 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                         </div>
                       </div>
 
+                      {/* Website Mode (Multi-select) */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground">Website Mode</p>
+                          <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30">
+                            Multi-select
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {MODE_OPTIONS.map(option => {
+                            const Icon = option.icon;
+                            const isSelected = selectedModes.includes(option.id);
+                            return (
+                              <GlassButton 
+                                key={option.id}
+                                selected={isSelected}
+                                onClick={() => toggleMode(option.id)}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <Icon className={cn(
+                                    "h-5 w-5 mt-0.5 shrink-0",
+                                    isSelected ? "text-primary" : "text-muted-foreground"
+                                  )} />
+                                  <div>
+                                    <p className="font-medium text-foreground">{option.label}</p>
+                                    <p className="text-xs text-muted-foreground">{option.desc}</p>
+                                  </div>
+                                </div>
+                              </GlassButton>
+                            );
+                          })}
+                        </div>
+                        {selectedModes.length > 1 && (
+                          <p className="text-xs text-primary">
+                            ✨ Combining: {selectedModes.map(m => MODE_OPTIONS.find(o => o.id === m)?.label).join(' + ')}
+                          </p>
+                        )}
+                      </div>
+
                       {/* Submit Button */}
                       <Button 
                         onClick={handleStartGeneration}
-                        disabled={!selectedTheme || !selectedFont || !selectedType || (selectedTheme === 'other' && !customTheme.trim())}
+                        disabled={!selectedTheme || !selectedFont || !selectedType || selectedModes.length === 0 || (selectedTheme === 'other' && !customTheme.trim())}
                         className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all"
                         size="lg"
                       >
