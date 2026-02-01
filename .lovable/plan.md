@@ -1,14 +1,15 @@
 
-# Fix Website Generator - Auto-scroll, Better CSS/JS, No Token Limits
+# Fix Website Generator - Multiple Issues
 
-## Issues to Fix
+## Issues to Address
 
-| Issue | Problem | Solution |
-|-------|---------|----------|
-| No auto-scroll | Code streams but view doesn't scroll down | Add ref and auto-scroll to bottom during streaming |
-| No auto-switch to code | User can't see streaming in action | Switch to "Code" tab when generation starts, then to "Preview" when done |
-| Random/plain websites | System prompt isn't explicit enough about CSS/JS | Improve system prompt with detailed design requirements |
-| Token limits | 16k/38k limits may truncate output | Remove max_tokens limit (let API decide) |
+| Issue | Root Cause | Solution |
+|-------|------------|----------|
+| Auto-scroll not working | The useEffect only checks `loading` but scroll needs to happen on every `generatedCode` change | Use `requestAnimationFrame` for smoother scrolling on every code update |
+| Remove Sonnet and GPT-5.2 | User wants only Haiku and Kimi K2 | Remove those models from both backend and frontend |
+| "Generated successfully" with no code | Stream may complete without content validation | Add validation before showing success toast |
+| Haiku produces broken code | Model may truncate output; system prompt can be improved | Improve system prompt with stricter instructions for complete code |
+| Add Kimi K2 model | User wants `moonshotai/kimi-k2-instruct` as alternative | Add to model configs in backend and UI |
 
 ---
 
@@ -16,30 +17,133 @@
 
 ### File 1: `supabase/functions/web-gen/index.ts`
 
-**1. Remove token limits:**
+**1. Update MODELS - Remove Sonnet/GPT, Add Kimi K2:**
 
 ```typescript
-// BEFORE
-const MODELS = {
-  haiku: { name: 'anthropic/claude-haiku-4.5', maxTokens: 16000 },
-  claude: { name: 'anthropic/claude-sonnet-4.5', maxTokens: 16000 },
-  gpt: { name: 'openai/gpt-5.2', maxTokens: 38000 }
-};
-
-// AFTER - No maxTokens, let API use full capacity
 const MODELS = {
   haiku: { name: 'anthropic/claude-haiku-4.5' },
-  claude: { name: 'anthropic/claude-sonnet-4.5' },
-  gpt: { name: 'openai/gpt-5.2' }
+  kimi: { name: 'moonshotai/kimi-k2-instruct' }
 };
 ```
 
-**2. Improve system prompt for better CSS/JS:**
+**2. Improve SYSTEM_PROMPT to prevent truncation:**
+
+Add explicit instructions:
+- "NEVER truncate or cut off your output mid-code"
+- "Complete ALL CSS rules - no partial properties"
+- "Complete ALL JavaScript functions"
+- "Ensure every opening tag has a closing tag"
+
+---
+
+### File 2: `src/pages/WebGen.tsx`
+
+**1. Fix Auto-Scroll - Use requestAnimationFrame:**
+
+```typescript
+// Replace current useEffect
+useEffect(() => {
+  if (codeContainerRef.current && generatedCode) {
+    requestAnimationFrame(() => {
+      if (codeContainerRef.current) {
+        codeContainerRef.current.scrollTop = codeContainerRef.current.scrollHeight;
+      }
+    });
+  }
+}, [generatedCode]);
+```
+
+**2. Update Model Types and Labels:**
+
+```typescript
+type ModelType = 'haiku' | 'kimi';
+
+const MODEL_LABELS = {
+  haiku: 'Claude Haiku 4.5',
+  kimi: 'Kimi K2'
+};
+
+const LOADING_MESSAGES = {
+  haiku: [...],
+  kimi: [
+    'Connecting to Kimi K2...',
+    'Analyzing your request...',
+    // ...rest
+  ]
+};
+```
+
+**3. Update Model Selector UI - Only 2 buttons:**
+
+```tsx
+<div className="flex gap-2">
+  <Button
+    variant={selectedModel === 'haiku' ? 'default' : 'outline'}
+    size="sm"
+    onClick={() => setSelectedModel('haiku')}
+    disabled={loading}
+    className="flex-1 gap-1"
+  >
+    <Zap className="h-3.5 w-3.5" />
+    Haiku
+    <span className="text-xs opacity-70">(Fast)</span>
+  </Button>
+  <Button
+    variant={selectedModel === 'kimi' ? 'default' : 'outline'}
+    size="sm"
+    onClick={() => setSelectedModel('kimi')}
+    disabled={loading}
+    className="flex-1 gap-1"
+  >
+    <Sparkles className="h-3.5 w-3.5" />
+    Kimi K2
+    <span className="text-xs opacity-70">(Smart)</span>
+  </Button>
+</div>
+```
+
+**4. Add Code Validation Before Success Toast:**
+
+```typescript
+// After streaming completes
+const code = accumulatedCode;
+// ... cleanup
+
+// Validate code before showing success
+if (!code || code.trim().length < 100 || !code.includes('<!DOCTYPE')) {
+  toast({
+    title: "Generation incomplete",
+    description: "The AI didn't produce complete code. Please try again.",
+    variant: "destructive"
+  });
+  return;
+}
+
+// Only show success if code is valid
+setGeneratedCode(code);
+const blob = new Blob([code], { type: 'text/html' });
+// ...
+toast({
+  title: "Website generated!",
+  description: `Your website is ready (${MODEL_LABELS[selectedModel]})`,
+});
+```
+
+---
+
+## Updated System Prompt
 
 ```typescript
 const SYSTEM_PROMPT = `You are an expert web developer creating BEAUTIFUL, FUNCTIONAL websites. Return ONLY valid HTML code - no markdown, no backticks, no explanations.
 
-CRITICAL REQUIREMENTS:
+CRITICAL - NEVER TRUNCATE YOUR OUTPUT:
+- Complete ALL code - do not stop mid-output
+- Ensure every opening tag has a closing tag
+- Complete ALL CSS rules - no partial properties like "color: var(--"
+- Complete ALL JavaScript functions
+- End with </html>
+
+REQUIREMENTS:
 1. Start with <!DOCTYPE html> - complete valid HTML5 document
 2. Include EXTENSIVE CSS in <style> tag in <head>:
    - Modern gradients and color schemes
@@ -65,121 +169,26 @@ CRITICAL REQUIREMENTS:
 5. Default to DARK THEME unless user asks for light theme
 6. Mobile-first responsive design
 7. NO placeholder content - real, complete working code
+8. ALWAYS end with </script></body></html>
 
 OUTPUT: Complete HTML document with embedded CSS and JavaScript. Nothing else.`;
 ```
 
 ---
 
-### File 2: `src/pages/WebGen.tsx`
-
-**1. Add code container ref for auto-scroll:**
-
-```typescript
-const codeContainerRef = useRef<HTMLDivElement>(null);
-```
-
-**2. Auto-scroll during streaming:**
-
-```typescript
-// Add useEffect to auto-scroll when generatedCode changes
-useEffect(() => {
-  if (loading && codeContainerRef.current) {
-    codeContainerRef.current.scrollTop = codeContainerRef.current.scrollHeight;
-  }
-}, [generatedCode, loading]);
-```
-
-**3. Switch to "code" tab when generation starts:**
-
-```typescript
-// In generateWebsite function, after setting loading:
-setLoading(true);
-setGeneratedCode('');
-setActiveTab('code');  // ← Switch to code tab immediately
-```
-
-**4. Add ref to code container div:**
-
-```tsx
-// Update the code display div
-<div 
-  ref={codeContainerRef}
-  className="h-full overflow-auto rounded-lg bg-background/80 border border-border/50"
->
-  <pre className="p-4 text-sm text-foreground font-mono whitespace-pre-wrap break-words">
-    <code>{generatedCode}</code>
-  </pre>
-</div>
-```
-
-**5. Show streaming code even during loading (instead of showing loading animation in code tab):**
-
-```tsx
-<TabsContent value="code" className="h-full m-0">
-  {generatedCode || loading ? (
-    <div 
-      ref={codeContainerRef}
-      className="h-full overflow-auto rounded-lg bg-background/80 border border-border/50"
-    >
-      <pre className="p-4 text-sm text-foreground font-mono whitespace-pre-wrap break-words">
-        <code>{generatedCode}</code>
-        {loading && (
-          <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
-        )}
-      </pre>
-    </div>
-  ) : (
-    // Empty state...
-  )}
-</TabsContent>
-```
-
----
-
-## User Flow After Changes
-
-```text
-User clicks "Generate Website"
-         │
-         ▼
-┌─────────────────────────────┐
-│  Switch to CODE tab         │
-│  Start streaming...         │
-└─────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│  Code streams in real-time  │
-│  Auto-scroll to bottom ↓    │
-│  Cursor blinks at end       │
-└─────────────────────────────┘
-         │
-         ▼ (Done)
-┌─────────────────────────────┐
-│  Switch to PREVIEW tab      │
-│  Show live website          │
-│  Toast: "Website generated!"│
-└─────────────────────────────┘
-```
-
----
-
 ## Summary of Changes
 
-| File | Change |
-|------|--------|
-| `supabase/functions/web-gen/index.ts` | Remove token limits, improve system prompt for CSS/JS |
-| `src/pages/WebGen.tsx` | Add auto-scroll, switch tabs automatically, show blinking cursor |
+| File | Changes |
+|------|---------|
+| `supabase/functions/web-gen/index.ts` | Remove Sonnet/GPT models, add Kimi K2, improve system prompt |
+| `src/pages/WebGen.tsx` | Fix auto-scroll, update model selector to 2 buttons, add code validation |
 
 ---
 
-## Expected Results
+## Expected Results After Changes
 
-After these changes:
-- Click Generate → automatically switches to Code tab
-- Code streams in real-time with auto-scroll to bottom
-- Blinking cursor shows where new code is appearing
-- When complete → automatically switches to Preview tab
-- Websites include beautiful CSS styling and functional JavaScript
-- No output truncation due to token limits
+- Auto-scroll works smoothly during streaming
+- Only Haiku and Kimi K2 model options
+- No false "success" messages when code is empty/broken
+- Better quality output with complete CSS/JS
+- Haiku produces fully valid HTML with no truncation
