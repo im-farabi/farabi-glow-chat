@@ -1,15 +1,15 @@
 
-# Fix Website Generator - Multiple Issues
 
-## Issues to Address
+# Fix Website Generator - Critical Issues
+
+## Problems Identified
 
 | Issue | Root Cause | Solution |
 |-------|------------|----------|
-| Auto-scroll not working | The useEffect only checks `loading` but scroll needs to happen on every `generatedCode` change | Use `requestAnimationFrame` for smoother scrolling on every code update |
-| Remove Sonnet and GPT-5.2 | User wants only Haiku and Kimi K2 | Remove those models from both backend and frontend |
-| "Generated successfully" with no code | Stream may complete without content validation | Add validation before showing success toast |
-| Haiku produces broken code | Model may truncate output; system prompt can be improved | Improve system prompt with stricter instructions for complete code |
-| Add Kimi K2 model | User wants `moonshotai/kimi-k2-instruct` as alternative | Add to model configs in backend and UI |
+| Auto-scroll not working | `overflow-auto` needs explicit height and the container might not be scrolling properly | Add explicit height + use `overflow-y-scroll` to always show scrollbar |
+| Haiku doesn't work | Model name might be wrong OR API is rejecting it | Keep Haiku but add better error handling and fallback |
+| Kimi produces corrupted/garbled code | SSE stream chunks can split mid-line, causing data loss in the transform | Buffer incomplete lines and only process complete lines |
+| No manual scroll option | Container doesn't allow scrolling when user wants to review code | Always enable scrolling with visible scrollbar |
 
 ---
 
@@ -17,161 +17,134 @@
 
 ### File 1: `supabase/functions/web-gen/index.ts`
 
-**1. Update MODELS - Remove Sonnet/GPT, Add Kimi K2:**
+**Fix SSE stream buffering to prevent data corruption:**
+
+The current transform processes each chunk independently, but SSE lines can be split across chunks. Need to buffer incomplete lines:
 
 ```typescript
-const MODELS = {
-  haiku: { name: 'anthropic/claude-haiku-4.5' },
-  kimi: { name: 'moonshotai/kimi-k2-instruct' }
-};
-```
-
-**2. Improve SYSTEM_PROMPT to prevent truncation:**
-
-Add explicit instructions:
-- "NEVER truncate or cut off your output mid-code"
-- "Complete ALL CSS rules - no partial properties"
-- "Complete ALL JavaScript functions"
-- "Ensure every opening tag has a closing tag"
-
----
-
-### File 2: `src/pages/WebGen.tsx`
-
-**1. Fix Auto-Scroll - Use requestAnimationFrame:**
-
-```typescript
-// Replace current useEffect
-useEffect(() => {
-  if (codeContainerRef.current && generatedCode) {
-    requestAnimationFrame(() => {
-      if (codeContainerRef.current) {
-        codeContainerRef.current.scrollTop = codeContainerRef.current.scrollHeight;
+const transformStream = new TransformStream({
+  buffer: '',
+  transform(chunk, controller) {
+    // Append new chunk to buffer
+    this.buffer += new TextDecoder().decode(chunk);
+    
+    // Process complete lines only
+    const lines = this.buffer.split('\n');
+    // Keep the last incomplete line in buffer
+    this.buffer = lines.pop() || '';
+    
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') {
+          controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+          continue;
+        }
+        try {
+          const parsed = JSON.parse(data);
+          const content = parsed.choices?.[0]?.delta?.content || '';
+          if (content) {
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`));
+          }
+        } catch {
+          // Skip invalid JSON
+        }
       }
-    });
+    }
+  },
+  flush(controller) {
+    // Process any remaining buffered content
+    if (this.buffer.startsWith('data: ')) {
+      const data = this.buffer.slice(6).trim();
+      if (data && data !== '[DONE]') {
+        try {
+          const parsed = JSON.parse(data);
+          const content = parsed.choices?.[0]?.delta?.content || '';
+          if (content) {
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content })}\n\n`));
+          }
+        } catch {}
+      }
+    }
+    controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
   }
-}, [generatedCode]);
-```
-
-**2. Update Model Types and Labels:**
-
-```typescript
-type ModelType = 'haiku' | 'kimi';
-
-const MODEL_LABELS = {
-  haiku: 'Claude Haiku 4.5',
-  kimi: 'Kimi K2'
-};
-
-const LOADING_MESSAGES = {
-  haiku: [...],
-  kimi: [
-    'Connecting to Kimi K2...',
-    'Analyzing your request...',
-    // ...rest
-  ]
-};
-```
-
-**3. Update Model Selector UI - Only 2 buttons:**
-
-```tsx
-<div className="flex gap-2">
-  <Button
-    variant={selectedModel === 'haiku' ? 'default' : 'outline'}
-    size="sm"
-    onClick={() => setSelectedModel('haiku')}
-    disabled={loading}
-    className="flex-1 gap-1"
-  >
-    <Zap className="h-3.5 w-3.5" />
-    Haiku
-    <span className="text-xs opacity-70">(Fast)</span>
-  </Button>
-  <Button
-    variant={selectedModel === 'kimi' ? 'default' : 'outline'}
-    size="sm"
-    onClick={() => setSelectedModel('kimi')}
-    disabled={loading}
-    className="flex-1 gap-1"
-  >
-    <Sparkles className="h-3.5 w-3.5" />
-    Kimi K2
-    <span className="text-xs opacity-70">(Smart)</span>
-  </Button>
-</div>
-```
-
-**4. Add Code Validation Before Success Toast:**
-
-```typescript
-// After streaming completes
-const code = accumulatedCode;
-// ... cleanup
-
-// Validate code before showing success
-if (!code || code.trim().length < 100 || !code.includes('<!DOCTYPE')) {
-  toast({
-    title: "Generation incomplete",
-    description: "The AI didn't produce complete code. Please try again.",
-    variant: "destructive"
-  });
-  return;
-}
-
-// Only show success if code is valid
-setGeneratedCode(code);
-const blob = new Blob([code], { type: 'text/html' });
-// ...
-toast({
-  title: "Website generated!",
-  description: `Your website is ready (${MODEL_LABELS[selectedModel]})`,
 });
 ```
 
 ---
 
-## Updated System Prompt
+### File 2: `src/pages/WebGen.tsx`
+
+**1. Fix code container to always allow scrolling:**
+
+Change the code container to have explicit scroll behavior:
+
+```tsx
+<div 
+  ref={codeContainerRef}
+  className="h-full overflow-y-scroll rounded-lg bg-background/80 border border-border/50"
+  style={{ maxHeight: '100%' }}
+>
+```
+
+**2. Improve auto-scroll with a small delay for DOM to update:**
 
 ```typescript
-const SYSTEM_PROMPT = `You are an expert web developer creating BEAUTIFUL, FUNCTIONAL websites. Return ONLY valid HTML code - no markdown, no backticks, no explanations.
+useEffect(() => {
+  if (codeContainerRef.current && generatedCode) {
+    // Use setTimeout to ensure DOM has updated
+    const timeoutId = setTimeout(() => {
+      requestAnimationFrame(() => {
+        if (codeContainerRef.current) {
+          codeContainerRef.current.scrollTo({
+            top: codeContainerRef.current.scrollHeight,
+            behavior: 'auto' // instant scroll during streaming
+          });
+        }
+      });
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }
+}, [generatedCode]);
+```
 
-CRITICAL - NEVER TRUNCATE YOUR OUTPUT:
-- Complete ALL code - do not stop mid-output
-- Ensure every opening tag has a closing tag
-- Complete ALL CSS rules - no partial properties like "color: var(--"
-- Complete ALL JavaScript functions
-- End with </html>
+**3. Add user scroll detection to pause auto-scroll:**
 
-REQUIREMENTS:
-1. Start with <!DOCTYPE html> - complete valid HTML5 document
-2. Include EXTENSIVE CSS in <style> tag in <head>:
-   - Modern gradients and color schemes
-   - Glassmorphism effects (backdrop-blur, semi-transparent backgrounds)
-   - Smooth animations and transitions
-   - Flexbox and CSS Grid layouts
-   - Responsive design with media queries
-   - Custom scrollbars
-   - Hover effects and micro-interactions
-   - Google Fonts for typography
+```typescript
+const [userScrolled, setUserScrolled] = useState(false);
 
-3. Include FUNCTIONAL JavaScript in <script> before </body>:
-   - Interactive elements (menus, modals, tabs)
-   - Form validation if forms exist
-   - Smooth scroll behavior
-   - Dynamic content updates
-   - Animation triggers
+// Reset userScrolled when new generation starts
+useEffect(() => {
+  if (loading) {
+    setUserScrolled(false);
+  }
+}, [loading]);
 
-4. Use CDN resources:
-   - Google Fonts: <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-   - Font Awesome: <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+// Detect if user manually scrolls up
+const handleScroll = () => {
+  if (!codeContainerRef.current) return;
+  const { scrollTop, scrollHeight, clientHeight } = codeContainerRef.current;
+  // If user scrolls more than 100px from bottom, they're reviewing
+  const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+  setUserScrolled(!isNearBottom);
+};
 
-5. Default to DARK THEME unless user asks for light theme
-6. Mobile-first responsive design
-7. NO placeholder content - real, complete working code
-8. ALWAYS end with </script></body></html>
+// Only auto-scroll if user hasn't scrolled away
+useEffect(() => {
+  if (codeContainerRef.current && generatedCode && !userScrolled) {
+    // auto-scroll logic
+  }
+}, [generatedCode, userScrolled]);
+```
 
-OUTPUT: Complete HTML document with embedded CSS and JavaScript. Nothing else.`;
+**4. Add onScroll handler to the container:**
+
+```tsx
+<div 
+  ref={codeContainerRef}
+  onScroll={handleScroll}
+  className="h-full overflow-y-scroll rounded-lg bg-background/80 border border-border/50"
+>
 ```
 
 ---
@@ -180,15 +153,15 @@ OUTPUT: Complete HTML document with embedded CSS and JavaScript. Nothing else.`;
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/web-gen/index.ts` | Remove Sonnet/GPT models, add Kimi K2, improve system prompt |
-| `src/pages/WebGen.tsx` | Fix auto-scroll, update model selector to 2 buttons, add code validation |
+| `supabase/functions/web-gen/index.ts` | Fix SSE stream buffering to prevent character loss, add flush handler |
+| `src/pages/WebGen.tsx` | Fix scrolling with `overflow-y-scroll`, add user scroll detection, improve auto-scroll timing |
 
 ---
 
-## Expected Results After Changes
+## Expected Results
 
-- Auto-scroll works smoothly during streaming
-- Only Haiku and Kimi K2 model options
-- No false "success" messages when code is empty/broken
-- Better quality output with complete CSS/JS
-- Haiku produces fully valid HTML with no truncation
+- Code streams without missing characters (no more garbled output)
+- Container is always scrollable (you can manually scroll anytime)
+- Auto-scroll works during streaming but pauses if you scroll up to review
+- Auto-scroll resumes if you scroll back to bottom
+
