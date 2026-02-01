@@ -19,12 +19,14 @@ import {
   CheckCircle2,
   Gamepad2,
   Box,
-  MousePointer
+  MousePointer,
+  Wand2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import PremiumBackground from '@/components/PremiumBackground';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 // Page SEO
 const useWebGenSEO = () => {
@@ -93,8 +95,9 @@ const WebGen = () => {
   const [selectedFont, setSelectedFont] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
+  const [isEnhancing, setIsEnhancing] = useState(false);
 
-  // Toggle mode selection (multi-select)
+  // Toggle mode selection (multi-select, max 2)
   const toggleMode = (modeId: string) => {
     setSelectedModes(prev => {
       // If selecting 'standard', clear all others
@@ -106,8 +109,54 @@ const WebGen = () => {
       if (withoutStandard.includes(modeId)) {
         return withoutStandard.filter(m => m !== modeId);
       }
+      // Limit to 2 modes maximum
+      if (withoutStandard.length >= 2) {
+        toast({
+          title: "Maximum 2 modes",
+          description: "For best results, select up to 2 website modes",
+          variant: "destructive"
+        });
+        return withoutStandard;
+      }
       return [...withoutStandard, modeId];
     });
+  };
+
+  // Enhance prompt using grammify edge function
+  const enhancePrompt = async () => {
+    if (!inputValue.trim() || inputValue.length < 3) return;
+    
+    setIsEnhancing(true);
+    try {
+      const response = await supabase.functions.invoke('grammify', {
+        body: {
+          text: `Website idea: ${inputValue}`,
+          enhancement: 'prompt-engineering',
+          promptMode: 'longer',
+          personalization: 'neutral',
+          replyMode: 'think'
+        }
+      });
+      
+      if (response.error) throw response.error;
+      
+      if (response.data?.enhancedText) {
+        setInputValue(response.data.enhancedText);
+        toast({ 
+          title: "Prompt enhanced!", 
+          description: "Your prompt has been optimized for better results" 
+        });
+      }
+    } catch (error) {
+      console.error('Enhance error:', error);
+      toast({ 
+        title: "Enhancement failed", 
+        description: "Try again or proceed with your original prompt",
+        variant: "destructive" 
+      });
+    } finally {
+      setIsEnhancing(false);
+    }
   };
   
   // Generation state
@@ -582,12 +631,12 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                         </div>
                       </div>
 
-                      {/* Website Mode (Multi-select) */}
+                      {/* Website Mode (Multi-select, max 2) */}
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-foreground">Website Mode</p>
                           <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30">
-                            Multi-select
+                            Max 2
                           </span>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -766,17 +815,37 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
               </div>
               
               <div className="flex gap-3 items-end">
-                <Textarea
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={currentStep === 'complete' 
-                    ? "Want to make changes? e.g., 'Remove the About Me button'" 
-                    : "Describe your dream website..."
-                  }
-                  className="flex-1 min-h-[56px] max-h-[200px] resize-none bg-card/50 backdrop-blur-xl border-border/50"
-                  rows={1}
-                />
+                <div className="flex-1 relative">
+                  <Textarea
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={currentStep === 'complete' 
+                      ? "Want to make changes? e.g., 'Remove the About Me button'" 
+                      : "Describe your dream website..."
+                    }
+                    className="w-full min-h-[56px] max-h-[200px] resize-none bg-card/50 backdrop-blur-xl border-border/50 pr-12"
+                    rows={1}
+                  />
+                  {/* Enhance button - only show on prompt step */}
+                  {currentStep === 'prompt' && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={enhancePrompt}
+                      disabled={!inputValue.trim() || inputValue.length < 3 || isEnhancing}
+                      className="absolute right-2 bottom-2 h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      title="Enhance prompt"
+                    >
+                      {isEnhancing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Wand2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
                 <Button 
                   onClick={currentStep === 'complete' ? handleEditRequest : handleSendPrompt}
                   disabled={!inputValue.trim() || loading}
