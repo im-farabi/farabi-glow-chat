@@ -16,7 +16,8 @@ import {
   ExternalLink,
   Wand2,
   Globe,
-  Zap
+  Zap,
+  Brain
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -35,9 +36,29 @@ const useWebGenSEO = () => {
   }, []);
 };
 
-const LOADING_MESSAGES = {
+type ModelType = 'gemini' | 'haiku' | 'kimi';
+
+const MODEL_LABELS: Record<ModelType, string> = {
+  gemini: 'Gemini Flash',
+  haiku: 'Claude Haiku',
+  kimi: 'Kimi K2'
+};
+
+const LOADING_MESSAGES: Record<ModelType, string[]> = {
+  gemini: [
+    'Connecting to Gemini Flash...',
+    'Analyzing your request...',
+    'Designing layout structure...',
+    'Generating HTML skeleton...',
+    'Styling with CSS magic...',
+    'Adding responsive design...',
+    'Implementing animations...',
+    'Writing JavaScript logic...',
+    'Polishing the details...',
+    'Almost there...',
+  ],
   haiku: [
-    'Connecting to Claude Haiku 4.5...',
+    'Connecting to Claude Haiku...',
     'Analyzing your request...',
     'Designing layout structure...',
     'Generating HTML skeleton...',
@@ -62,13 +83,6 @@ const LOADING_MESSAGES = {
   ]
 };
 
-type ModelType = 'haiku' | 'kimi';
-
-const MODEL_LABELS = {
-  haiku: 'Claude Haiku 4.5',
-  kimi: 'Kimi K2'
-};
-
 const WebGen = () => {
   useWebGenSEO();
   
@@ -83,7 +97,7 @@ const WebGen = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
-  const [selectedModel, setSelectedModel] = useState<ModelType>('haiku');
+  const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
   const codeContainerRef = useRef<HTMLDivElement>(null);
   const [userScrolled, setUserScrolled] = useState(false);
 
@@ -107,12 +121,11 @@ const WebGen = () => {
   const handleCodeScroll = () => {
     if (!codeContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = codeContainerRef.current;
-    // If user scrolls more than 100px from bottom, they're reviewing
     const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
     setUserScrolled(!isNearBottom);
   };
 
-  // Auto-scroll code container during streaming (only if user hasn't scrolled away)
+  // Auto-scroll code container during streaming
   useEffect(() => {
     if (codeContainerRef.current && generatedCode && !userScrolled) {
       const timeoutId = setTimeout(() => {
@@ -157,12 +170,16 @@ const WebGen = () => {
 
     setLoading(true);
     setGeneratedCode('');
-    setActiveTab('code'); // Switch to code tab to watch streaming
+    setActiveTab('code');
     
     if (blobUrl) {
       URL.revokeObjectURL(blobUrl);
       setBlobUrl(null);
     }
+
+    // Frontend timeout - 90 seconds
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 90000);
 
     try {
       const response = await fetch(
@@ -177,9 +194,12 @@ const WebGen = () => {
             prompt: prompt.trim(), 
             stream: true,
             model: selectedModel
-          })
+          }),
+          signal: abortController.signal
         }
       );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -227,7 +247,7 @@ const WebGen = () => {
         }
       }
       
-      // Validate code before showing success
+      // Validate code
       if (!code || code.trim().length < 100 || !code.includes('<!DOCTYPE')) {
         toast({
           title: "Generation incomplete",
@@ -252,12 +272,22 @@ const WebGen = () => {
       });
     } catch (error) {
       console.error('Generation error:', error);
-      toast({
-        title: "Generation failed",
-        description: error instanceof Error ? error.message : "Failed to generate website",
-        variant: "destructive"
-      });
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast({
+          title: "Generation timed out",
+          description: "The AI took too long. Try a simpler prompt or different model.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Generation failed",
+          description: error instanceof Error ? error.message : "Failed to generate website",
+          variant: "destructive"
+        });
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -271,7 +301,7 @@ const WebGen = () => {
         description: "Code copied to clipboard",
       });
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
+    } catch {
       toast({
         title: "Copy failed",
         description: "Failed to copy code",
@@ -351,8 +381,19 @@ const WebGen = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-4">
-              {/* Model Selector */}
+              {/* Model Selector - 3 buttons */}
               <div className="flex gap-2">
+                <Button
+                  variant={selectedModel === 'gemini' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedModel('gemini')}
+                  disabled={loading}
+                  className="flex-1 gap-1"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Gemini
+                  <span className="text-xs opacity-70">(Fast)</span>
+                </Button>
                 <Button
                   variant={selectedModel === 'haiku' ? 'default' : 'outline'}
                   size="sm"
@@ -360,9 +401,8 @@ const WebGen = () => {
                   disabled={loading}
                   className="flex-1 gap-1"
                 >
-                  <Zap className="h-3.5 w-3.5" />
+                  <Sparkles className="h-3.5 w-3.5" />
                   Haiku
-                  <span className="text-xs opacity-70">(Fast)</span>
                 </Button>
                 <Button
                   variant={selectedModel === 'kimi' ? 'default' : 'outline'}
@@ -371,9 +411,8 @@ const WebGen = () => {
                   disabled={loading}
                   className="flex-1 gap-1"
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Kimi K2
-                  <span className="text-xs opacity-70">(Smart)</span>
+                  <Brain className="h-3.5 w-3.5" />
+                  Kimi
                 </Button>
               </div>
 
@@ -425,7 +464,7 @@ const WebGen = () => {
             </CardContent>
           </Card>
 
-          {/* Panel 2 & 3: Preview and Code (Tabbed on mobile, side-by-side on desktop) */}
+          {/* Panel 2 & 3: Preview and Code */}
           <Card className="lg:col-span-8 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] flex flex-col overflow-hidden">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'preview' | 'code')} className="flex-1 flex flex-col">
               <CardHeader className="pb-0">
@@ -481,7 +520,6 @@ const WebGen = () => {
                 <TabsContent value="preview" className="h-full m-0">
                   {loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-6 bg-background/30 rounded-lg border border-border/50">
-                      {/* Animated loading screen */}
                       <div className="relative">
                         <div className="w-20 h-20 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -494,7 +532,6 @@ const WebGen = () => {
                           {`${MODEL_LABELS[selectedModel]} streams code in real-time`}
                         </p>
                       </div>
-                      {/* Progress dots */}
                       <div className="flex gap-2">
                         {[0, 1, 2].map((i) => (
                           <div
