@@ -566,20 +566,45 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
         <ScrollArea className="flex-1">
           <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
             
-            {/* Welcome Screen */}
+            {/* Welcome Screen - Premium Glass Card */}
             {messages.length === 0 && (
               <div className="flex h-[60vh] items-center justify-center">
-                <div className="text-center space-y-6">
-                  <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary">
-                    <Globe className="h-10 w-10 text-white" />
+                <div className="relative">
+                  {/* Glow behind card */}
+                  <div className="absolute inset-0 -m-8 bg-gradient-to-br from-primary/30 to-secondary/30 blur-3xl rounded-full" />
+                  
+                  {/* Glass card */}
+                  <div className="relative text-center space-y-6 p-8 md:p-12 rounded-3xl backdrop-blur-2xl bg-white/[0.03] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+                    {/* Animated icon with glow */}
+                    <div className="relative inline-block">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary blur-2xl opacity-60 animate-pulse-slow" />
+                      <div className="relative inline-flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary shadow-[0_0_40px_rgba(236,72,153,0.5)]">
+                        <Globe className="h-12 w-12 text-white" />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <h2 className="text-3xl md:text-4xl font-bold">
+                        <span className="text-foreground">AI Website </span>
+                        <span className="bg-gradient-to-r from-primary via-pink-400 to-secondary bg-clip-text text-transparent">Generator</span>
+                      </h2>
+                      <p className="text-muted-foreground text-lg">
+                        Describe what you want to build
+                      </p>
+                    </div>
+                    
+                    {/* Feature badges */}
+                    <div className="flex flex-wrap justify-center gap-2 pt-2">
+                      {['HTML/CSS/JS', 'Tailwind', 'Three.js', 'Games'].map((tech) => (
+                        <span 
+                          key={tech}
+                          className="px-3 py-1 text-xs rounded-full bg-white/5 border border-white/10 text-muted-foreground"
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <h2 className="text-3xl font-bold">
-                    <span className="text-foreground">Describe your </span>
-                    <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">dream website</span>
-                  </h2>
-                  <p className="text-muted-foreground">
-                    Tell me what you want to build
-                  </p>
                 </div>
               </div>
             )}
