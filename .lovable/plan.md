@@ -1,140 +1,155 @@
 
 
-# Fix Study Quiz - AI Returning Conversational Text Instead of JSON
+# Add Claude 4.5 Streaming to Website Generator
 
-## Root Cause Identified
+## Overview
 
-The error `"Unexpected token 'I', \"I'm ready \"... is not valid JSON"` reveals that the AI is responding with conversational text like "I'm ready to help you generate questions..." instead of pure JSON.
-
-**Why this happens:**
-
-The `sendNormal` function in `src/lib/api.ts` **always injects chatbot system instructions** that tell the AI to:
-- Be friendly with "Gen Z vibes"
-- Explain step-by-step
-- Use bullets, headings, emojis
-- Talk casually
-
-These persona instructions conflict with the quiz prompt's requirement for pure JSON output. The AI gets confused and starts a conversation instead of outputting raw JSON.
-
-**MCQGen sometimes works** because:
-- Shorter/simpler prompt structure
-- AI luck/randomness
-- Different model routing timing
+Integrate the Claude 4.5 model (same one used in main chat's "toolbox" mode) into the `/web` website generator for live code streaming. This will allow users to see the website code being written in real-time, character by character.
 
 ---
 
-## Solution
+## Current State
 
-Create a dedicated function that calls the AI **without** chatbot system instructions - just the raw JSON generation prompt.
+| Component | Model | Status |
+|-----------|-------|--------|
+| `/web` generator | GPT-5.2 via `web-gen` | Working but slower |
+| Main chat Claude | Claude 4.5 via `apifree-chat` | Working with streaming |
 
 ---
 
-## Technical Changes
+## Implementation Plan
 
-### File: `src/lib/api.ts`
+### File 1: `supabase/functions/web-gen/index.ts`
 
-Add a new function `sendRawJSON` that bypasses chatbot instructions:
+**Add Claude 4.5 as an option alongside GPT-5.2:**
+
+- Accept a `model` parameter: `'claude'` or `'gpt'` (default: `'claude'`)
+- When `model === 'claude'`:
+  - Use Claude Sonnet 4.5 (`anthropic/claude-sonnet-4.5`)
+  - Use 16,000 token limit (sufficient for websites)
+  - Apply web developer system prompt
 
 ```typescript
-/**
- * Send a raw prompt for JSON generation (no chatbot persona)
- * Used for MCQ/Quiz generation where pure JSON output is required
- */
-export async function sendRawJSON(prompt: string): Promise<string> {
-  const modelConfigs = [
-    { model: 'gemini-search', label: 'Primary: gemini-search', useFallbackKey: false },
-    { model: 'openai-large', label: 'Fallback: openai-large', useFallbackKey: false },
-    { model: 'openai', label: 'Fallback: openai', useFallbackKey: true }
-  ];
-
-  let lastError: Error | null = null;
-
-  for (const config of modelConfigs) {
-    try {
-      const { data, error } = await supabase.functions.invoke('pollinations-chat', {
-        body: {
-          prompt: prompt,  // Just the prompt, no system instructions
-          model: config.model,
-          seed: Math.random(),
-          image: null,
-          useFallback: config.useFallbackKey
-        }
-      });
-
-      if (error) {
-        lastError = error;
-        continue;
-      }
-
-      const text = data?.text;
-      if (text && text.trim().length > 0) {
-        return text.trim();
-      }
-      continue;
-    } catch (error) {
-      lastError = error as Error;
-      continue;
-    }
+// Model configuration
+const MODELS = {
+  claude: {
+    name: 'anthropic/claude-sonnet-4.5',
+    maxTokens: 16000
+  },
+  gpt: {
+    name: 'openai/gpt-5.2', 
+    maxTokens: 38000
   }
+};
 
-  throw lastError || new Error('All AI models failed to respond');
-}
+// In request handler:
+const { prompt, stream = true, model = 'claude' } = await req.json();
+const modelConfig = MODELS[model] || MODELS.claude;
 ```
 
 ---
 
-### File: `src/components/study/StudyQuiz.tsx`
+### File 2: `src/pages/WebGen.tsx`
 
-Change from `sendNormal` to `sendRawJSON`:
+**Update UI to use Claude by default and show model indicator:**
 
-| Before | After |
-|--------|-------|
-| `import { sendNormal } from '@/lib/api';` | `import { sendRawJSON } from '@/lib/api';` |
-| `const response = await sendNormal(prompt, []);` | `const response = await sendRawJSON(prompt);` |
+| Change | Description |
+|--------|-------------|
+| Default model | Send `model: 'claude'` to edge function |
+| Loading messages | Update to say "Claude 4.5" instead of "GPT-5.2" |
+| Header subtitle | Change "GPT-5.2" to "Claude 4.5" |
+| Model badge | Add small badge showing which model is active |
 
-Also strengthen the prompt to be even more explicit about JSON-only output:
+**Update the fetch call:**
 
 ```typescript
-const prompt = `You are a JSON generator. Output ONLY a valid JSON array. No explanations, no markdown, no text before or after.
+// Before
+body: JSON.stringify({ prompt: prompt.trim(), stream: true })
 
-Generate ${numQuestions} educational MCQ questions using the Finnish education method.
+// After  
+body: JSON.stringify({ 
+  prompt: prompt.trim(), 
+  stream: true,
+  model: 'claude'  // Use Claude 4.5 for faster streaming
+})
+```
 
-SUBJECT: ${subject.name}
-CHAPTER: ${chapter.name}
-TOPICS: ${chapter.topics.join(', ')}
-STUDENT AGE: ${userAge} years old (${ageContext})
+**Update loading messages:**
 
-FINNISH METHOD REQUIREMENTS:
-1. Questions should TEACH, not just TEST
-2. Use relatable, real-world examples for a ${userAge}-year-old
-3. Include "why" explanations
-4. Focus on conceptual understanding over memorization
-5. Avoid trick questions
-6. Use encouraging language in explanations
+```typescript
+const LOADING_MESSAGES = [
+  'Connecting to Claude 4.5...',
+  'Analyzing your request...',
+  'Designing layout structure...',
+  // ... rest
+];
+```
 
-OUTPUT FORMAT - Return EXACTLY this JSON structure:
-[
-  {
-    "question": "Question text",
-    "options": ["A", "B", "C", "D"],
-    "correctAnswer": 0,
-    "explanation": "Why this is correct",
-    "learnMore": "Fun fact or tip"
-  }
-]
+**Update description text:**
 
-RESPOND WITH ONLY THE JSON ARRAY. START WITH [ AND END WITH ]`;
+```typescript
+// Before
+<p>Describe your dream website and let GPT-5.2 build it for you</p>
+
+// After
+<p>Describe your dream website and let Claude 4.5 build it for you</p>
 ```
 
 ---
 
-### File: `src/pages/MCQGen.tsx` (Optional Improvement)
+## Optional: Model Selector Toggle
 
-Also update MCQGen to use `sendRawJSON` for consistency and reliability:
+Add a small toggle to let users switch between Claude 4.5 (faster) and GPT-5.2 (larger output):
 
-| Before | After |
-|--------|-------|
-| `const response = await sendNormal(prompt);` | `const response = await sendRawJSON(prompt);` |
+```tsx
+<div className="flex gap-2">
+  <Button 
+    variant={selectedModel === 'claude' ? 'default' : 'outline'}
+    size="sm"
+    onClick={() => setSelectedModel('claude')}
+  >
+    Claude 4.5 (Fast)
+  </Button>
+  <Button
+    variant={selectedModel === 'gpt' ? 'default' : 'outline'}  
+    size="sm"
+    onClick={() => setSelectedModel('gpt')}
+  >
+    GPT-5.2 (Large)
+  </Button>
+</div>
+```
+
+---
+
+## Architecture Flow
+
+```text
+User Input (WebGen.tsx)
+         │
+         ▼
+   ┌─────────────────┐
+   │  web-gen edge   │
+   │    function     │
+   └────────┬────────┘
+            │
+     model === 'claude'?
+            │
+    ┌───────┴───────┐
+    ▼               ▼
+┌────────┐    ┌──────────┐
+│Claude  │    │ GPT-5.2  │
+│4.5     │    │          │
+└────┬───┘    └────┬─────┘
+     │             │
+     └──────┬──────┘
+            │
+            ▼
+   SSE Stream → Frontend
+         │
+         ▼
+   Live Code Display
+```
 
 ---
 
@@ -142,17 +157,15 @@ Also update MCQGen to use `sendRawJSON` for consistency and reliability:
 
 | File | Change |
 |------|--------|
-| `src/lib/api.ts` | Add `sendRawJSON()` function that bypasses chatbot persona |
-| `src/components/study/StudyQuiz.tsx` | Use `sendRawJSON` instead of `sendNormal`, strengthen prompt |
-| `src/pages/MCQGen.tsx` | Use `sendRawJSON` for consistency (optional) |
+| `supabase/functions/web-gen/index.ts` | Add Claude 4.5 model option with lower token limit |
+| `src/pages/WebGen.tsx` | Default to Claude, update UI text, optional model toggle |
 
 ---
 
-## Expected Result
+## Benefits
 
-After this fix:
-- AI receives ONLY the JSON generation prompt (no "be friendly" persona)
-- AI will output pure JSON starting with `[` and ending with `]`
-- Quiz generation will work reliably
-- Both `/study` and `/mcq-gen` will use the same reliable pattern
+- **Faster streaming**: Claude 4.5 streams code faster than GPT-5.2
+- **Live preview**: See code appear character-by-character
+- **Consistent**: Uses same model/API as main chat's Claude mode
+- **Fallback**: Can still use GPT-5.2 if needed for very large websites
 
