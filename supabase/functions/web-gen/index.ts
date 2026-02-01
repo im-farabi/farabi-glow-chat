@@ -10,13 +10,19 @@ const API_URL = 'https://api.apifree.ai/v1/chat/completions';
 // Model configurations - no token limits, let API use full capacity
 const MODELS = {
   haiku: { name: 'anthropic/claude-haiku-4.5' },
-  claude: { name: 'anthropic/claude-sonnet-4.5' },
-  gpt: { name: 'openai/gpt-5.2' }
+  kimi: { name: 'moonshotai/kimi-k2-instruct' }
 };
 
 const SYSTEM_PROMPT = `You are an expert web developer creating BEAUTIFUL, FUNCTIONAL websites. Return ONLY valid HTML code - no markdown, no backticks, no explanations.
 
-CRITICAL REQUIREMENTS:
+CRITICAL - NEVER TRUNCATE YOUR OUTPUT:
+- Complete ALL code - do not stop mid-output
+- Ensure every opening tag has a closing tag
+- Complete ALL CSS rules - no partial properties like "color: var(--"
+- Complete ALL JavaScript functions
+- End with </html>
+
+REQUIREMENTS:
 1. Start with <!DOCTYPE html> - complete valid HTML5 document
 2. Include EXTENSIVE CSS in <style> tag in <head>:
    - Modern gradients and color schemes
@@ -42,6 +48,7 @@ CRITICAL REQUIREMENTS:
 5. Default to DARK THEME unless user asks for light theme
 6. Mobile-first responsive design
 7. NO placeholder content - real, complete working code
+8. ALWAYS end with </script></body></html>
 
 OUTPUT: Complete HTML document with embedded CSS and JavaScript. Nothing else.`;
 
@@ -122,7 +129,7 @@ serve(async (req) => {
     }
 
     // Select model configuration (default to Claude for faster streaming)
-    const modelConfig = MODELS[model as keyof typeof MODELS] || MODELS.claude;
+    const modelConfig = MODELS[model as keyof typeof MODELS] || MODELS.haiku;
     console.log(`[web-gen] Using model: ${modelConfig.name}`);
 
     const apiKeys = [
