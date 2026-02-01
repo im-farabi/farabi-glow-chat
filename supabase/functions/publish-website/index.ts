@@ -12,9 +12,9 @@ serve(async (req) => {
   }
 
   try {
-    const { title, slug, prefix, html_content, anonymous_id } = await req.json();
+    const { title, slug, html_content, anonymous_id } = await req.json();
 
-    console.log('[publish-website] Request:', { title, slug, prefix, contentLength: html_content?.length });
+    console.log('[publish-website] Request:', { title, slug, contentLength: html_content?.length });
 
     // Validate required fields
     if (!title || !slug || !html_content) {
@@ -33,23 +33,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate prefix
-    const validPrefixes = ['#', '/web/', '/~/', '/app/'];
-    const usedPrefix = prefix || '#';
-    if (!validPrefixes.includes(usedPrefix)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid prefix. Use #, /web/, /~/, or /app/' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Create full slug based on prefix
-    // For # prefix, just use the slug directly
-    // For path prefixes, include the path type
-    const fullSlug = usedPrefix === '#' 
-      ? slug 
-      : `${usedPrefix.replace(/\//g, '')}/${slug}`;
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -58,7 +41,7 @@ serve(async (req) => {
     const { data: existing, error: checkError } = await supabase
       .from('user_websites')
       .select('id')
-      .eq('slug', fullSlug)
+      .eq('slug', slug)
       .single();
 
     if (checkError && checkError.code !== 'PGRST116') {
@@ -81,7 +64,7 @@ serve(async (req) => {
       .from('user_websites')
       .insert({
         title,
-        slug: fullSlug,
+        slug,
         html_content,
         anonymous_user_id: anonymous_id || 'anonymous',
         is_published: true
@@ -99,18 +82,15 @@ serve(async (req) => {
 
     console.log('[publish-website] Published successfully:', data.id);
 
-    // Build the URL based on prefix
-    // Primary URL is on farabi.me for now
-    const primaryUrl = usedPrefix === '#'
-      ? `https://farabi.me/site/${slug}`
-      : `https://farabi.me/site/${fullSlug}`;
+    // Build the URL - clean, simple pattern
+    const publishedUrl = `https://farabi.me/site/${slug}`;
 
     return new Response(
       JSON.stringify({ 
         success: true,
         id: data.id,
-        url: primaryUrl,
-        slug: fullSlug
+        url: publishedUrl,
+        slug
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
