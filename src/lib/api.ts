@@ -4,6 +4,57 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+
+/**
+ * Send a raw prompt for JSON generation (no chatbot persona)
+ * Used for MCQ/Quiz generation where pure JSON output is required
+ */
+export async function sendRawJSON(prompt: string): Promise<string> {
+  const modelConfigs = [
+    { model: 'openai', label: 'Primary: openai', useFallbackKey: false },
+    { model: 'openai-large', label: 'Fallback: openai-large', useFallbackKey: false },
+    { model: 'gemini-search', label: 'Fallback: gemini-search', useFallbackKey: true }
+  ];
+
+  let lastError: Error | null = null;
+
+  for (const config of modelConfigs) {
+    try {
+      console.log(`[sendRawJSON] Trying ${config.label}...`);
+      
+      const { data, error } = await supabase.functions.invoke('pollinations-chat', {
+        body: {
+          prompt: prompt,
+          model: config.model,
+          seed: Math.floor(Math.random() * 1000000),
+          image: null,
+          useFallback: config.useFallbackKey
+        }
+      });
+
+      if (error) {
+        console.error(`[sendRawJSON] ${config.label} error:`, error);
+        lastError = error;
+        continue;
+      }
+
+      const text = data?.text;
+      if (text && text.trim().length > 0) {
+        console.log(`[sendRawJSON] ${config.label} succeeded`);
+        return text.trim();
+      }
+      
+      console.warn(`[sendRawJSON] ${config.label} returned empty response`);
+      continue;
+    } catch (error) {
+      console.error(`[sendRawJSON] ${config.label} exception:`, error);
+      lastError = error as Error;
+      continue;
+    }
+  }
+
+  throw lastError || new Error('All AI models failed to respond');
+}
 import { buildUserDetailsString } from './storage';
 
 const API_CONFIG = {

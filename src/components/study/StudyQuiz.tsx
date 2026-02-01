@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, CheckCircle2, XCircle, Lightbulb, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowRight, CheckCircle2, XCircle, Lightbulb, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Subject, Chapter } from '@/data/studySubjects';
-import { sendNormal } from '@/lib/api';
+import { sendRawJSON } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface StudyQuizProps {
@@ -23,6 +23,8 @@ interface Question {
   learnMore: string;
 }
 
+const MAX_RECHECKS = 2;
+
 const StudyQuiz = ({ subject, chapter, numQuestions, userAge, onComplete, onBack }: StudyQuizProps) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -32,6 +34,7 @@ const StudyQuiz = ({ subject, chapter, numQuestions, userAge, onComplete, onBack
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [startTime] = useState(Date.now());
+  const [recheckCount, setRecheckCount] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -48,7 +51,9 @@ const StudyQuiz = ({ subject, chapter, numQuestions, userAge, onComplete, onBack
       ? "intermediate level, practical real-world applications for a high schooler"
       : "advanced level, critical thinking, deeper analysis for a graduating student";
 
-    const prompt = `Generate ${numQuestions} educational MCQ questions using the Finnish education method.
+    const prompt = `You are a JSON generator. Output ONLY a valid JSON array. No explanations, no markdown, no text before or after.
+
+Generate ${numQuestions} educational MCQ questions in ENGLISH language using the Finnish education METHOD (not Finnish language).
 
 SUBJECT: ${subject.name}
 CHAPTER: ${chapter.name}
@@ -56,30 +61,33 @@ TOPICS: ${chapter.topics.join(', ')}
 STUDENT AGE: ${userAge} years old (${ageContext})
 
 FINNISH METHOD REQUIREMENTS:
-1. Questions should TEACH, not just TEST - each question should help the student learn something new
-2. Use relatable, real-world examples that a ${userAge}-year-old would understand
-3. Include "why" explanations - explain the reasoning, not just the answer
-4. Make questions progressively build understanding
-5. Avoid trick questions or gotcha moments
-6. Focus on conceptual understanding over memorization
-7. Use encouraging, supportive language in explanations
-8. Connect concepts to everyday life where possible
+1. Questions should TEACH, not just TEST
+2. Use relatable, real-world examples for a ${userAge}-year-old
+3. Focus on conceptual understanding over memorization
+4. Avoid trick questions
+5. Use encouraging language in explanations
 
-FORMAT (JSON array):
+IMPORTANT EXPLANATION FORMAT:
+- Keep explanations SHORT (max 3-4 lines)
+- Use STEP-BY-STEP format with line breaks
+- Example format:
+  "Step 1: Calculate liters = $100 ÷ $2 = 50 liters\\nStep 2: Calculate distance = 50 ÷ 0.1 = 500 km\\n✅ Answer: 500 kilometers"
+
+OUTPUT FORMAT - Return EXACTLY this JSON structure:
 [
   {
-    "question": "Clear, educational question with context",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "question": "Question text in ENGLISH",
+    "options": ["A", "B", "C", "D"],
     "correctAnswer": 0,
-    "explanation": "Detailed explanation that teaches the concept (why this answer is correct and what the student should learn)",
-    "learnMore": "Brief tip or interesting fact related to this topic"
+    "explanation": "Step 1: First step\\nStep 2: Second step\\n✅ Answer: Correct answer",
+    "learnMore": "One short fun fact"
   }
 ]
 
-CRITICAL: Return ONLY valid JSON array, no markdown code blocks, no extra text.`;
+RESPOND WITH ONLY THE JSON ARRAY. START WITH [ AND END WITH ]`;
 
     try {
-      const response = await sendNormal(prompt, []);
+      const response = await sendRawJSON(prompt);
       
       // Clean response - remove markdown code blocks if present (same robust logic as MCQGen)
       let cleanedResponse = response.trim();
@@ -138,11 +146,19 @@ CRITICAL: Return ONLY valid JSON array, no markdown code blocks, no extra text.`
       setCurrentIndex(prev => prev + 1);
       setSelectedAnswer(null);
       setShowResult(false);
+      setRecheckCount(0); // Reset recheck count for new question
     } else {
       // Quiz complete
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
       onComplete(score + (selectedAnswer === questions[currentIndex].correctAnswer ? 1 : 0), questions.length, timeSpent);
     }
+  };
+
+  const handleRecheckAnswer = () => {
+    if (recheckCount >= MAX_RECHECKS) return;
+    setRecheckCount(prev => prev + 1);
+    setSelectedAnswer(null);
+    setShowResult(false);
   };
 
   if (loading) {
@@ -277,7 +293,7 @@ CRITICAL: Return ONLY valid JSON array, no markdown code blocks, no extra text.`
                 <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-medium text-green-400 mb-1">Explanation</h4>
-                  <p className="text-sm text-foreground/80">{currentQuestion.explanation}</p>
+                  <p className="text-sm text-foreground/80 whitespace-pre-line">{currentQuestion.explanation}</p>
                 </div>
               </div>
             </div>
@@ -288,10 +304,22 @@ CRITICAL: Return ONLY valid JSON array, no markdown code blocks, no extra text.`
                   <Lightbulb className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <h4 className="font-medium text-blue-400 mb-1">Learn More</h4>
-                    <p className="text-sm text-foreground/80">{currentQuestion.learnMore}</p>
+                    <p className="text-sm text-foreground/80 whitespace-pre-line">{currentQuestion.learnMore}</p>
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Recheck Answer Button */}
+            {recheckCount < MAX_RECHECKS && (
+              <Button
+                variant="outline"
+                onClick={handleRecheckAnswer}
+                className="w-full border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Recheck Answer ({MAX_RECHECKS - recheckCount} left)
+              </Button>
             )}
           </div>
         )}
