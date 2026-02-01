@@ -7,33 +7,45 @@ const corsHeaders = {
 
 const API_URL = 'https://api.apifree.ai/v1/chat/completions';
 
-// Model configurations
+// Model configurations - no token limits, let API use full capacity
 const MODELS = {
-  haiku: {
-    name: 'anthropic/claude-haiku-4.5',
-    maxTokens: 16000
-  },
-  claude: {
-    name: 'anthropic/claude-sonnet-4.5',
-    maxTokens: 16000
-  },
-  gpt: {
-    name: 'openai/gpt-5.2',
-    maxTokens: 38000
-  }
+  haiku: { name: 'anthropic/claude-haiku-4.5' },
+  claude: { name: 'anthropic/claude-sonnet-4.5' },
+  gpt: { name: 'openai/gpt-5.2' }
 };
 
-const SYSTEM_PROMPT = `You are an expert web developer. Return ONLY valid HTML - no markdown, no backticks, no explanations.
+const SYSTEM_PROMPT = `You are an expert web developer creating BEAUTIFUL, FUNCTIONAL websites. Return ONLY valid HTML code - no markdown, no backticks, no explanations.
 
-Rules:
-- Complete HTML document starting with <!DOCTYPE html>
-- CSS in <style> tag, JS in <script> before </body>
-- Responsive, mobile-friendly, dark theme
-- Modern CSS (flexbox, grid, gradients, glassmorphism)
-- CDN assets only (Google Fonts, Font Awesome)
-- No placeholders - complete working code`;
+CRITICAL REQUIREMENTS:
+1. Start with <!DOCTYPE html> - complete valid HTML5 document
+2. Include EXTENSIVE CSS in <style> tag in <head>:
+   - Modern gradients and color schemes
+   - Glassmorphism effects (backdrop-blur, semi-transparent backgrounds)
+   - Smooth animations and transitions
+   - Flexbox and CSS Grid layouts
+   - Responsive design with media queries
+   - Custom scrollbars
+   - Hover effects and micro-interactions
+   - Google Fonts for typography
 
-async function callAPIStream(apiKey: string, prompt: string, modelConfig: typeof MODELS.claude): Promise<ReadableStream> {
+3. Include FUNCTIONAL JavaScript in <script> before </body>:
+   - Interactive elements (menus, modals, tabs)
+   - Form validation if forms exist
+   - Smooth scroll behavior
+   - Dynamic content updates
+   - Animation triggers
+
+4. Use CDN resources:
+   - Google Fonts: <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+   - Font Awesome: <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+5. Default to DARK THEME unless user asks for light theme
+6. Mobile-first responsive design
+7. NO placeholder content - real, complete working code
+
+OUTPUT: Complete HTML document with embedded CSS and JavaScript. Nothing else.`;
+
+async function callAPIStream(apiKey: string, prompt: string, modelConfig: { name: string }): Promise<ReadableStream> {
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -42,7 +54,6 @@ async function callAPIStream(apiKey: string, prompt: string, modelConfig: typeof
     },
     body: JSON.stringify({
       model: modelConfig.name,
-      max_tokens: modelConfig.maxTokens,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt }
@@ -59,7 +70,7 @@ async function callAPIStream(apiKey: string, prompt: string, modelConfig: typeof
   return response.body!;
 }
 
-async function callAPINonStream(apiKey: string, prompt: string, modelConfig: typeof MODELS.claude): Promise<string> {
+async function callAPINonStream(apiKey: string, prompt: string, modelConfig: { name: string }): Promise<string> {
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -68,7 +79,6 @@ async function callAPINonStream(apiKey: string, prompt: string, modelConfig: typ
     },
     body: JSON.stringify({
       model: modelConfig.name,
-      max_tokens: modelConfig.maxTokens,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt }

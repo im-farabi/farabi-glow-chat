@@ -97,6 +97,7 @@ const WebGen = () => {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [selectedModel, setSelectedModel] = useState<ModelType>('haiku');
+  const codeContainerRef = useRef<HTMLDivElement>(null);
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -106,6 +107,13 @@ const WebGen = () => {
       }
     };
   }, [blobUrl]);
+
+  // Auto-scroll code container during streaming
+  useEffect(() => {
+    if (loading && codeContainerRef.current) {
+      codeContainerRef.current.scrollTop = codeContainerRef.current.scrollHeight;
+    }
+  }, [generatedCode, loading]);
 
   // Loading message animation
   useEffect(() => {
@@ -135,6 +143,7 @@ const WebGen = () => {
 
     setLoading(true);
     setGeneratedCode('');
+    setActiveTab('code'); // Switch to code tab to watch streaming
     
     if (blobUrl) {
       URL.revokeObjectURL(blobUrl);
@@ -508,10 +517,16 @@ const WebGen = () => {
                 </TabsContent>
                 
                 <TabsContent value="code" className="h-full m-0">
-                  {generatedCode ? (
-                    <div className="h-full overflow-auto rounded-lg bg-background/80 border border-border/50">
+                  {generatedCode || loading ? (
+                    <div 
+                      ref={codeContainerRef}
+                      className="h-full overflow-auto rounded-lg bg-background/80 border border-border/50"
+                    >
                       <pre className="p-4 text-sm text-foreground font-mono whitespace-pre-wrap break-words">
                         <code>{generatedCode}</code>
+                        {loading && (
+                          <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 align-middle" />
+                        )}
                       </pre>
                     </div>
                   ) : (
