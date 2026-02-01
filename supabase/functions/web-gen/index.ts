@@ -5,10 +5,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const API_URL = 'https://api.apifree.ai/v1/chat/completions';
+const APIFREE_URL = 'https://api.apifree.ai/v1/chat/completions';
+const POLLINATIONS_URL = 'https://gen.pollinations.ai/v1/chat/completions';
 
 // Model configurations with Gemini as primary
-const MODELS: Record<string, { name: string; label: string }> = {
+const MODELS: Record<string, { name: string; label: string; isPollinations?: boolean }> = {
   gemini: { 
     name: 'google/gemini-2.5-flash-lite',
     label: 'Gemini Flash'
@@ -20,11 +21,16 @@ const MODELS: Record<string, { name: string; label: string }> = {
   kimi: { 
     name: 'moonshotai/kimi-k2-instruct',
     label: 'Kimi K2'
+  },
+  pollinations: {
+    name: 'openai-large',
+    label: 'Pollinations GPT',
+    isPollinations: true
   }
 };
 
-// Fallback order when a model fails
-const FALLBACK_ORDER = ['gemini', 'haiku', 'kimi'];
+// Fallback order when a model fails - Pollinations as last resort
+const FALLBACK_ORDER = ['gemini', 'haiku', 'kimi', 'pollinations'];
 
 // System prompt for new website generation
 const SYSTEM_PROMPT = `You are an expert web developer. Generate COMPLETE HTML code only.
@@ -220,17 +226,19 @@ function createTransformStream() {
 async function callAPIStream(
   apiKey: string, 
   prompt: string, 
-  modelConfig: { name: string },
+  modelConfig: { name: string; isPollinations?: boolean },
   systemPrompt: string,
   timeoutMs: number = 60000
 ): Promise<ReadableStream> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
+  const apiUrl = modelConfig.isPollinations ? POLLINATIONS_URL : APIFREE_URL;
+  
   try {
-    console.log(`[web-gen] Calling ${modelConfig.name}...`);
+    console.log(`[web-gen] Calling ${modelConfig.name} via ${modelConfig.isPollinations ? 'Pollinations' : 'APIFree'}...`);
     
-    const response = await fetch(API_URL, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -253,6 +261,7 @@ async function callAPIStream(
     
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`[web-gen] API Error: ${response.status} - ${errorText.slice(0, 300)}`);
       throw new Error(`API Error ${response.status}: ${errorText.slice(0, 200)}`);
     }
     
@@ -260,7 +269,23 @@ async function callAPIStream(
       throw new Error('No response body');
     }
     
-    return response.body;
+    // Tee the stream to log a preview
+    const [stream1, stream2] = response.body.tee();
+    const previewReader = stream2.getReader();
+    const { value } = await previewReader.read();
+    previewReader.releaseLock();
+    
+    if (value) {
+      const preview = new TextDecoder().decode(value).slice(0, 500);
+      console.log(`[web-gen] Response preview: ${preview}`);
+      
+      // Check if the response looks like an error
+      if (preview.includes('"error"') || preview.includes('rate limit') || preview.includes('quota')) {
+        throw new Error(`API returned error: ${preview.slice(0, 200)}`);
+      }
+    }
+    
+    return stream1;
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
@@ -289,13 +314,15 @@ serve(async (req) => {
     }
 
     // Get API keys
-    const apiKeys = [
+    const apiFreeKeys = [
       Deno.env.get('APIFREE_API_KEY_1'),
       Deno.env.get('APIFREE_API_KEY_2'),
       Deno.env.get('APIFREE_API_KEY_3'),
     ].filter(Boolean) as string[];
 
-    if (apiKeys.length === 0) {
+    const pollinationsKey = Deno.env.get('NEW_POLLINATIONS_APIKEY_1');
+
+    if (apiFreeKeys.length === 0 && !pollinationsKey) {
       return new Response(JSON.stringify({ error: 'No API keys configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -303,7 +330,7 @@ serve(async (req) => {
     }
 
     // Shuffle keys for load balancing
-    const shuffledKeys = [...apiKeys].sort(() => Math.random() - 0.5);
+    const shuffledApiFreeKeys = [...apiFreeKeys].sort(() => Math.random() - 0.5);
     
     // Build model fallback chain: user's choice first, then others
     const modelsToTry = [model, ...FALLBACK_ORDER.filter(m => m !== model)];
@@ -315,10 +342,20 @@ serve(async (req) => {
       const modelConfig = MODELS[modelKey];
       if (!modelConfig) continue;
       
+      // Get the right keys for this model
+      const keysToTry = modelConfig.isPollinations 
+        ? (pollinationsKey ? [pollinationsKey] : [])
+        : shuffledApiFreeKeys;
+      
+      if (keysToTry.length === 0) {
+        console.log(`[web-gen] No keys available for ${modelConfig.name}, skipping...`);
+        continue;
+      }
+      
       console.log(`[web-gen] Trying model: ${modelConfig.name}`);
       
-      for (let i = 0; i < shuffledKeys.length; i++) {
-        const apiKey = shuffledKeys[i];
+      for (let i = 0; i < keysToTry.length; i++) {
+        const apiKey = keysToTry[i];
         
         try {
           if (stream) {
@@ -337,7 +374,8 @@ serve(async (req) => {
             });
           } else {
             // Non-streaming mode
-            const response = await fetch(API_URL, {
+            const apiUrl = modelConfig.isPollinations ? POLLINATIONS_URL : APIFREE_URL;
+            const response = await fetch(apiUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -355,10 +393,14 @@ serve(async (req) => {
             });
 
             if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`[web-gen] Non-stream API Error: ${response.status} - ${errorText.slice(0, 300)}`);
               throw new Error(`API Error ${response.status}`);
             }
 
             const data = await response.json();
+            console.log(`[web-gen] Non-stream response:`, JSON.stringify(data).slice(0, 500));
+            
             const code = data.choices?.[0]?.message?.content;
             
             if (!code || !code.includes('<!DOCTYPE')) {
