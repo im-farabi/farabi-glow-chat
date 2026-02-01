@@ -9,6 +9,10 @@ const API_URL = 'https://api.apifree.ai/v1/chat/completions';
 
 // Model configurations
 const MODELS = {
+  haiku: {
+    name: 'anthropic/claude-haiku-4.5',
+    maxTokens: 16000
+  },
   claude: {
     name: 'anthropic/claude-sonnet-4.5',
     maxTokens: 16000
