@@ -1,154 +1,166 @@
 
+# Fix Website Generator - Auto-scroll, Better CSS/JS, No Token Limits
 
-# Add Claude 4.5 Streaming to Website Generator
+## Issues to Fix
 
-## Overview
-
-Integrate the Claude 4.5 model (same one used in main chat's "toolbox" mode) into the `/web` website generator for live code streaming. This will allow users to see the website code being written in real-time, character by character.
-
----
-
-## Current State
-
-| Component | Model | Status |
-|-----------|-------|--------|
-| `/web` generator | GPT-5.2 via `web-gen` | Working but slower |
-| Main chat Claude | Claude 4.5 via `apifree-chat` | Working with streaming |
+| Issue | Problem | Solution |
+|-------|---------|----------|
+| No auto-scroll | Code streams but view doesn't scroll down | Add ref and auto-scroll to bottom during streaming |
+| No auto-switch to code | User can't see streaming in action | Switch to "Code" tab when generation starts, then to "Preview" when done |
+| Random/plain websites | System prompt isn't explicit enough about CSS/JS | Improve system prompt with detailed design requirements |
+| Token limits | 16k/38k limits may truncate output | Remove max_tokens limit (let API decide) |
 
 ---
 
-## Implementation Plan
+## Technical Changes
 
 ### File 1: `supabase/functions/web-gen/index.ts`
 
-**Add Claude 4.5 as an option alongside GPT-5.2:**
-
-- Accept a `model` parameter: `'claude'` or `'gpt'` (default: `'claude'`)
-- When `model === 'claude'`:
-  - Use Claude Sonnet 4.5 (`anthropic/claude-sonnet-4.5`)
-  - Use 16,000 token limit (sufficient for websites)
-  - Apply web developer system prompt
+**1. Remove token limits:**
 
 ```typescript
-// Model configuration
+// BEFORE
 const MODELS = {
-  claude: {
-    name: 'anthropic/claude-sonnet-4.5',
-    maxTokens: 16000
-  },
-  gpt: {
-    name: 'openai/gpt-5.2', 
-    maxTokens: 38000
-  }
+  haiku: { name: 'anthropic/claude-haiku-4.5', maxTokens: 16000 },
+  claude: { name: 'anthropic/claude-sonnet-4.5', maxTokens: 16000 },
+  gpt: { name: 'openai/gpt-5.2', maxTokens: 38000 }
 };
 
-// In request handler:
-const { prompt, stream = true, model = 'claude' } = await req.json();
-const modelConfig = MODELS[model] || MODELS.claude;
+// AFTER - No maxTokens, let API use full capacity
+const MODELS = {
+  haiku: { name: 'anthropic/claude-haiku-4.5' },
+  claude: { name: 'anthropic/claude-sonnet-4.5' },
+  gpt: { name: 'openai/gpt-5.2' }
+};
+```
+
+**2. Improve system prompt for better CSS/JS:**
+
+```typescript
+const SYSTEM_PROMPT = `You are an expert web developer creating BEAUTIFUL, FUNCTIONAL websites. Return ONLY valid HTML code - no markdown, no backticks, no explanations.
+
+CRITICAL REQUIREMENTS:
+1. Start with <!DOCTYPE html> - complete valid HTML5 document
+2. Include EXTENSIVE CSS in <style> tag in <head>:
+   - Modern gradients and color schemes
+   - Glassmorphism effects (backdrop-blur, semi-transparent backgrounds)
+   - Smooth animations and transitions
+   - Flexbox and CSS Grid layouts
+   - Responsive design with media queries
+   - Custom scrollbars
+   - Hover effects and micro-interactions
+   - Google Fonts for typography
+
+3. Include FUNCTIONAL JavaScript in <script> before </body>:
+   - Interactive elements (menus, modals, tabs)
+   - Form validation if forms exist
+   - Smooth scroll behavior
+   - Dynamic content updates
+   - Animation triggers
+
+4. Use CDN resources:
+   - Google Fonts: <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+   - Font Awesome: <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+5. Default to DARK THEME unless user asks for light theme
+6. Mobile-first responsive design
+7. NO placeholder content - real, complete working code
+
+OUTPUT: Complete HTML document with embedded CSS and JavaScript. Nothing else.`;
 ```
 
 ---
 
 ### File 2: `src/pages/WebGen.tsx`
 
-**Update UI to use Claude by default and show model indicator:**
-
-| Change | Description |
-|--------|-------------|
-| Default model | Send `model: 'claude'` to edge function |
-| Loading messages | Update to say "Claude 4.5" instead of "GPT-5.2" |
-| Header subtitle | Change "GPT-5.2" to "Claude 4.5" |
-| Model badge | Add small badge showing which model is active |
-
-**Update the fetch call:**
+**1. Add code container ref for auto-scroll:**
 
 ```typescript
-// Before
-body: JSON.stringify({ prompt: prompt.trim(), stream: true })
-
-// After  
-body: JSON.stringify({ 
-  prompt: prompt.trim(), 
-  stream: true,
-  model: 'claude'  // Use Claude 4.5 for faster streaming
-})
+const codeContainerRef = useRef<HTMLDivElement>(null);
 ```
 
-**Update loading messages:**
+**2. Auto-scroll during streaming:**
 
 ```typescript
-const LOADING_MESSAGES = [
-  'Connecting to Claude 4.5...',
-  'Analyzing your request...',
-  'Designing layout structure...',
-  // ... rest
-];
+// Add useEffect to auto-scroll when generatedCode changes
+useEffect(() => {
+  if (loading && codeContainerRef.current) {
+    codeContainerRef.current.scrollTop = codeContainerRef.current.scrollHeight;
+  }
+}, [generatedCode, loading]);
 ```
 
-**Update description text:**
+**3. Switch to "code" tab when generation starts:**
 
 ```typescript
-// Before
-<p>Describe your dream website and let GPT-5.2 build it for you</p>
-
-// After
-<p>Describe your dream website and let Claude 4.5 build it for you</p>
+// In generateWebsite function, after setting loading:
+setLoading(true);
+setGeneratedCode('');
+setActiveTab('code');  // ← Switch to code tab immediately
 ```
 
----
-
-## Optional: Model Selector Toggle
-
-Add a small toggle to let users switch between Claude 4.5 (faster) and GPT-5.2 (larger output):
+**4. Add ref to code container div:**
 
 ```tsx
-<div className="flex gap-2">
-  <Button 
-    variant={selectedModel === 'claude' ? 'default' : 'outline'}
-    size="sm"
-    onClick={() => setSelectedModel('claude')}
-  >
-    Claude 4.5 (Fast)
-  </Button>
-  <Button
-    variant={selectedModel === 'gpt' ? 'default' : 'outline'}  
-    size="sm"
-    onClick={() => setSelectedModel('gpt')}
-  >
-    GPT-5.2 (Large)
-  </Button>
+// Update the code display div
+<div 
+  ref={codeContainerRef}
+  className="h-full overflow-auto rounded-lg bg-background/80 border border-border/50"
+>
+  <pre className="p-4 text-sm text-foreground font-mono whitespace-pre-wrap break-words">
+    <code>{generatedCode}</code>
+  </pre>
 </div>
 ```
 
+**5. Show streaming code even during loading (instead of showing loading animation in code tab):**
+
+```tsx
+<TabsContent value="code" className="h-full m-0">
+  {generatedCode || loading ? (
+    <div 
+      ref={codeContainerRef}
+      className="h-full overflow-auto rounded-lg bg-background/80 border border-border/50"
+    >
+      <pre className="p-4 text-sm text-foreground font-mono whitespace-pre-wrap break-words">
+        <code>{generatedCode}</code>
+        {loading && (
+          <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
+        )}
+      </pre>
+    </div>
+  ) : (
+    // Empty state...
+  )}
+</TabsContent>
+```
+
 ---
 
-## Architecture Flow
+## User Flow After Changes
 
 ```text
-User Input (WebGen.tsx)
+User clicks "Generate Website"
          │
          ▼
-   ┌─────────────────┐
-   │  web-gen edge   │
-   │    function     │
-   └────────┬────────┘
-            │
-     model === 'claude'?
-            │
-    ┌───────┴───────┐
-    ▼               ▼
-┌────────┐    ┌──────────┐
-│Claude  │    │ GPT-5.2  │
-│4.5     │    │          │
-└────┬───┘    └────┬─────┘
-     │             │
-     └──────┬──────┘
-            │
-            ▼
-   SSE Stream → Frontend
+┌─────────────────────────────┐
+│  Switch to CODE tab         │
+│  Start streaming...         │
+└─────────────────────────────┘
          │
          ▼
-   Live Code Display
+┌─────────────────────────────┐
+│  Code streams in real-time  │
+│  Auto-scroll to bottom ↓    │
+│  Cursor blinks at end       │
+└─────────────────────────────┘
+         │
+         ▼ (Done)
+┌─────────────────────────────┐
+│  Switch to PREVIEW tab      │
+│  Show live website          │
+│  Toast: "Website generated!"│
+└─────────────────────────────┘
 ```
 
 ---
@@ -157,15 +169,17 @@ User Input (WebGen.tsx)
 
 | File | Change |
 |------|--------|
-| `supabase/functions/web-gen/index.ts` | Add Claude 4.5 model option with lower token limit |
-| `src/pages/WebGen.tsx` | Default to Claude, update UI text, optional model toggle |
+| `supabase/functions/web-gen/index.ts` | Remove token limits, improve system prompt for CSS/JS |
+| `src/pages/WebGen.tsx` | Add auto-scroll, switch tabs automatically, show blinking cursor |
 
 ---
 
-## Benefits
+## Expected Results
 
-- **Faster streaming**: Claude 4.5 streams code faster than GPT-5.2
-- **Live preview**: See code appear character-by-character
-- **Consistent**: Uses same model/API as main chat's Claude mode
-- **Fallback**: Can still use GPT-5.2 if needed for very large websites
-
+After these changes:
+- Click Generate → automatically switches to Code tab
+- Code streams in real-time with auto-scroll to bottom
+- Blinking cursor shows where new code is appearing
+- When complete → automatically switches to Preview tab
+- Websites include beautiful CSS styling and functional JavaScript
+- No output truncation due to token limits
