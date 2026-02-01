@@ -60,7 +60,8 @@ const FONT_OPTIONS = [
 const TYPE_OPTIONS = [
   { id: 'premium', label: 'Rich & Premium', desc: 'Luxurious, polished design' },
   { id: 'detailed', label: 'Fully Detailed', desc: 'Complete with all features' },
-  { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' }
+  { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' },
+  { id: 'alpine', label: 'Tailwind + Alpine ⭐', desc: 'Modern, interactive & reactive' }
 ];
 
 const WebGen = () => {
@@ -141,7 +142,28 @@ const WebGen = () => {
     
     const typeText = selectedType === 'premium' ? 'rich, premium, luxurious design with smooth animations, gradients, and visual effects'
                    : selectedType === 'detailed' ? 'fully detailed website with all features, sections, and functionality'
+                   : selectedType === 'alpine' ? 'modern Tailwind CSS + Alpine.js website with reactive components and utility-first styling'
                    : 'simple static site for testing purposes, minimal but functional';
+    
+    // Check if Alpine type is selected to use special prompt format
+    const isAlpine = selectedType === 'alpine';
+
+    if (isAlpine) {
+      return `${userPrompt}
+
+DESIGN REQUIREMENTS:
+- Color Theme: ${themeText}
+- Font Family: ${selectedFont} (import from Google Fonts)
+- Style: Modern Tailwind CSS + Alpine.js website
+
+TECHNOLOGY STACK (REQUIRED):
+- Use Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>
+- Use Alpine.js via CDN: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+- Use Font Awesome via CDN for icons
+- Use x-data, x-show, x-on:click, x-transition for interactivity
+- Create dark mode toggle with x-data="{ dark: true }"
+- Add mobile menu with x-show and transitions`;
+    }
 
     return `${userPrompt}
 
@@ -190,7 +212,8 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
             prompt: fullPrompt, 
             stream: true,
             model: selectedModel,
-            isEdit: isEdit  // Pass flag to use targeted edit system prompt
+            isEdit: isEdit,
+            isAlpine: selectedType === 'alpine'  // Pass flag for Tailwind + Alpine prompt
           }),
           signal: abortController.signal
         }
