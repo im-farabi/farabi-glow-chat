@@ -58,6 +58,42 @@ CRITICAL RULES FOR EDITING:
 The user will provide existing code and a specific change request. Make ONLY that change.
 Output must start with <!DOCTYPE html> and end with </html>.`;
 
+// System prompt for Tailwind + Alpine.js websites
+const ALPINE_SYSTEM_PROMPT = `You are an expert web developer creating modern websites with Tailwind CSS and Alpine.js.
+
+Generate COMPLETE HTML code with these REQUIRED technologies:
+1. Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>
+2. Alpine.js via CDN: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+3. Google Fonts for typography
+4. Font Awesome via CDN for icons
+
+ALPINE.JS FEATURES TO USE:
+- x-data for reactive state (e.g., x-data="{ open: false, dark: true }")
+- x-show with x-transition for smooth show/hide animations
+- x-on:click or @click for click handlers
+- x-bind or :class for dynamic classes
+- x-init for initialization logic
+- Create a dark mode toggle using Alpine state
+- Create mobile hamburger menu with x-show
+
+TAILWIND BEST PRACTICES:
+- Use utility classes for all styling
+- Use dark: variants for dark mode (dark:bg-gray-900 dark:text-white)
+- Use responsive variants (sm:, md:, lg:)
+- Use hover: and focus: states
+- Use gradient backgrounds: bg-gradient-to-r from-blue-500 to-purple-600
+- Use transitions: transition-all duration-300
+
+CRITICAL RULES:
+1. Return ONLY valid HTML - no markdown, no backticks, no explanations
+2. Start with <!DOCTYPE html>
+3. End with </html>
+4. Include Tailwind config in <script> for custom colors if needed
+5. Make it fully responsive and interactive
+6. Dark theme by default
+
+NEVER truncate. Complete every tag. Output must start with <!DOCTYPE html> and end with </html>.`;
+
 // Create transform stream with proper UTF-8 handling and line buffering
 function createTransformStream() {
   let buffer = '';
@@ -176,10 +212,12 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, stream = true, model = 'gemini', isEdit = false } = await req.json();
+    const { prompt, stream = true, model = 'gemini', isEdit = false, isAlpine = false } = await req.json();
     
-    // Use targeted edit prompt when editing existing code
-    const systemPrompt = isEdit ? EDIT_SYSTEM_PROMPT : SYSTEM_PROMPT;
+    // Choose the appropriate system prompt
+    const systemPrompt = isEdit ? EDIT_SYSTEM_PROMPT 
+                       : isAlpine ? ALPINE_SYSTEM_PROMPT 
+                       : SYSTEM_PROMPT;
 
     if (!prompt || typeof prompt !== 'string') {
       return new Response(JSON.stringify({ error: 'Prompt is required' }), {
