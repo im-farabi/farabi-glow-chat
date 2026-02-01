@@ -287,20 +287,20 @@ async function callAPIStream(
   }
 }
 
-// Non-streaming generation for multi-model mode
-async function generateNonStreaming(
+// Streaming generation for multi-model mode (Pollinations requires stream=true for max_tokens > 4096)
+async function generateWithStreaming(
   apiKey: string,
   prompt: string,
   modelConfig: { name: string; label: string },
   systemPrompt: string,
-  timeoutMs: number = 90000
+  timeoutMs: number = 120000  // Increased timeout for full generation
 ): Promise<{ code: string; model: string; time: number }> {
   const startTime = Date.now();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
   try {
-    console.log(`[web-gen] Multi-model: Calling ${modelConfig.name}...`);
+    console.log(`[web-gen] Multi-model: Calling ${modelConfig.name} (streaming)...`);
     
     const response = await fetch(POLLINATIONS_URL, {
       method: 'POST',
@@ -314,7 +314,7 @@ async function generateNonStreaming(
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        stream: false,
+        stream: true,  // Must be true for max_tokens > 4096
         max_tokens: 16384,
         temperature: 0.7
       }),
@@ -328,18 +328,66 @@ async function generateNonStreaming(
       throw new Error(`API Error ${response.status}: ${errorText.slice(0, 200)}`);
     }
     
-    const data = await response.json();
-    const code = data.choices?.[0]?.message?.content || '';
+    // Collect all streamed content
+    let fullContent = '';
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    
+    if (!reader) throw new Error('No response body');
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      
+      // Process complete lines only
+      let newlineIndex;
+      while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, newlineIndex);
+        buffer = buffer.slice(newlineIndex + 1);
+        
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) fullContent += content;
+          } catch {
+            // Skip malformed JSON - may be split across chunks
+          }
+        }
+      }
+    }
+    
+    // Flush remaining buffer
+    buffer += decoder.decode();
+    if (buffer.startsWith('data: ')) {
+      const data = buffer.slice(6).trim();
+      if (data && data !== '[DONE]') {
+        try {
+          const parsed = JSON.parse(data);
+          const content = parsed.choices?.[0]?.delta?.content;
+          if (content) fullContent += content;
+        } catch { /* ignore */ }
+      }
+    }
     
     // Clean up code
-    let cleanedCode = code.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+    let cleanedCode = fullContent
+      .replace(/```html\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+      
     if (!cleanedCode.startsWith('<!DOCTYPE')) {
       const doctypeIndex = cleanedCode.indexOf('<!DOCTYPE');
       if (doctypeIndex > 0) cleanedCode = cleanedCode.substring(doctypeIndex);
     }
     
     const elapsed = Date.now() - startTime;
-    console.log(`[web-gen] ${modelConfig.label} completed in ${elapsed}ms`);
+    console.log(`[web-gen] ${modelConfig.label} completed in ${elapsed}ms, ${cleanedCode.length} chars`);
     
     return {
       code: cleanedCode,
@@ -348,6 +396,9 @@ async function generateNonStreaming(
     };
   } catch (error) {
     clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Timeout after ${timeoutMs}ms`);
+    }
     throw error;
   }
 }
@@ -387,7 +438,7 @@ serve(async (req) => {
       const modelKeys = ['gpt', 'claude', 'deepseek'];
       const results = await Promise.allSettled(
         modelKeys.map(key => 
-          generateNonStreaming(pollinationsKey, prompt, MODELS[key], systemPrompt)
+          generateWithStreaming(pollinationsKey, prompt, MODELS[key], systemPrompt)
         )
       );
       
@@ -449,7 +500,7 @@ serve(async (req) => {
           });
         } else {
           // Non-streaming single model mode
-          const result = await generateNonStreaming(pollinationsKey, prompt, modelConfig, systemPrompt);
+          const result = await generateWithStreaming(pollinationsKey, prompt, modelConfig, systemPrompt);
           
           if (!result.code || !result.code.includes('<!DOCTYPE')) {
             throw new Error('Response is not valid HTML');
