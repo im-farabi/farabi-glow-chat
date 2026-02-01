@@ -26,7 +26,7 @@ const MODELS: Record<string, { name: string; label: string }> = {
 // Fallback order when a model fails
 const FALLBACK_ORDER = ['gemini', 'haiku', 'kimi'];
 
-// Simplified system prompt to reduce truncation
+// System prompt for new website generation
 const SYSTEM_PROMPT = `You are an expert web developer. Generate COMPLETE HTML code only.
 
 CRITICAL RULES:
@@ -41,6 +41,22 @@ CRITICAL RULES:
 9. Add smooth animations and hover effects
 
 NEVER truncate. Complete every tag. Output must start with <!DOCTYPE html> and end with </html>.`;
+
+// System prompt for TARGETED edits - minimal changes only
+const EDIT_SYSTEM_PROMPT = `You are an expert web developer making TARGETED edits to existing HTML code.
+
+CRITICAL RULES FOR EDITING:
+1. ONLY modify the specific part the user requested
+2. Keep ALL other code EXACTLY the same - do not rewrite or "improve" unchanged sections
+3. Preserve the original structure, styling, formatting, colors, and fonts
+4. Return the complete HTML but with MINIMAL changes
+5. Do NOT add new features, sections, or improvements unless specifically asked
+6. Do NOT change colors, fonts, animations, or styles unless specifically asked
+7. Do NOT reorganize or restructure the code
+8. Think like a surgeon: precise incisions, leave everything else untouched
+
+The user will provide existing code and a specific change request. Make ONLY that change.
+Output must start with <!DOCTYPE html> and end with </html>.`;
 
 // Create transform stream with proper UTF-8 handling and line buffering
 function createTransformStream() {
@@ -105,6 +121,7 @@ async function callAPIStream(
   apiKey: string, 
   prompt: string, 
   modelConfig: { name: string },
+  systemPrompt: string,
   timeoutMs: number = 60000
 ): Promise<ReadableStream> {
   const controller = new AbortController();
@@ -122,8 +139,8 @@ async function callAPIStream(
       body: JSON.stringify({
         model: modelConfig.name,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: `Create a website: ${prompt}` }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
         ],
         stream: true,
         max_tokens: 8192,
@@ -159,7 +176,10 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, stream = true, model = 'gemini' } = await req.json();
+    const { prompt, stream = true, model = 'gemini', isEdit = false } = await req.json();
+    
+    // Use targeted edit prompt when editing existing code
+    const systemPrompt = isEdit ? EDIT_SYSTEM_PROMPT : SYSTEM_PROMPT;
 
     if (!prompt || typeof prompt !== 'string') {
       return new Response(JSON.stringify({ error: 'Prompt is required' }), {
@@ -202,7 +222,7 @@ serve(async (req) => {
         
         try {
           if (stream) {
-            const upstreamStream = await callAPIStream(apiKey, prompt, modelConfig);
+            const upstreamStream = await callAPIStream(apiKey, prompt, modelConfig, systemPrompt);
             const transformStream = createTransformStream();
             
             console.log(`[web-gen] Success with ${modelConfig.name}, key ${i + 1}`);
@@ -226,8 +246,8 @@ serve(async (req) => {
               body: JSON.stringify({
                 model: modelConfig.name,
                 messages: [
-                  { role: 'system', content: SYSTEM_PROMPT },
-                  { role: 'user', content: `Create a website: ${prompt}` }
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: prompt }
                 ],
                 stream: false,
                 max_tokens: 8192
