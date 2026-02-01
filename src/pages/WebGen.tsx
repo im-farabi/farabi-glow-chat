@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
-import PremiumBackground from '@/components/PremiumBackground';
+import WebGenBackground from '@/components/WebGenBackground';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -122,30 +122,68 @@ const WebGen = () => {
     });
   };
 
-  // Enhance prompt using grammify edge function
+  // Enhance prompt using pollinations-chat (proven pattern from ImageGen)
   const enhancePrompt = async () => {
     if (!inputValue.trim() || inputValue.length < 3) return;
     
     setIsEnhancing(true);
     try {
-      const response = await supabase.functions.invoke('grammify', {
+      const systemPrompt = `You are an expert prompt writer for AI website generators.
+
+Rules for website prompts:
+1. Start with the website type and purpose
+2. Define key sections and features clearly
+3. Specify visual style, colors, and mood
+4. Include interactivity requirements
+5. Add specific UI elements to include
+6. Keep prompts 50-150 words
+7. Use structured, clear language with sections
+
+Example transformation:
+"make me a game" → "Create a 2D browser-based arcade game with the following:
+
+GAME FEATURES:
+- Player character with keyboard controls (arrow keys)
+- Score system displayed in top corner
+- Multiple levels with increasing difficulty
+- Game over and restart functionality
+
+VISUAL STYLE:
+- Retro pixel art aesthetic
+- Neon color palette (cyan, pink, purple)
+- Particle effects on actions
+- Smooth animations
+
+Include start screen, in-game HUD, and game over screen."
+
+Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "Enhanced:".`;
+
+      const { data, error } = await supabase.functions.invoke('pollinations-chat', {
         body: {
-          text: `Website idea: ${inputValue}`,
-          enhancement: 'prompt-engineering',
-          promptMode: 'longer',
-          personalization: 'neutral',
-          replyMode: 'think'
+          prompt: `Enhance this website idea into a detailed, structured prompt:\n\n"${inputValue}"`,
+          model: 'gemini-3-flash',
+          seed: Math.floor(Math.random() * 1000000),
+          systemPrompt: systemPrompt
         }
       });
+
+      if (error) throw error;
       
-      if (response.error) throw response.error;
+      // Clean response - remove AI filler text
+      let cleaned = (data?.text || '')
+        .replace(/^["']|["']$/g, '')
+        .replace(/^.*?(?:Enhanced|prompt|here|Here's|Here is):\s*/im, '')
+        .replace(/^(Alright|Okay|Sure|Here|Let me)[,!.\s]*/i, '')
+        .trim();
       
-      if (response.data?.enhancedText) {
-        setInputValue(response.data.enhancedText);
+      if (cleaned.length > 10) {
+        setInputValue(cleaned);
         toast({ 
           title: "Prompt enhanced!", 
           description: "Your prompt has been optimized for better results" 
         });
+      } else {
+        throw new Error('Enhancement returned empty result');
       }
     } catch (error) {
       console.error('Enhance error:', error);
@@ -523,7 +561,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <PremiumBackground />
+      <WebGenBackground />
       <Header showTemporaryToggle={false} />
       
       <main className="flex-1 flex flex-col overflow-hidden">
