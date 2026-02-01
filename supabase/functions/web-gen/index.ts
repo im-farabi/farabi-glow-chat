@@ -5,32 +5,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const APIFREE_URL = 'https://api.apifree.ai/v1/chat/completions';
 const POLLINATIONS_URL = 'https://gen.pollinations.ai/v1/chat/completions';
 
-// Model configurations with Gemini as primary
-const MODELS: Record<string, { name: string; label: string; isPollinations?: boolean }> = {
-  gemini: { 
-    name: 'google/gemini-2.5-flash-lite',
-    label: 'Gemini Flash'
-  },
-  haiku: { 
-    name: 'anthropic/claude-haiku-4.5',
-    label: 'Claude Haiku'
-  },
-  kimi: { 
-    name: 'moonshotai/kimi-k2-instruct',
-    label: 'Kimi K2'
-  },
-  pollinations: {
+// Model configurations - Pollinations only
+const MODELS: Record<string, { name: string; label: string }> = {
+  gpt: { 
     name: 'openai-large',
-    label: 'Pollinations GPT',
-    isPollinations: true
+    label: 'GPT 5.2'
+  },
+  claude: { 
+    name: 'claude',
+    label: 'Claude'
+  },
+  deepseek: { 
+    name: 'deepseek',
+    label: 'DeepSeek'
   }
 };
 
-// Fallback order when a model fails - Pollinations as last resort
-const FALLBACK_ORDER = ['gemini', 'haiku', 'kimi', 'pollinations'];
+// Fallback order
+const FALLBACK_ORDER = ['gpt', 'claude', 'deepseek'];
 
 // System prompt for new website generation
 const SYSTEM_PROMPT = `You are an expert web developer. Generate COMPLETE HTML code only.
@@ -222,23 +216,21 @@ function createTransformStream() {
   });
 }
 
-// Call API with timeout
+// Call API with timeout for streaming
 async function callAPIStream(
   apiKey: string, 
   prompt: string, 
-  modelConfig: { name: string; isPollinations?: boolean },
+  modelConfig: { name: string },
   systemPrompt: string,
-  timeoutMs: number = 60000
+  timeoutMs: number = 90000
 ): Promise<ReadableStream> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
-  const apiUrl = modelConfig.isPollinations ? POLLINATIONS_URL : APIFREE_URL;
-  
   try {
-    console.log(`[web-gen] Calling ${modelConfig.name} via ${modelConfig.isPollinations ? 'Pollinations' : 'APIFree'}...`);
+    console.log(`[web-gen] Calling ${modelConfig.name} via Pollinations...`);
     
-    const response = await fetch(apiUrl, {
+    const response = await fetch(POLLINATIONS_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -295,13 +287,78 @@ async function callAPIStream(
   }
 }
 
+// Non-streaming generation for multi-model mode
+async function generateNonStreaming(
+  apiKey: string,
+  prompt: string,
+  modelConfig: { name: string; label: string },
+  systemPrompt: string,
+  timeoutMs: number = 90000
+): Promise<{ code: string; model: string; time: number }> {
+  const startTime = Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    console.log(`[web-gen] Multi-model: Calling ${modelConfig.name}...`);
+    
+    const response = await fetch(POLLINATIONS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: modelConfig.name,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        stream: false,
+        max_tokens: 16384,
+        temperature: 0.7
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error ${response.status}: ${errorText.slice(0, 200)}`);
+    }
+    
+    const data = await response.json();
+    const code = data.choices?.[0]?.message?.content || '';
+    
+    // Clean up code
+    let cleanedCode = code.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+    if (!cleanedCode.startsWith('<!DOCTYPE')) {
+      const doctypeIndex = cleanedCode.indexOf('<!DOCTYPE');
+      if (doctypeIndex > 0) cleanedCode = cleanedCode.substring(doctypeIndex);
+    }
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`[web-gen] ${modelConfig.label} completed in ${elapsed}ms`);
+    
+    return {
+      code: cleanedCode,
+      model: modelConfig.label,
+      time: elapsed
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { prompt, stream = true, model = 'gemini', isEdit = false, modes = [] } = await req.json();
+    const { prompt, stream = true, model = 'gpt', isEdit = false, modes = [], multiModel = false } = await req.json();
     
     // Choose the appropriate system prompt
     const systemPrompt = isEdit ? EDIT_SYSTEM_PROMPT : buildSystemPrompt(modes as string[]);
@@ -313,119 +370,106 @@ serve(async (req) => {
       });
     }
 
-    // Get API keys
-    const apiFreeKeys = [
-      Deno.env.get('APIFREE_API_KEY_1'),
-      Deno.env.get('APIFREE_API_KEY_2'),
-      Deno.env.get('APIFREE_API_KEY_3'),
-    ].filter(Boolean) as string[];
-
+    // Get API key
     const pollinationsKey = Deno.env.get('NEW_POLLINATIONS_APIKEY_1');
 
-    if (apiFreeKeys.length === 0 && !pollinationsKey) {
-      return new Response(JSON.stringify({ error: 'No API keys configured' }), {
+    if (!pollinationsKey) {
+      return new Response(JSON.stringify({ error: 'No API key configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Shuffle keys for load balancing
-    const shuffledApiFreeKeys = [...apiFreeKeys].sort(() => Math.random() - 0.5);
-    
+    // Multi-model mode: generate with all 3 models in parallel
+    if (multiModel) {
+      console.log('[web-gen] Multi-model mode: generating with all 3 models...');
+      
+      const modelKeys = ['gpt', 'claude', 'deepseek'];
+      const results = await Promise.allSettled(
+        modelKeys.map(key => 
+          generateNonStreaming(pollinationsKey, prompt, MODELS[key], systemPrompt)
+        )
+      );
+      
+      const multiResults = results.map((result, index) => {
+        if (result.status === 'fulfilled') {
+          return {
+            model: modelKeys[index],
+            label: MODELS[modelKeys[index]].label,
+            success: true,
+            code: result.value.code,
+            time: result.value.time
+          };
+        } else {
+          return {
+            model: modelKeys[index],
+            label: MODELS[modelKeys[index]].label,
+            success: false,
+            error: result.reason?.message || 'Unknown error',
+            code: null,
+            time: 0
+          };
+        }
+      });
+      
+      console.log(`[web-gen] Multi-model results: ${multiResults.map(r => `${r.label}: ${r.success ? 'OK' : 'FAIL'}`).join(', ')}`);
+      
+      return new Response(JSON.stringify({ results: multiResults }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Single model streaming mode
     // Build model fallback chain: user's choice first, then others
     const modelsToTry = [model, ...FALLBACK_ORDER.filter(m => m !== model)];
     
     let lastError: Error | null = null;
 
-    // Try each model in order, with all API keys
+    // Try each model in order
     for (const modelKey of modelsToTry) {
       const modelConfig = MODELS[modelKey];
       if (!modelConfig) continue;
       
-      // Get the right keys for this model
-      const keysToTry = modelConfig.isPollinations 
-        ? (pollinationsKey ? [pollinationsKey] : [])
-        : shuffledApiFreeKeys;
-      
-      if (keysToTry.length === 0) {
-        console.log(`[web-gen] No keys available for ${modelConfig.name}, skipping...`);
-        continue;
-      }
-      
       console.log(`[web-gen] Trying model: ${modelConfig.name}`);
       
-      for (let i = 0; i < keysToTry.length; i++) {
-        const apiKey = keysToTry[i];
-        
-        try {
-          if (stream) {
-            const upstreamStream = await callAPIStream(apiKey, prompt, modelConfig, systemPrompt);
-            const transformStream = createTransformStream();
-            
-            console.log(`[web-gen] Success with ${modelConfig.name}, key ${i + 1}`);
-            
-            return new Response(upstreamStream.pipeThrough(transformStream), {
-              headers: {
-                ...corsHeaders,
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive'
-              }
-            });
-          } else {
-            // Non-streaming mode
-            const apiUrl = modelConfig.isPollinations ? POLLINATIONS_URL : APIFREE_URL;
-            const response = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-              },
-              body: JSON.stringify({
-                model: modelConfig.name,
-                messages: [
-                  { role: 'system', content: systemPrompt },
-                  { role: 'user', content: prompt }
-                ],
-                stream: false,
-                max_tokens: 16384
-              })
-            });
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error(`[web-gen] Non-stream API Error: ${response.status} - ${errorText.slice(0, 300)}`);
-              throw new Error(`API Error ${response.status}`);
+      try {
+        if (stream) {
+          const upstreamStream = await callAPIStream(pollinationsKey, prompt, modelConfig, systemPrompt);
+          const transformStream = createTransformStream();
+          
+          console.log(`[web-gen] Success with ${modelConfig.name}`);
+          
+          return new Response(upstreamStream.pipeThrough(transformStream), {
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive'
             }
-
-            const data = await response.json();
-            console.log(`[web-gen] Non-stream response:`, JSON.stringify(data).slice(0, 500));
-            
-            const code = data.choices?.[0]?.message?.content;
-            
-            if (!code || !code.includes('<!DOCTYPE')) {
-              throw new Error('Response is not valid HTML');
-            }
-            
-            console.log(`[web-gen] Success with ${modelConfig.name}, length: ${code.length}`);
-            
-            return new Response(JSON.stringify({ code }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+          });
+        } else {
+          // Non-streaming single model mode
+          const result = await generateNonStreaming(pollinationsKey, prompt, modelConfig, systemPrompt);
+          
+          if (!result.code || !result.code.includes('<!DOCTYPE')) {
+            throw new Error('Response is not valid HTML');
           }
-        } catch (error) {
-          console.error(`[web-gen] ${modelConfig.name} key ${i + 1} failed:`, error instanceof Error ? error.message : error);
-          lastError = error instanceof Error ? error : new Error(String(error));
-          // Continue to next key
+          
+          console.log(`[web-gen] Success with ${modelConfig.name}, length: ${result.code.length}`);
+          
+          return new Response(JSON.stringify({ code: result.code }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
+      } catch (error) {
+        console.error(`[web-gen] ${modelConfig.name} failed:`, error instanceof Error ? error.message : error);
+        lastError = error instanceof Error ? error : new Error(String(error));
+        // Continue to next model
       }
-      
-      // All keys failed for this model, try next model
-      console.log(`[web-gen] All keys failed for ${modelConfig.name}, trying next model...`);
     }
 
-    // All models and keys failed
-    console.error('[web-gen] All models and keys failed');
+    // All models failed
+    console.error('[web-gen] All models failed');
     return new Response(JSON.stringify({ 
       error: lastError?.message || 'All AI models failed. Please try again.' 
     }), {
