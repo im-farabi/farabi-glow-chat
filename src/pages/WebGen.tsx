@@ -68,13 +68,14 @@ const TYPE_OPTIONS = [
   { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' }
 ];
 
-// Website Mode Options (multi-select enabled)
-const MODE_OPTIONS = [
-  { id: 'standard', label: 'Standard', desc: 'Classic HTML/CSS/JS', icon: Globe },
-  { id: 'interactive', label: 'Interactive ⭐', desc: 'Tailwind + Alpine.js', icon: MousePointer },
-  { id: 'game', label: 'Game Mode', desc: 'Kaboom.js for 2D games', icon: Gamepad2 },
-  { id: 'threejs', label: '3D Experience', desc: 'Three.js for 3D visuals', icon: Box },
-  { id: 'animated', label: 'Animated', desc: 'GSAP premium animations', icon: Sparkles }
+// Website Stack Options (single-select, pre-tested combinations)
+const STACK_OPTIONS = [
+  { id: 'standard', label: 'Standard', desc: 'Classic HTML/CSS/JS', modes: ['standard'], icon: Globe },
+  { id: 'interactive', label: 'Interactive', desc: 'Tailwind + Alpine.js', modes: ['interactive'], icon: MousePointer },
+  { id: 'animated', label: 'Animated', desc: 'GSAP scroll animations', modes: ['animated'], icon: Sparkles },
+  { id: 'interactive-animated', label: 'Interactive + Animated', desc: 'Dynamic UI with animations', modes: ['interactive', 'animated'], icon: Zap, badge: 'Combo' },
+  { id: 'game', label: 'Game Mode', desc: 'Kaboom.js 2D games', modes: ['game'], icon: Gamepad2 },
+  { id: 'threejs', label: '3D Experience', desc: 'Three.js visuals', modes: ['threejs'], icon: Box }
 ];
 
 const WebGen = () => {
@@ -94,32 +95,14 @@ const WebGen = () => {
   const [customTheme, setCustomTheme] = useState('');
   const [selectedFont, setSelectedFont] = useState('');
   const [selectedType, setSelectedType] = useState('');
-  const [selectedModes, setSelectedModes] = useState<string[]>([]);
+  const [selectedStack, setSelectedStack] = useState<string | null>(null);
   const [isEnhancing, setIsEnhancing] = useState(false);
 
-  // Toggle mode selection (multi-select, max 2)
-  const toggleMode = (modeId: string) => {
-    setSelectedModes(prev => {
-      // If selecting 'standard', clear all others
-      if (modeId === 'standard') {
-        return prev.includes('standard') ? [] : ['standard'];
-      }
-      // If selecting another mode, remove 'standard' if present
-      const withoutStandard = prev.filter(m => m !== 'standard');
-      if (withoutStandard.includes(modeId)) {
-        return withoutStandard.filter(m => m !== modeId);
-      }
-      // Limit to 2 modes maximum
-      if (withoutStandard.length >= 2) {
-        toast({
-          title: "Maximum 2 modes",
-          description: "For best results, select up to 2 website modes",
-          variant: "destructive"
-        });
-        return withoutStandard;
-      }
-      return [...withoutStandard, modeId];
-    });
+  // Get modes array from selected stack
+  const getSelectedModes = () => {
+    if (!selectedStack) return [];
+    const stack = STACK_OPTIONS.find(s => s.id === selectedStack);
+    return stack?.modes || [];
   };
 
   // Enhance prompt using pollinations-chat (proven pattern from ImageGen)
@@ -259,6 +242,8 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
                    : selectedType === 'detailed' ? 'fully detailed website with all features, sections, and functionality'
                    : 'simple static site for testing purposes, minimal but functional';
     
+    const selectedModes = getSelectedModes();
+    
     // Build mode-specific requirements
     const modeRequirements: string[] = [];
     
@@ -282,11 +267,12 @@ GAME MODE (Kaboom.js):
     
     if (selectedModes.includes('threejs')) {
       modeRequirements.push(`
-3D EXPERIENCE MODE (Three.js):
+3D EXPERIENCE MODE (Three.js - SIMPLE):
 - Use Three.js: <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-- Use OrbitControls: <script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
-- Create immersive 3D scene with lighting, geometry, and camera controls
-- Add smooth animations with requestAnimationFrame`);
+- Create a simple but impressive 3D scene (one main geometry)
+- Add lighting: AmbientLight + DirectionalLight
+- Use requestAnimationFrame for smooth rotation
+- Keep JavaScript under 50 lines`);
     }
     
     if (selectedModes.includes('animated')) {
@@ -296,6 +282,17 @@ ANIMATED MODE (GSAP):
 - Use ScrollTrigger: <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
 - Create buttery-smooth animations with gsap.from(), gsap.to(), timelines
 - Add scroll-triggered animations for sections`);
+    }
+
+    // Add special instructions for combo stacks
+    if (selectedModes.includes('interactive') && selectedModes.includes('animated')) {
+      modeRequirements.push(`
+IMPORTANT COMBO RULES:
+- Use GSAP ONLY for entrance animations and scroll effects
+- Use Alpine.js ONLY for UI state (toggles, menus, tabs)
+- Do NOT animate the same elements with both libraries
+- Alpine handles: mobile menu, dark mode, tabs, accordions
+- GSAP handles: page load animations, scroll reveals`);
     }
 
     const modeText = modeRequirements.length > 0 
@@ -351,7 +348,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
             stream: true,
             model: selectedModel,
             isEdit: isEdit,
-            modes: selectedModes  // Pass selected modes array
+            modes: getSelectedModes()  // Pass selected modes array
           }),
           signal: abortController.signal
         }
@@ -463,10 +460,10 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
   };
 
   const handleStartGeneration = () => {
-    if (!selectedTheme || !selectedFont || !selectedType || selectedModes.length === 0) {
+    if (!selectedTheme || !selectedFont || !selectedType || !selectedStack) {
       toast({
         title: "Please select all options",
-        description: "Choose a theme, font, website type, and at least one mode",
+        description: "Choose a theme, font, website type, and a stack",
         variant: "destructive"
       });
       return;
@@ -669,23 +666,18 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                         </div>
                       </div>
 
-                      {/* Website Mode (Multi-select, max 2) */}
+                      {/* Website Stack (single-select) */}
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-foreground">Website Mode</p>
-                          <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30">
-                            Max 2
-                          </span>
-                        </div>
+                        <p className="font-medium text-foreground">Website Stack</p>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {MODE_OPTIONS.map(option => {
+                          {STACK_OPTIONS.map(option => {
                             const Icon = option.icon;
-                            const isSelected = selectedModes.includes(option.id);
+                            const isSelected = selectedStack === option.id;
                             return (
                               <GlassButton 
                                 key={option.id}
                                 selected={isSelected}
-                                onClick={() => toggleMode(option.id)}
+                                onClick={() => setSelectedStack(option.id)}
                               >
                                 <div className="flex items-start gap-2">
                                   <Icon className={cn(
@@ -693,7 +685,14 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                                     isSelected ? "text-primary" : "text-muted-foreground"
                                   )} />
                                   <div>
-                                    <p className="font-medium text-foreground">{option.label}</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium text-foreground">{option.label}</p>
+                                      {option.badge && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/30 text-primary border border-primary/40">
+                                          {option.badge}
+                                        </span>
+                                      )}
+                                    </div>
                                     <p className="text-xs text-muted-foreground">{option.desc}</p>
                                   </div>
                                 </div>
@@ -701,17 +700,12 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                             );
                           })}
                         </div>
-                        {selectedModes.length > 1 && (
-                          <p className="text-xs text-primary">
-                            ✨ Combining: {selectedModes.map(m => MODE_OPTIONS.find(o => o.id === m)?.label).join(' + ')}
-                          </p>
-                        )}
                       </div>
 
                       {/* Submit Button */}
                       <Button 
                         onClick={handleStartGeneration}
-                        disabled={!selectedTheme || !selectedFont || !selectedType || selectedModes.length === 0 || (selectedTheme === 'other' && !customTheme.trim())}
+                        disabled={!selectedTheme || !selectedFont || !selectedType || !selectedStack || (selectedTheme === 'other' && !customTheme.trim())}
                         className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all"
                         size="lg"
                       >
