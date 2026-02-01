@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { 
   Loader2, 
   Code2, 
@@ -14,13 +15,13 @@ import {
   Download,
   ExternalLink,
   Wand2,
-  Globe
+  Globe,
+  Zap
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import PremiumBackground from '@/components/PremiumBackground';
-import { supabase } from '@/integrations/supabase/client';
 
 // Page SEO
 const useWebGenSEO = () => {
@@ -34,7 +35,20 @@ const useWebGenSEO = () => {
   }, []);
 };
 
-const LOADING_MESSAGES = [
+const LOADING_MESSAGES_CLAUDE = [
+  'Connecting to Claude 4.5...',
+  'Analyzing your request...',
+  'Designing layout structure...',
+  'Generating HTML skeleton...',
+  'Styling with CSS magic...',
+  'Adding responsive design...',
+  'Implementing animations...',
+  'Writing JavaScript logic...',
+  'Polishing the details...',
+  'Almost there...',
+];
+
+const LOADING_MESSAGES_GPT = [
   'Connecting to GPT-5.2...',
   'Analyzing your request...',
   'Designing layout structure...',
@@ -46,6 +60,8 @@ const LOADING_MESSAGES = [
   'Polishing the details...',
   'Almost there...',
 ];
+
+type ModelType = 'claude' | 'gpt';
 
 const WebGen = () => {
   useWebGenSEO();
@@ -61,6 +77,7 @@ const WebGen = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
+  const [selectedModel, setSelectedModel] = useState<ModelType>('claude');
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -75,16 +92,17 @@ const WebGen = () => {
   useEffect(() => {
     if (!loading) return;
     
+    const messages = selectedModel === 'claude' ? LOADING_MESSAGES_CLAUDE : LOADING_MESSAGES_GPT;
     let messageIndex = 0;
-    setLoadingMessage(LOADING_MESSAGES[0]);
+    setLoadingMessage(messages[0]);
     
     const interval = setInterval(() => {
-      messageIndex = (messageIndex + 1) % LOADING_MESSAGES.length;
-      setLoadingMessage(LOADING_MESSAGES[messageIndex]);
+      messageIndex = (messageIndex + 1) % messages.length;
+      setLoadingMessage(messages[messageIndex]);
     }, 3000);
     
     return () => clearInterval(interval);
-  }, [loading]);
+  }, [loading, selectedModel]);
 
   const generateWebsite = async () => {
     if (!prompt.trim()) {
@@ -113,7 +131,11 @@ const WebGen = () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({ prompt: prompt.trim(), stream: true })
+          body: JSON.stringify({ 
+            prompt: prompt.trim(), 
+            stream: true,
+            model: selectedModel
+          })
         }
       );
 
@@ -173,7 +195,7 @@ const WebGen = () => {
       
       toast({
         title: "Website generated!",
-        description: "Your website is ready to preview",
+        description: `Your website is ready (${selectedModel === 'claude' ? 'Claude 4.5' : 'GPT-5.2'})`,
       });
     } catch (error) {
       console.error('Generation error:', error);
@@ -254,9 +276,13 @@ const WebGen = () => {
             <h1 className="text-3xl md:text-4xl font-bold gradient-text">
               AI Website Generator
             </h1>
+            <Badge variant="secondary" className="ml-2 gap-1">
+              <Zap className="h-3 w-3" />
+              {selectedModel === 'claude' ? 'Claude 4.5' : 'GPT-5.2'}
+            </Badge>
           </div>
           <p className="text-muted-foreground">
-            Describe your dream website and let GPT-5.2 build it for you
+            Describe your dream website and watch it build in real-time
           </p>
         </div>
 
@@ -272,6 +298,32 @@ const WebGen = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-4">
+              {/* Model Selector */}
+              <div className="flex gap-2">
+                <Button
+                  variant={selectedModel === 'claude' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedModel('claude')}
+                  disabled={loading}
+                  className="flex-1 gap-1"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Claude 4.5
+                  <span className="text-xs opacity-70">(Fast)</span>
+                </Button>
+                <Button
+                  variant={selectedModel === 'gpt' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedModel('gpt')}
+                  disabled={loading}
+                  className="flex-1 gap-1"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  GPT-5.2
+                  <span className="text-xs opacity-70">(Large)</span>
+                </Button>
+              </div>
+
               <Textarea
                 placeholder="Create a modern portfolio website for a photographer with a dark theme, image gallery, about section, and contact form..."
                 value={prompt}
@@ -385,7 +437,11 @@ const WebGen = () => {
                       </div>
                       <div className="text-center space-y-2">
                         <p className="text-lg font-medium text-foreground">{loadingMessage}</p>
-                        <p className="text-sm text-muted-foreground">This may take up to 2 minutes for complex websites</p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedModel === 'claude' 
+                            ? 'Claude 4.5 streams code in real-time' 
+                            : 'This may take up to 2 minutes for complex websites'}
+                        </p>
                       </div>
                       {/* Progress dots */}
                       <div className="flex gap-2">

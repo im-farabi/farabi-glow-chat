@@ -6,8 +6,18 @@ const corsHeaders = {
 };
 
 const API_URL = 'https://api.apifree.ai/v1/chat/completions';
-const MODEL = 'openai/gpt-5.2';
-const MAX_TOKENS = 38000;
+
+// Model configurations
+const MODELS = {
+  claude: {
+    name: 'anthropic/claude-sonnet-4.5',
+    maxTokens: 16000
+  },
+  gpt: {
+    name: 'openai/gpt-5.2',
+    maxTokens: 38000
+  }
+};
 
 const SYSTEM_PROMPT = `You are an expert web developer. Return ONLY valid HTML - no markdown, no backticks, no explanations.
 
@@ -19,7 +29,7 @@ Rules:
 - CDN assets only (Google Fonts, Font Awesome)
 - No placeholders - complete working code`;
 
-async function callAPIStream(apiKey: string, prompt: string): Promise<ReadableStream> {
+async function callAPIStream(apiKey: string, prompt: string, modelConfig: typeof MODELS.claude): Promise<ReadableStream> {
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -27,8 +37,8 @@ async function callAPIStream(apiKey: string, prompt: string): Promise<ReadableSt
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
+      model: modelConfig.name,
+      max_tokens: modelConfig.maxTokens,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt }
@@ -45,7 +55,7 @@ async function callAPIStream(apiKey: string, prompt: string): Promise<ReadableSt
   return response.body!;
 }
 
-async function callAPINonStream(apiKey: string, prompt: string): Promise<string> {
+async function callAPINonStream(apiKey: string, prompt: string, modelConfig: typeof MODELS.claude): Promise<string> {
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -53,8 +63,8 @@ async function callAPINonStream(apiKey: string, prompt: string): Promise<string>
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
+      model: modelConfig.name,
+      max_tokens: modelConfig.maxTokens,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt }
@@ -88,7 +98,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, stream = true } = await req.json();
+    const { prompt, stream = true, model = 'claude' } = await req.json();
 
     if (!prompt || typeof prompt !== 'string') {
       return new Response(JSON.stringify({ error: 'Prompt is required' }), {
@@ -96,6 +106,10 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    // Select model configuration (default to Claude for faster streaming)
+    const modelConfig = MODELS[model as keyof typeof MODELS] || MODELS.claude;
+    console.log(`[web-gen] Using model: ${modelConfig.name}`);
 
     const apiKeys = [
       Deno.env.get('APIFREE_API_KEY_1'),
@@ -117,10 +131,10 @@ serve(async (req) => {
     if (stream) {
       for (let i = 0; i < shuffledKeys.length; i++) {
         const apiKey = shuffledKeys[i];
-        console.log(`[Stream] Trying key ${i + 1}`);
+        console.log(`[Stream] Trying key ${i + 1} with ${modelConfig.name}`);
         
         try {
-          const upstreamStream = await callAPIStream(apiKey, prompt);
+          const upstreamStream = await callAPIStream(apiKey, prompt, modelConfig);
           
           // Transform SSE stream to extract content
           const transformStream = new TransformStream({
@@ -166,10 +180,10 @@ serve(async (req) => {
       // Non-streaming mode
       for (let i = 0; i < shuffledKeys.length; i++) {
         const apiKey = shuffledKeys[i];
-        console.log(`Trying key ${i + 1}`);
+        console.log(`Trying key ${i + 1} with ${modelConfig.name}`);
         
         try {
-          const code = await callAPINonStream(apiKey, prompt);
+          const code = await callAPINonStream(apiKey, prompt, modelConfig);
           
           if (!code.includes('<!DOCTYPE html') && !code.includes('<html')) {
             lastError = new Error('Response is not valid HTML');
