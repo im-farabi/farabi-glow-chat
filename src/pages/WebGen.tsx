@@ -1,34 +1,32 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Loader2, 
   Code2, 
-  Eye, 
   Sparkles, 
-  ArrowLeft, 
   Copy, 
   Check, 
   Download,
   ExternalLink,
-  Wand2,
   Globe,
   Zap,
-  Brain
+  Brain,
+  Send,
+  ChevronDown,
+  CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import PremiumBackground from '@/components/PremiumBackground';
+import { cn } from '@/lib/utils';
 
 // Page SEO
 const useWebGenSEO = () => {
   useEffect(() => {
     document.title = "AI Website Generator - FARABI.me | Create Stunning Websites with AI";
-    
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
       metaDescription.setAttribute('content', 'Generate beautiful, responsive websites instantly with AI. Just describe what you want and get production-ready HTML, CSS, and JavaScript code.');
@@ -36,152 +34,142 @@ const useWebGenSEO = () => {
   }, []);
 };
 
-type ModelType = 'gemini' | 'haiku' | 'kimi';
+type ModelType = 'haiku' | 'kimi' | 'gemini';
 
-const MODEL_LABELS: Record<ModelType, string> = {
-  gemini: 'Gemini Flash',
-  haiku: 'Claude Haiku',
-  kimi: 'Kimi K2'
-};
+interface WebGenMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  type?: 'prompt' | 'options' | 'generating' | 'complete' | 'edit';
+  generatedCode?: string;
+  generationTime?: number;
+}
 
-const LOADING_MESSAGES: Record<ModelType, string[]> = {
-  gemini: [
-    'Connecting to Gemini Flash...',
-    'Analyzing your request...',
-    'Designing layout structure...',
-    'Generating HTML skeleton...',
-    'Styling with CSS magic...',
-    'Adding responsive design...',
-    'Implementing animations...',
-    'Writing JavaScript logic...',
-    'Polishing the details...',
-    'Almost there...',
-  ],
-  haiku: [
-    'Connecting to Claude Haiku...',
-    'Analyzing your request...',
-    'Designing layout structure...',
-    'Generating HTML skeleton...',
-    'Styling with CSS magic...',
-    'Adding responsive design...',
-    'Implementing animations...',
-    'Writing JavaScript logic...',
-    'Polishing the details...',
-    'Almost there...',
-  ],
-  kimi: [
-    'Connecting to Kimi K2...',
-    'Analyzing your request...',
-    'Designing layout structure...',
-    'Generating HTML skeleton...',
-    'Styling with CSS magic...',
-    'Adding responsive design...',
-    'Implementing animations...',
-    'Writing JavaScript logic...',
-    'Polishing the details...',
-    'Almost there...',
-  ]
-};
+// Options
+const THEME_OPTIONS = [
+  { id: 'blue-black', label: 'Blue & Black' },
+  { id: 'purple-black', label: 'Purple & Black' },
+  { id: 'other', label: 'Other' }
+];
+
+const FONT_OPTIONS = [
+  { id: 'Poppins', label: 'Poppins' },
+  { id: 'Montserrat', label: 'Montserrat' },
+  { id: 'Rubik', label: 'Rubik' }
+];
+
+const TYPE_OPTIONS = [
+  { id: 'premium', label: 'Rich & Premium', desc: 'Luxurious, polished design' },
+  { id: 'detailed', label: 'Fully Detailed', desc: 'Complete with all features' },
+  { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' }
+];
 
 const WebGen = () => {
   useWebGenSEO();
   
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const codeContainerRef = useRef<HTMLDivElement>(null);
   
-  const [prompt, setPrompt] = useState('');
+  // Chat state
+  const [messages, setMessages] = useState<WebGenMessage[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [currentStep, setCurrentStep] = useState<'prompt' | 'options' | 'generating' | 'complete'>('prompt');
+  
+  // Options state
+  const [selectedTheme, setSelectedTheme] = useState('');
+  const [customTheme, setCustomTheme] = useState('');
+  const [selectedFont, setSelectedFont] = useState('');
+  const [selectedType, setSelectedType] = useState('');
+  
+  // Generation state
+  const [selectedModel, setSelectedModel] = useState<ModelType>('haiku');
+  const [userPrompt, setUserPrompt] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('');
+  const [showCode, setShowCode] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
-  const [selectedModel, setSelectedModel] = useState<ModelType>('gemini');
-  const codeContainerRef = useRef<HTMLDivElement>(null);
-  const [userScrolled, setUserScrolled] = useState(false);
+  const [generationStartTime, setGenerationStartTime] = useState<number>(0);
+  const [generationTime, setGenerationTime] = useState<number>(0);
 
-  // Cleanup blob URL on unmount
+  // Cleanup blob URL
   useEffect(() => {
     return () => {
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-      }
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
   }, [blobUrl]);
 
-  // Reset userScrolled when new generation starts
+  // Scroll to bottom
   useEffect(() => {
-    if (loading) {
-      setUserScrolled(false);
-    }
-  }, [loading]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, currentStep]);
 
-  // Detect if user manually scrolls up
-  const handleCodeScroll = () => {
-    if (!codeContainerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = codeContainerRef.current;
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-    setUserScrolled(!isNearBottom);
+  // Auto-scroll code during streaming
+  useEffect(() => {
+    if (showCode && codeContainerRef.current && loading) {
+      codeContainerRef.current.scrollTop = codeContainerRef.current.scrollHeight;
+    }
+  }, [generatedCode, showCode, loading]);
+
+  const handleSendPrompt = () => {
+    if (!inputValue.trim()) return;
+    
+    setUserPrompt(inputValue.trim());
+    setMessages(prev => [...prev, 
+      { role: 'user', content: inputValue.trim(), type: 'prompt' },
+      { role: 'assistant', content: '', type: 'options' }
+    ]);
+    setInputValue('');
+    setCurrentStep('options');
   };
 
-  // Auto-scroll code container during streaming
-  useEffect(() => {
-    if (codeContainerRef.current && generatedCode && !userScrolled) {
-      const timeoutId = setTimeout(() => {
-        requestAnimationFrame(() => {
-          if (codeContainerRef.current) {
-            codeContainerRef.current.scrollTo({
-              top: codeContainerRef.current.scrollHeight,
-              behavior: 'auto'
-            });
-          }
-        });
-      }, 0);
-      return () => clearTimeout(timeoutId);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (currentStep === 'prompt') {
+        handleSendPrompt();
+      } else if (currentStep === 'complete') {
+        handleEditRequest();
+      }
     }
-  }, [generatedCode, userScrolled]);
+  };
 
-  // Loading message animation
-  useEffect(() => {
-    if (!loading) return;
+  const buildEnhancedPrompt = () => {
+    const themeText = selectedTheme === 'blue-black' ? 'blue and black color scheme' 
+                    : selectedTheme === 'purple-black' ? 'purple and black color scheme'
+                    : `custom theme: ${customTheme}`;
     
-    const messages = LOADING_MESSAGES[selectedModel];
-    let messageIndex = 0;
-    setLoadingMessage(messages[0]);
-    
-    const interval = setInterval(() => {
-      messageIndex = (messageIndex + 1) % messages.length;
-      setLoadingMessage(messages[messageIndex]);
-    }, 3000);
-    
-    return () => clearInterval(interval);
-  }, [loading, selectedModel]);
+    const typeText = selectedType === 'premium' ? 'rich, premium, luxurious design with smooth animations, gradients, and visual effects'
+                   : selectedType === 'detailed' ? 'fully detailed website with all features, sections, and functionality'
+                   : 'simple static site for testing purposes, minimal but functional';
 
-  const generateWebsite = async () => {
-    if (!prompt.trim()) {
-      toast({
-        title: "Prompt required",
-        description: "Please describe the website you want to create",
-        variant: "destructive"
-      });
-      return;
-    }
+    return `${userPrompt}
 
+DESIGN REQUIREMENTS:
+- Color Theme: ${themeText}
+- Font Family: ${selectedFont} (import from Google Fonts)
+- Style: ${typeText}`;
+  };
+
+  const generateWebsite = async (prompt: string, isEdit: boolean = false) => {
     setLoading(true);
     setGeneratedCode('');
-    setActiveTab('code');
+    setShowCode(false);
+    setGenerationStartTime(Date.now());
     
     if (blobUrl) {
       URL.revokeObjectURL(blobUrl);
       setBlobUrl(null);
     }
 
-    // Frontend timeout - 90 seconds
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => abortController.abort(), 90000);
 
     try {
+      const fullPrompt = isEdit 
+        ? `EXISTING CODE:\n${generatedCode}\n\nUSER REQUEST:\n${prompt}\n\nModify the existing code according to the user's request. Return the complete updated HTML.`
+        : prompt;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-gen`,
         {
@@ -191,7 +179,7 @@ const WebGen = () => {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ 
-            prompt: prompt.trim(), 
+            prompt: fullPrompt, 
             stream: true,
             model: selectedModel
           }),
@@ -236,26 +224,17 @@ const WebGen = () => {
         }
       }
 
-      // Clean up markdown wrappers
+      // Clean up code
       let code = accumulatedCode;
       code = code.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
       
       if (!code.startsWith('<!DOCTYPE')) {
         const doctypeIndex = code.indexOf('<!DOCTYPE');
-        if (doctypeIndex > 0) {
-          code = code.substring(doctypeIndex);
-        }
+        if (doctypeIndex > 0) code = code.substring(doctypeIndex);
       }
       
-      // Validate code
       if (!code || code.trim().length < 100 || !code.includes('<!DOCTYPE')) {
-        toast({
-          title: "Generation incomplete",
-          description: "The AI didn't produce complete code. Please try again.",
-          variant: "destructive"
-        });
-        setLoading(false);
-        return;
+        throw new Error('Generation incomplete. Please try again.');
       }
       
       setGeneratedCode(code);
@@ -264,11 +243,28 @@ const WebGen = () => {
       const url = URL.createObjectURL(blob);
       setBlobUrl(url);
       
-      setActiveTab('preview');
+      const elapsed = Date.now() - generationStartTime;
+      setGenerationTime(elapsed);
+      
+      setMessages(prev => {
+        const updated = [...prev];
+        const lastIdx = updated.length - 1;
+        if (updated[lastIdx]?.type === 'generating') {
+          updated[lastIdx] = {
+            ...updated[lastIdx],
+            type: 'complete',
+            generatedCode: code,
+            generationTime: elapsed
+          };
+        }
+        return updated;
+      });
+      
+      setCurrentStep('complete');
       
       toast({
         title: "Website generated!",
-        description: `Your website is ready (${MODEL_LABELS[selectedModel]})`,
+        description: "Your website is ready to view",
       });
     } catch (error) {
       console.error('Generation error:', error);
@@ -276,37 +272,77 @@ const WebGen = () => {
       if (error instanceof Error && error.name === 'AbortError') {
         toast({
           title: "Generation timed out",
-          description: "The AI took too long. Try a simpler prompt or different model.",
+          description: "Try a simpler prompt or different model.",
           variant: "destructive"
         });
       } else {
         toast({
           title: "Generation failed",
-          description: error instanceof Error ? error.message : "Failed to generate website",
+          description: error instanceof Error ? error.message : "Failed to generate",
           variant: "destructive"
         });
       }
+      
+      // Revert to options
+      setMessages(prev => prev.slice(0, -1));
+      setCurrentStep('options');
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
     }
   };
 
+  const handleStartGeneration = () => {
+    if (!selectedTheme || !selectedFont || !selectedType) {
+      toast({
+        title: "Please select all options",
+        description: "Choose a theme, font, and website type",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (selectedTheme === 'other' && !customTheme.trim()) {
+      toast({
+        title: "Describe your theme",
+        description: "Please enter a custom theme description",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const enhancedPrompt = buildEnhancedPrompt();
+    
+    setMessages(prev => [...prev, 
+      { role: 'assistant', content: '', type: 'generating' }
+    ]);
+    setCurrentStep('generating');
+    
+    generateWebsite(enhancedPrompt);
+  };
+
+  const handleEditRequest = () => {
+    if (!inputValue.trim() || !generatedCode) return;
+    
+    const editPrompt = inputValue.trim();
+    setMessages(prev => [...prev,
+      { role: 'user', content: editPrompt, type: 'edit' },
+      { role: 'assistant', content: '', type: 'generating' }
+    ]);
+    setInputValue('');
+    setCurrentStep('generating');
+    
+    generateWebsite(editPrompt, true);
+  };
+
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(generatedCode);
       setCopied(true);
-      toast({
-        title: "Copied!",
-        description: "Code copied to clipboard",
-      });
+      toast({ title: "Copied!", description: "Code copied to clipboard" });
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast({
-        title: "Copy failed",
-        description: "Failed to copy code",
-        variant: "destructive"
-      });
+      toast({ title: "Copy failed", variant: "destructive" });
     }
   };
 
@@ -320,281 +356,326 @@ const WebGen = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Downloaded!",
-      description: "website.html saved to your device",
-    });
+    toast({ title: "Downloaded!", description: "website.html saved" });
   };
 
   const openInNewTab = () => {
-    if (blobUrl) {
-      window.open(blobUrl, '_blank');
-    }
+    if (blobUrl) window.open(blobUrl, '_blank');
   };
 
+  // Glass button component
+  const GlassButton = ({ 
+    selected, 
+    onClick, 
+    children, 
+    className = '' 
+  }: { 
+    selected: boolean; 
+    onClick: () => void; 
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <button
+      onClick={onClick}
+      className={cn(
+        "p-4 rounded-2xl backdrop-blur-xl border transition-all duration-300",
+        "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20",
+        "hover:scale-[1.02] hover:shadow-lg text-left",
+        selected && "bg-primary/20 border-primary/50 shadow-[0_0_20px_rgba(236,72,153,0.3)]",
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <PremiumBackground />
-      
       <Header showTemporaryToggle={false} />
       
-      <main className="flex-1 container max-w-7xl mx-auto px-4 py-6 animate-fade-in">
-        {/* Header Section */}
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/')}
-            className="mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Chat
-          </Button>
-          
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/30">
-              <Globe className="h-6 w-6 text-primary" />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold gradient-text">
-              AI Website Generator
-            </h1>
-            <Badge variant="secondary" className="ml-2 gap-1">
-              <Zap className="h-3 w-3" />
-              {MODEL_LABELS[selectedModel]}
-            </Badge>
-          </div>
-          <p className="text-muted-foreground">
-            Describe your dream website and watch it build in real-time
-          </p>
-        </div>
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Messages Area */}
+        <ScrollArea className="flex-1">
+          <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+            
+            {/* Welcome Screen */}
+            {messages.length === 0 && (
+              <div className="flex h-[60vh] items-center justify-center">
+                <div className="text-center space-y-6">
+                  <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary">
+                    <Globe className="h-10 w-10 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-bold">
+                    <span className="text-foreground">Describe your </span>
+                    <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">dream website</span>
+                  </h2>
+                  <p className="text-muted-foreground">
+                    Tell me what you want to build
+                  </p>
+                </div>
+              </div>
+            )}
 
-        {/* Main 3-Panel Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-280px)] min-h-[600px]">
-          
-          {/* Panel 1: Prompt Input */}
-          <Card className="lg:col-span-4 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] flex flex-col">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Wand2 className="h-5 w-5 text-primary" />
-                Describe Your Website
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col gap-4">
-              {/* Model Selector - 3 buttons */}
+            {/* Chat Messages */}
+            {messages.map((msg, idx) => (
+              <div key={idx} className={cn(
+                "flex",
+                msg.role === 'user' ? "justify-end" : "justify-start"
+              )}>
+                <div className={cn(
+                  "max-w-[85%] rounded-2xl p-4",
+                  msg.role === 'user' 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-card/60 backdrop-blur-xl border border-border/50"
+                )}>
+                  {/* User message */}
+                  {msg.role === 'user' && (
+                    <p>{msg.content}</p>
+                  )}
+
+                  {/* Options message */}
+                  {msg.type === 'options' && (
+                    <div className="space-y-6">
+                      {/* Theme Selection */}
+                      <div className="space-y-3">
+                        <p className="font-medium text-foreground">What theme would you like?</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          {THEME_OPTIONS.map(option => (
+                            <GlassButton 
+                              key={option.id}
+                              selected={selectedTheme === option.id}
+                              onClick={() => setSelectedTheme(option.id)}
+                            >
+                              <span className="font-medium text-foreground">{option.label}</span>
+                            </GlassButton>
+                          ))}
+                        </div>
+                        {selectedTheme === 'other' && (
+                          <input
+                            type="text"
+                            value={customTheme}
+                            onChange={(e) => setCustomTheme(e.target.value)}
+                            placeholder="Describe your theme..."
+                            className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                          />
+                        )}
+                      </div>
+
+                      {/* Font Selection */}
+                      <div className="space-y-3">
+                        <p className="font-medium text-foreground">Which font?</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          {FONT_OPTIONS.map(option => (
+                            <GlassButton 
+                              key={option.id}
+                              selected={selectedFont === option.id}
+                              onClick={() => setSelectedFont(option.id)}
+                            >
+                              <span className="font-medium text-foreground" style={{ fontFamily: option.id }}>
+                                {option.label}
+                              </span>
+                            </GlassButton>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Website Type */}
+                      <div className="space-y-3">
+                        <p className="font-medium text-foreground">What kind of website?</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {TYPE_OPTIONS.map(option => (
+                            <GlassButton 
+                              key={option.id}
+                              selected={selectedType === option.id}
+                              onClick={() => setSelectedType(option.id)}
+                            >
+                              <div>
+                                <p className="font-medium text-foreground">{option.label}</p>
+                                <p className="text-xs text-muted-foreground">{option.desc}</p>
+                              </div>
+                            </GlassButton>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Submit Button */}
+                      <Button 
+                        onClick={handleStartGeneration}
+                        disabled={!selectedTheme || !selectedFont || !selectedType || (selectedTheme === 'other' && !customTheme.trim())}
+                        className="w-full h-12 bg-gradient-to-r from-primary to-secondary hover:shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all"
+                        size="lg"
+                      >
+                        <Sparkles className="mr-2 h-5 w-5" />
+                        Generate Website
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Generating message */}
+                  {msg.type === 'generating' && (
+                    <div className="space-y-4">
+                      <p className="text-lg text-foreground">
+                        Got it! I'll start creating your website. It might take a while, please wait!
+                      </p>
+                      
+                      {loading && (
+                        <div className="flex items-center gap-2 text-primary">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Working on it...</span>
+                        </div>
+                      )}
+                      
+                      {/* Collapsible code section */}
+                      <Collapsible open={showCode} onOpenChange={setShowCode}>
+                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                          <Code2 className="h-4 w-4" />
+                          <span>Generating code...</span>
+                          <ChevronDown className={cn(
+                            "h-4 w-4 transition-transform",
+                            showCode && "rotate-180"
+                          )} />
+                        </CollapsibleTrigger>
+                        
+                        <CollapsibleContent>
+                          <div 
+                            ref={codeContainerRef}
+                            className="mt-3 max-h-[300px] overflow-y-auto rounded-lg bg-black/50 border border-border/50 p-4"
+                          >
+                            <pre className="text-sm font-mono whitespace-pre-wrap break-words text-foreground/80">
+                              <code>{generatedCode}</code>
+                              {loading && (
+                                <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 align-middle" />
+                              )}
+                            </pre>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+                  )}
+
+                  {/* Complete message */}
+                  {msg.type === 'complete' && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-lg font-bold text-green-500">
+                        <CheckCircle2 className="h-6 w-6" />
+                        DONE!!!
+                      </div>
+                      <p className="text-foreground">Click the View App button to visit your website!</p>
+                      <p className="text-sm text-muted-foreground">
+                        Generated in {((msg.generationTime || generationTime) / 1000).toFixed(1)} seconds
+                      </p>
+                      
+                      <div className="flex flex-wrap gap-3">
+                        <Button onClick={openInNewTab} className="bg-gradient-to-r from-primary to-secondary">
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          View App
+                        </Button>
+                        <Button variant="outline" onClick={copyCode}>
+                          {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                          {copied ? 'Copied' : 'Copy Code'}
+                        </Button>
+                        <Button variant="outline" onClick={downloadCode}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </Button>
+                      </div>
+
+                      {/* Show code preview */}
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                          <Code2 className="h-4 w-4" />
+                          <span>View generated code</span>
+                          <ChevronDown className="h-4 w-4" />
+                        </CollapsibleTrigger>
+                        
+                        <CollapsibleContent>
+                          <div className="mt-3 max-h-[300px] overflow-y-auto rounded-lg bg-black/50 border border-border/50 p-4">
+                            <pre className="text-sm font-mono whitespace-pre-wrap break-words text-foreground/80">
+                              <code>{msg.generatedCode || generatedCode}</code>
+                            </pre>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+        
+        {/* Input Area */}
+        {(currentStep === 'prompt' || currentStep === 'complete') && (
+          <div className="p-4 border-t border-border/50 bg-background/80 backdrop-blur-xl">
+            <div className="max-w-3xl mx-auto space-y-3">
+              {/* Model selector - Haiku first */}
               <div className="flex gap-2">
-                <Button
-                  variant={selectedModel === 'gemini' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedModel('gemini')}
-                  disabled={loading}
-                  className="flex-1 gap-1"
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  Gemini
-                  <span className="text-xs opacity-70">(Fast)</span>
-                </Button>
                 <Button
                   variant={selectedModel === 'haiku' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedModel('haiku')}
-                  disabled={loading}
-                  className="flex-1 gap-1"
+                  className="gap-1"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
                   Haiku
+                  <span className="text-xs opacity-70">(Best)</span>
                 </Button>
                 <Button
                   variant={selectedModel === 'kimi' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedModel('kimi')}
-                  disabled={loading}
-                  className="flex-1 gap-1"
+                  className="gap-1"
                 >
                   <Brain className="h-3.5 w-3.5" />
                   Kimi
                 </Button>
+                <Button
+                  variant={selectedModel === 'gemini' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedModel('gemini')}
+                  className="gap-1"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Gemini
+                </Button>
               </div>
-
-              <Textarea
-                placeholder="Create a modern portfolio website for a photographer with a dark theme, image gallery, about section, and contact form..."
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="flex-1 min-h-[200px] resize-none bg-background/50 border-border/50"
-              />
               
-              <Button
-                onClick={generateWebsite}
-                disabled={loading || !prompt.trim()}
-                className="w-full bg-gradient-to-r from-primary to-secondary hover:shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all h-12"
-                size="lg"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-5 w-5" />
-                    Generate Website
-                  </>
-                )}
-              </Button>
-
-              {/* Example prompts */}
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Try these examples:</p>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "Landing page for a SaaS product",
-                    "Portfolio for a designer",
-                    "Restaurant menu page",
-                  ].map((example) => (
-                    <button
-                      key={example}
-                      onClick={() => setPrompt(example)}
-                      className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex gap-3 items-end">
+                <Textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={currentStep === 'complete' 
+                    ? "Want to make changes? e.g., 'Remove the About Me button'" 
+                    : "Describe your dream website..."
+                  }
+                  className="flex-1 min-h-[56px] max-h-[200px] resize-none bg-card/50 backdrop-blur-xl border-border/50"
+                  rows={1}
+                />
+                <Button 
+                  onClick={currentStep === 'complete' ? handleEditRequest : handleSendPrompt}
+                  disabled={!inputValue.trim() || loading}
+                  className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-secondary hover:shadow-[0_0_20px_rgba(236,72,153,0.5)]"
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        )}
 
-          {/* Panel 2 & 3: Preview and Code */}
-          <Card className="lg:col-span-8 bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)] flex flex-col overflow-hidden">
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'preview' | 'code')} className="flex-1 flex flex-col">
-              <CardHeader className="pb-0">
-                <div className="flex items-center justify-between">
-                  <TabsList className="bg-background/50">
-                    <TabsTrigger value="preview" className="gap-2">
-                      <Eye className="h-4 w-4" />
-                      Live Preview
-                    </TabsTrigger>
-                    <TabsTrigger value="code" className="gap-2">
-                      <Code2 className="h-4 w-4" />
-                      Code
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  {generatedCode && (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={copyCode}
-                        className="gap-2"
-                      >
-                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        {copied ? 'Copied' : 'Copy'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={downloadCode}
-                        className="gap-2"
-                      >
-                        <Download className="h-4 w-4" />
-                        Download
-                      </Button>
-                      {blobUrl && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={openInNewTab}
-                          className="gap-2"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          Open
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              
-              <CardContent className="flex-1 p-4 overflow-hidden">
-                <TabsContent value="preview" className="h-full m-0">
-                  {loading ? (
-                    <div className="h-full flex flex-col items-center justify-center gap-6 bg-background/30 rounded-lg border border-border/50">
-                      <div className="relative">
-                        <div className="w-20 h-20 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-                        </div>
-                      </div>
-                      <div className="text-center space-y-2">
-                        <p className="text-lg font-medium text-foreground">{loadingMessage}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {`${MODEL_LABELS[selectedModel]} streams code in real-time`}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        {[0, 1, 2].map((i) => (
-                          <div
-                            key={i}
-                            className="w-2 h-2 rounded-full bg-primary animate-pulse"
-                            style={{ animationDelay: `${i * 0.2}s` }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ) : blobUrl ? (
-                    <div className="h-full rounded-lg overflow-hidden border border-border/50 bg-white">
-                      <iframe
-                        ref={iframeRef}
-                        src={blobUrl}
-                        className="w-full h-full"
-                        title="Website Preview"
-                        sandbox="allow-scripts allow-same-origin"
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center gap-4 bg-background/30 rounded-lg border border-border/50 border-dashed">
-                      <div className="p-4 rounded-full bg-primary/10">
-                        <Globe className="h-12 w-12 text-primary/50" />
-                      </div>
-                      <div className="text-center space-y-2">
-                        <p className="text-lg font-medium text-muted-foreground">No preview yet</p>
-                        <p className="text-sm text-muted-foreground">Describe your website and click Generate</p>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="code" className="h-full m-0">
-                  {generatedCode || loading ? (
-                    <div 
-                      ref={codeContainerRef}
-                      onScroll={handleCodeScroll}
-                      className="h-full overflow-y-scroll rounded-lg bg-background/80 border border-border/50"
-                    >
-                      <pre className="p-4 text-sm text-foreground font-mono whitespace-pre-wrap break-words">
-                        <code>{generatedCode}</code>
-                        {loading && (
-                          <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 align-middle" />
-                        )}
-                      </pre>
-                    </div>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center gap-4 bg-background/30 rounded-lg border border-border/50 border-dashed">
-                      <div className="p-4 rounded-full bg-primary/10">
-                        <Code2 className="h-12 w-12 text-primary/50" />
-                      </div>
-                      <div className="text-center space-y-2">
-                        <p className="text-lg font-medium text-muted-foreground">No code yet</p>
-                        <p className="text-sm text-muted-foreground">Generate a website to see the code</p>
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-              </CardContent>
-            </Tabs>
-          </Card>
-        </div>
+        {/* Show loading state during generation */}
+        {currentStep === 'generating' && (
+          <div className="p-4 border-t border-border/50 bg-background/80 backdrop-blur-xl">
+            <div className="max-w-3xl mx-auto flex items-center justify-center gap-3 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span>Generating your website...</span>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
