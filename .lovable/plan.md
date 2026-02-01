@@ -1,220 +1,129 @@
 
 
-# Fix Website Mode Combinations & Background
+# Rich Premium Background for Web Generator
 
-## Issues Identified
+## Problem Identified
 
-### Issue 1: Background Animations Not Working
-The `WebGenBackground` component uses these animation classes that **don't exist** in `tailwind.config.ts`:
-- `animate-pulse-slow`
-- `animate-float-1`
-- `animate-float-2`
-- `animate-float-3`
-- `animate-gradient-mesh`
+The current `WebGenBackground` component has effects that are **too subtle to be visible**:
+- Opacity values: 0.2-0.3 combined with 80-100px blur = invisible against black
+- The CSS animations ARE working, but you can't see what's animating
+- Reference designs (brain.fm, Huly, Lovable) use **dramatically higher opacity** and **sharper gradients**
 
-This is why you don't see the Huly-style background effects.
+## Solution: Create a Bold, Visible Background
 
-### Issue 2: Mode Combinations Failing
-Current failures:
-- **3D Experience alone** - fails (too complex prompt for solo)
-- **Interactive + Animated** - fails (GSAP conflicts with Alpine.js transitions)
-- **Interactive + Game Mode** - fails (Kaboom canvas conflicts with Alpine.js DOM)
+### Visual Analysis of Reference Images
 
-**Root cause**: The AI models struggle with conflicting JS libraries and complex prompts.
+| Element | brain.fm | Huly | Lovable |
+|---------|----------|------|---------|
+| Dominant glow | Large magenta/pink blob (30-40% opacity) | Central blue vertical beam (50%+) | Purple corner glows (20-30%) |
+| Blur level | Medium (40-60px) | Low-Medium | Low (sharper) |
+| Color intensity | HIGH - clearly visible | HIGH - dramatic | MEDIUM - elegant |
+| Grid/texture | None | None | Matrix pattern |
 
----
+### New Background Design
 
-## Solution: Pre-defined Valid Combinations
+Create a **bold, unmistakably premium** background with:
 
-Instead of free multi-select, provide curated "stacks" that are tested to work together.
+1. **Large visible gradient orbs** (35-50% opacity, NOT 10-20%)
+2. **Reduced blur** (30-50px, NOT 80-100px) for sharper definition  
+3. **Central glow beam** from top (highly visible)
+4. **Animated but SUBTLE movement** - don't distract from content
 
-### New Stack-Based System
+### Key Visual Elements
 
-| Stack Name | Technologies | Description |
-|------------|-------------|-------------|
-| **Standard** | HTML/CSS/JS | Classic website, always works |
-| **Interactive** | Tailwind + Alpine.js | Dynamic UI with state management |
-| **Animated** | Tailwind + GSAP | Scroll animations & effects |
-| **Interactive + Animated** | Tailwind + Alpine + GSAP (careful usage) | Dynamic + animated (simplified prompt) |
-| **Game Mode** | Kaboom.js | 2D browser games |
-| **3D Experience** | Three.js + Basic CSS | 3D visualizations |
+**Central Light Beam (Top-down)**
+- Width: 600-800px centered
+- Opacity: 40-60% at center, fading to edges
+- Color: Pink to purple gradient
+- Animation: Slow pulse
 
-**Removed combinations** (conflicting):
-- Game + Interactive (canvas vs DOM)
-- Game + 3D (two canvases)
-- 3D + Interactive (complex)
-- Any 3+ mode combos
+**Left Pink Orb (brain.fm style)**
+- Position: Top-left, partially off-screen
+- Size: 700-900px diameter  
+- Opacity: **35-45%** (much higher than current 25%)
+- Blur: **40-50px** (much lower than current 80px)
+- Color: Hot pink (hsl 330 81% 60%)
 
----
+**Right Purple Orb**
+- Position: Bottom-right, partially off-screen
+- Size: 500-700px diameter
+- Opacity: **30-40%**
+- Blur: **40-50px**
+- Color: Purple (hsl 271 81% 60%)
 
-## Technical Changes
+**Gradient Overlays**
+- Top gradient: 15-20% opacity (not 5-8%)
+- Diagonal gradient layers for depth
 
-### File 1: `tailwind.config.ts`
+**Optional: Subtle animated grid**
+- Very low opacity (3-5%)
+- Adds texture without distraction
 
-Add missing keyframes and animations:
+### Technical Changes
 
-```typescript
-keyframes: {
-  // ... existing keyframes ...
-  
-  "float-1": {
-    "0%, 100%": { transform: "translate(0, 0) scale(1)" },
-    "50%": { transform: "translate(30px, -30px) scale(1.05)" }
-  },
-  "float-2": {
-    "0%, 100%": { transform: "translate(0, 0) scale(1)" },
-    "50%": { transform: "translate(-20px, 20px) scale(1.03)" }
-  },
-  "float-3": {
-    "0%, 100%": { transform: "translate(0, 0)" },
-    "50%": { transform: "translate(15px, -15px)" }
-  },
-  "pulse-slow": {
-    "0%, 100%": { opacity: "1" },
-    "50%": { opacity: "0.7" }
-  },
-  "gradient-mesh": {
-    "0%": { transform: "translate(0, 0) rotate(0deg)" },
-    "50%": { transform: "translate(50px, 30px) rotate(5deg)" },
-    "100%": { transform: "translate(0, 0) rotate(0deg)" }
-  }
-},
-animation: {
-  // ... existing animations ...
-  
-  "float-1": "float-1 20s ease-in-out infinite",
-  "float-2": "float-2 25s ease-in-out infinite",
-  "float-3": "float-3 18s ease-in-out infinite",
-  "pulse-slow": "pulse-slow 4s ease-in-out infinite",
-  "gradient-mesh": "gradient-mesh 30s ease-in-out infinite"
-}
-```
+**File: `src/components/WebGenBackground.tsx`**
 
-### File 2: `src/pages/WebGen.tsx`
+Complete rewrite with higher visibility values:
 
-Replace multi-select with stack selection:
-
-```typescript
-// Replace MODE_OPTIONS with STACK_OPTIONS
-const STACK_OPTIONS = [
-  { 
-    id: 'standard', 
-    label: 'Standard', 
-    desc: 'Classic HTML/CSS/JS',
-    modes: ['standard'],
-    icon: Globe 
-  },
-  { 
-    id: 'interactive', 
-    label: 'Interactive', 
-    desc: 'Tailwind + Alpine.js',
-    modes: ['interactive'],
-    icon: MousePointer 
-  },
-  { 
-    id: 'animated', 
-    label: 'Animated', 
-    desc: 'GSAP scroll animations',
-    modes: ['animated'],
-    icon: Sparkles 
-  },
-  { 
-    id: 'interactive-animated', 
-    label: 'Interactive + Animated', 
-    desc: 'Dynamic UI with animations',
-    modes: ['interactive', 'animated'],
-    icon: Zap,
-    badge: 'Combo'
-  },
-  { 
-    id: 'game', 
-    label: 'Game Mode', 
-    desc: 'Kaboom.js 2D games',
-    modes: ['game'],
-    icon: Gamepad2 
-  },
-  { 
-    id: '3d', 
-    label: '3D Experience', 
-    desc: 'Three.js visuals',
-    modes: ['threejs'],
-    icon: Box 
-  }
-];
-```
-
-**State change**: Replace `selectedModes: string[]` with `selectedStack: string | null`
-
-**UI change**: Single-select radio-style buttons instead of checkboxes
-
-### File 3: `supabase/functions/web-gen/index.ts`
-
-Improve 3D-only and combo prompts:
-
-```typescript
-// Simplified Three.js prompt for standalone 3D
-if (modes.includes('threejs') && modes.length === 1) {
-  prompt += `THREE.JS (3D Experience):
-- Include Three.js and OrbitControls from unpkg
-- Create a simple but impressive 3D scene
-- Add ambient and directional lighting
-- One main geometry (sphere, torus, box)
-- OrbitControls for rotation
-- Animate with requestAnimationFrame
-- Keep JavaScript under 50 lines
-`;
-}
-
-// Safer Interactive + Animated combo prompt
-if (modes.includes('interactive') && modes.includes('animated')) {
-  prompt += `IMPORTANT: Use GSAP ONLY for entrance/scroll animations.
-Use Alpine.js ONLY for UI state (toggles, menus).
-Do NOT animate the same elements with both libraries.
-`;
-}
-```
-
----
-
-## UI Preview
-
-### Before (Multi-select, confusing):
 ```text
-Website Mode [Max 2]
-[ ] Standard  [x] Interactive  [x] Game Mode  <-- Broken combo
-[ ] 3D Experience  [ ] Animated
+Key Changes:
+- Pink orb: opacity 0.25 -> 0.45, blur 80px -> 45px
+- Purple orb: opacity 0.30 -> 0.40, blur 80px -> 45px  
+- Central beam: opacity 0.40 -> 0.60
+- Gradient overlays: from-pink-500/15 -> from-pink-500/25
+- Remove excessive blur from animated mesh layers
+- Add stronger top glow accent
 ```
 
-### After (Stack selection, clear):
+**File: `src/pages/WebGen.tsx`**
+
+Minor UI polish to complement the rich background:
+- Add subtle glassmorphism to welcome card area
+- Enhance the main icon with glow effect
+- Make the interface feel more integrated with the background
+
+---
+
+## Visual Comparison
+
+### Before (Current - Too Subtle)
 ```text
-Website Stack
-○ Standard        - Classic HTML/CSS/JS
-○ Interactive     - Tailwind + Alpine.js  
-○ Animated        - GSAP scroll animations
-○ Interactive+    - Dynamic UI + animations [Combo]
-  Animated
-○ Game Mode       - Kaboom.js 2D games
-○ 3D Experience   - Three.js visuals
+┌─────────────────────────────────────────┐
+│                                         │
+│            Pure Black                   │  <- Can't see anything
+│                                         │
+│    [barely visible faint glow]          │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+### After (New - Rich & Premium)
+```text
+┌─────────────────────────────────────────┐
+│           ╲ BRIGHT BEAM ╱               │  <- Clearly visible light beam
+│     ██████ ╲           ╱                │
+│     █ PINK █ ╲       ╱    ████████      │  <- Prominent gradient orbs
+│     █ GLOW █  ╲     ╱     █ PURPLE█     │
+│     ██████    ╲   ╱      ████████       │
+│ ═════════════════════════════════════   │  <- Gradient fade layers
+│         [Glass Card UI Here]            │
+└─────────────────────────────────────────┘
 ```
 
 ---
 
-## Summary of Changes
+## Implementation Summary
 
 | File | Changes |
 |------|---------|
-| `tailwind.config.ts` | Add 5 missing keyframes and animations for background |
-| `src/pages/WebGen.tsx` | Replace multi-select modes with single-select stacks |
-| `supabase/functions/web-gen/index.ts` | Simplify 3D-only prompt, add safer combo instructions |
+| `src/components/WebGenBackground.tsx` | Increase all opacity values (2-3x), reduce blur (half), add stronger gradient overlays |
+| `src/pages/WebGen.tsx` | Add glassmorphism to welcome area, glow effect on icon |
 
----
+## Expected Outcome
 
-## Expected Outcomes
-
-After these changes:
-- Background gradient orbs will animate smoothly (Huly-style effects visible)
-- Users can only select pre-tested, working combinations
-- 3D Experience will work standalone with simplified prompt
-- Interactive + Animated combo will work with conflict-free instructions
-- No more broken generations from incompatible mode combinations
+After these changes, when you visit `/web`:
+- You will IMMEDIATELY see vibrant pink/purple gradient glows
+- The central light beam will be clearly visible from the top
+- The background will feel premium and "AI tool-like"
+- It will match the brain.fm / Huly aesthetic you showed in the images
 
