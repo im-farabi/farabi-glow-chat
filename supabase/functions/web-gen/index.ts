@@ -137,6 +137,18 @@ ${baseRules}`;
 `;
   }
 
+  // Add priority ordering for multi-mode combinations
+  if (modes.length > 1) {
+    prompt += `\nIMPORTANT: When combining technologies, prioritize them in this order:
+1. Game Mode (Kaboom.js) - Core game mechanics must work first
+2. 3D Experience (Three.js) - Use as background/visual enhancement only
+3. Interactive (Alpine.js) - For UI elements outside the main canvas
+4. Animated (GSAP) - For entrance animations and non-conflicting elements
+
+Ensure the technologies work together harmoniously without conflicts.
+`;
+  }
+
   prompt += `Generate COMPLETE HTML code combining all the above technologies seamlessly.
 ${baseRules}`;
 
@@ -228,7 +240,7 @@ async function callAPIStream(
           { role: 'user', content: prompt }
         ],
         stream: true,
-        max_tokens: 8192,
+        max_tokens: 16384,
         temperature: 0.7
       }),
       signal: controller.signal
@@ -335,7 +347,7 @@ serve(async (req) => {
                   { role: 'user', content: prompt }
                 ],
                 stream: false,
-                max_tokens: 8192
+                max_tokens: 16384
               })
             });
 
