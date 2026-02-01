@@ -199,17 +199,8 @@ const WebGen = () => {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [publishTitle, setPublishTitle] = useState('');
   const [publishSlug, setPublishSlug] = useState('');
-  const [slugPrefix, setSlugPrefix] = useState('#');
   const [publishing, setPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
-  
-  // Slug prefix options
-  const SLUG_PREFIXES = [
-    { id: '#', label: '#', example: 'farabi.me/site/ariyan' },
-    { id: '/web/', label: '/web/', example: 'farabi.me/site/web/ariyan' },
-    { id: '/~/', label: '/~/', example: 'farabi.me/site/~/ariyan' },
-    { id: '/app/', label: '/app/', example: 'farabi.me/site/app/ariyan' }
-  ];
   
   
   useEffect(() => {
@@ -407,7 +398,6 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
         body: {
           title: publishTitle.trim(),
           slug: publishSlug.trim().toLowerCase(),
-          prefix: slugPrefix,
           html_content: generatedCode,
           anonymous_id: anonymousId
         }
@@ -451,7 +441,6 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
   const openPublishDialog = () => {
     setPublishTitle(userPrompt.slice(0, 50) || 'My Website');
     setPublishSlug('');
-    setSlugPrefix('#');
     setPublishedUrl(null);
     setShowPublishDialog(true);
   };
@@ -1199,45 +1188,24 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
               </div>
               
               <div className="space-y-2">
-                <Label>URL Prefix</Label>
-                <div className="flex gap-2">
-                  {SLUG_PREFIXES.map(prefix => (
-                    <Button
-                      key={prefix.id}
-                      type="button"
-                      variant={slugPrefix === prefix.id ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSlugPrefix(prefix.id)}
-                      className={slugPrefix === prefix.id ? "bg-white text-black" : "border-white/10"}
-                    >
-                      {prefix.label}
-                    </Button>
-                  ))}
+                <Label>Your Website URL</Label>
+                <div className="flex items-center gap-0 bg-white/5 rounded-lg border border-white/10 overflow-hidden">
+                  <span className="px-3 py-2 text-sm text-muted-foreground bg-white/5 border-r border-white/10">
+                    farabi.me/site/
+                  </span>
+                  <Input
+                    id="publish-slug"
+                    value={publishSlug}
+                    onChange={(e) => setPublishSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                    placeholder="my-website"
+                    maxLength={50}
+                    className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="publish-slug">Slug</Label>
-                <Input
-                  id="publish-slug"
-                  value={publishSlug}
-                  onChange={(e) => setPublishSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="my-website"
-                  maxLength={50}
-                />
                 <p className="text-xs text-muted-foreground">
                   3-50 characters, lowercase letters, numbers, and hyphens only
                 </p>
               </div>
-              
-              {publishSlug.length >= 3 && (
-                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
-                  <p className="text-xs text-muted-foreground mb-1">Preview URL:</p>
-                  <p className="text-sm font-mono text-foreground break-all">
-                    farabi.me/site/{slugPrefix === '#' ? publishSlug : `${slugPrefix.replace(/\//g, '')}/${publishSlug}`}
-                  </p>
-                </div>
-              )}
               
               <DialogFooter className="pt-2">
                 <Button
