@@ -35,33 +35,52 @@ const useWebGenSEO = () => {
   }, []);
 };
 
-const LOADING_MESSAGES_CLAUDE = [
-  'Connecting to Claude 4.5...',
-  'Analyzing your request...',
-  'Designing layout structure...',
-  'Generating HTML skeleton...',
-  'Styling with CSS magic...',
-  'Adding responsive design...',
-  'Implementing animations...',
-  'Writing JavaScript logic...',
-  'Polishing the details...',
-  'Almost there...',
-];
+const LOADING_MESSAGES = {
+  haiku: [
+    'Connecting to Claude Haiku 4.5...',
+    'Analyzing your request...',
+    'Designing layout structure...',
+    'Generating HTML skeleton...',
+    'Styling with CSS magic...',
+    'Adding responsive design...',
+    'Implementing animations...',
+    'Writing JavaScript logic...',
+    'Polishing the details...',
+    'Almost there...',
+  ],
+  claude: [
+    'Connecting to Claude Sonnet 4.5...',
+    'Analyzing your request...',
+    'Designing layout structure...',
+    'Generating HTML skeleton...',
+    'Styling with CSS magic...',
+    'Adding responsive design...',
+    'Implementing animations...',
+    'Writing JavaScript logic...',
+    'Polishing the details...',
+    'Almost there...',
+  ],
+  gpt: [
+    'Connecting to GPT-5.2...',
+    'Analyzing your request...',
+    'Designing layout structure...',
+    'Generating HTML skeleton...',
+    'Styling with CSS magic...',
+    'Adding responsive design...',
+    'Implementing animations...',
+    'Writing JavaScript logic...',
+    'Polishing the details...',
+    'Almost there...',
+  ]
+};
 
-const LOADING_MESSAGES_GPT = [
-  'Connecting to GPT-5.2...',
-  'Analyzing your request...',
-  'Designing layout structure...',
-  'Generating HTML skeleton...',
-  'Styling with CSS magic...',
-  'Adding responsive design...',
-  'Implementing animations...',
-  'Writing JavaScript logic...',
-  'Polishing the details...',
-  'Almost there...',
-];
+type ModelType = 'haiku' | 'claude' | 'gpt';
 
-type ModelType = 'claude' | 'gpt';
+const MODEL_LABELS = {
+  haiku: 'Claude Haiku 4.5',
+  claude: 'Claude Sonnet 4.5',
+  gpt: 'GPT-5.2'
+};
 
 const WebGen = () => {
   useWebGenSEO();
@@ -77,7 +96,7 @@ const WebGen = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
-  const [selectedModel, setSelectedModel] = useState<ModelType>('claude');
+  const [selectedModel, setSelectedModel] = useState<ModelType>('haiku');
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -92,7 +111,7 @@ const WebGen = () => {
   useEffect(() => {
     if (!loading) return;
     
-    const messages = selectedModel === 'claude' ? LOADING_MESSAGES_CLAUDE : LOADING_MESSAGES_GPT;
+    const messages = LOADING_MESSAGES[selectedModel];
     let messageIndex = 0;
     setLoadingMessage(messages[0]);
     
@@ -195,7 +214,7 @@ const WebGen = () => {
       
       toast({
         title: "Website generated!",
-        description: `Your website is ready (${selectedModel === 'claude' ? 'Claude 4.5' : 'GPT-5.2'})`,
+        description: `Your website is ready (${MODEL_LABELS[selectedModel]})`,
       });
     } catch (error) {
       console.error('Generation error:', error);
@@ -278,7 +297,7 @@ const WebGen = () => {
             </h1>
             <Badge variant="secondary" className="ml-2 gap-1">
               <Zap className="h-3 w-3" />
-              {selectedModel === 'claude' ? 'Claude 4.5' : 'GPT-5.2'}
+              {MODEL_LABELS[selectedModel]}
             </Badge>
           </div>
           <p className="text-muted-foreground">
@@ -301,15 +320,26 @@ const WebGen = () => {
               {/* Model Selector */}
               <div className="flex gap-2">
                 <Button
+                  variant={selectedModel === 'haiku' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedModel('haiku')}
+                  disabled={loading}
+                  className="flex-1 gap-1"
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Haiku
+                  <span className="text-xs opacity-70">(Fast)</span>
+                </Button>
+                <Button
                   variant={selectedModel === 'claude' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedModel('claude')}
                   disabled={loading}
                   className="flex-1 gap-1"
                 >
-                  <Zap className="h-3.5 w-3.5" />
-                  Claude 4.5
-                  <span className="text-xs opacity-70">(Fast)</span>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Sonnet
+                  <span className="text-xs opacity-70">(Smart)</span>
                 </Button>
                 <Button
                   variant={selectedModel === 'gpt' ? 'default' : 'outline'}
@@ -318,7 +348,7 @@ const WebGen = () => {
                   disabled={loading}
                   className="flex-1 gap-1"
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Code2 className="h-3.5 w-3.5" />
                   GPT-5.2
                   <span className="text-xs opacity-70">(Large)</span>
                 </Button>
@@ -438,9 +468,9 @@ const WebGen = () => {
                       <div className="text-center space-y-2">
                         <p className="text-lg font-medium text-foreground">{loadingMessage}</p>
                         <p className="text-sm text-muted-foreground">
-                          {selectedModel === 'claude' 
-                            ? 'Claude 4.5 streams code in real-time' 
-                            : 'This may take up to 2 minutes for complex websites'}
+                          {selectedModel === 'gpt' 
+                            ? 'This may take up to 2 minutes for complex websites' 
+                            : `${MODEL_LABELS[selectedModel]} streams code in real-time`}
                         </p>
                       </div>
                       {/* Progress dots */}
