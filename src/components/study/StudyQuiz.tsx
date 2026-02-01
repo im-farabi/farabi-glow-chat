@@ -81,15 +81,12 @@ CRITICAL: Return ONLY valid JSON array, no markdown code blocks, no extra text.`
     try {
       const response = await sendNormal(prompt, []);
       
-      // Clean response - remove markdown code blocks if present
+      // Clean response - remove markdown code blocks if present (same robust logic as MCQGen)
       let cleanedResponse = response.trim();
       if (cleanedResponse.startsWith('```json')) {
-        cleanedResponse = cleanedResponse.slice(7);
+        cleanedResponse = cleanedResponse.replace(/```json\n?/, '').replace(/\n?```$/, '');
       } else if (cleanedResponse.startsWith('```')) {
-        cleanedResponse = cleanedResponse.slice(3);
-      }
-      if (cleanedResponse.endsWith('```')) {
-        cleanedResponse = cleanedResponse.slice(0, -3);
+        cleanedResponse = cleanedResponse.replace(/```\n?/, '').replace(/\n?```$/, '');
       }
       cleanedResponse = cleanedResponse.trim();
 
