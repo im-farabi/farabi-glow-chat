@@ -1,414 +1,151 @@
 
 
-# AI Website Generator - Complete Chat Interface Redesign
+# Website Generator Improvements Plan
 
-## Overview
+## Problem 1: AI Remakes Entire Code When Editing
 
-Transform the current 3-panel layout into a conversational chat-style interface similar to the main `/` chat page, with:
-- Multi-step option selection (theme, font, website type)
-- Glassmorphic option buttons (inspired by the reference image)
-- Collapsible code stream (hidden by default)
-- Edit/iteration support for follow-up prompts
-- Time tracking for generation
-
----
-
-## User Flow
-
+### Current Issue
+The edit prompt tells the AI:
 ```
-1. User sees welcome screen: "Describe your website" with input
-2. User types prompt → clicks Send/Enter
-3. AI shows option buttons:
-   - Theme: Blue/Black, Purple/Black, Other (with textbox)
-   - Font: Poppins, Montserrat, Rubik
-   - Website Type: Rich/Premium, Fully Detailed, Static Testing
-4. User selects options → clicks Submit
-5. AI message: "Got it! I'll start creating your website..."
-6. Collapsible "Generating code... ⌄" (code hidden by default)
-7. On complete: "DONE!!! Click View App button..." + time taken
-8. User can send follow-up messages to edit the website
+"Return the complete updated HTML."
 ```
+This instructs the AI to regenerate the entire website even for small changes.
 
----
+### Solution
+Update the system prompt and edit prompt to instruct the AI to:
+1. Only modify the specific section requested
+2. Keep all other code exactly the same
+3. Use a "diff-style" approach mentally
 
-## Technical Implementation
+### Changes to `supabase/functions/web-gen/index.ts`
 
-### File: `src/pages/WebGen.tsx`
-
-**Complete rewrite with chat architecture:**
-
-#### 1. New State Management
+Add an `EDIT_SYSTEM_PROMPT` specifically for edits:
 
 ```typescript
-// Chat messages state (like Index.tsx)
-interface WebGenMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  type?: 'prompt' | 'options' | 'generating' | 'complete' | 'edit';
-  options?: {
-    theme?: string;
-    font?: string;
-    websiteType?: string;
-  };
-  showCode?: boolean;
-  generatedCode?: string;
-  generationTime?: number;
-}
+const EDIT_SYSTEM_PROMPT = `You are an expert web developer making TARGETED edits to existing code.
 
-const [messages, setMessages] = useState<WebGenMessage[]>([]);
-const [inputValue, setInputValue] = useState('');
-const [currentStep, setCurrentStep] = useState<'prompt' | 'options' | 'generating' | 'complete'>('prompt');
+CRITICAL RULES FOR EDITING:
+1. ONLY modify the specific part the user requested
+2. Keep ALL other code EXACTLY the same - do not rewrite or "improve" unchanged sections
+3. Preserve the original structure, styling, and formatting
+4. Return the complete HTML but with MINIMAL changes
+5. Do NOT add new features, sections, or improvements unless specifically asked
+6. Do NOT change colors, fonts, or styles unless specifically asked
 
-// Options selection state
-const [selectedTheme, setSelectedTheme] = useState<string>('');
-const [customTheme, setCustomTheme] = useState('');
-const [selectedFont, setSelectedFont] = useState<string>('');
-const [selectedType, setSelectedType] = useState<string>('');
+Think of yourself as a surgeon - precise, minimal incisions, leave everything else untouched.`;
 ```
 
-#### 2. Welcome Screen (Empty State)
+### Changes to `src/pages/WebGen.tsx`
 
-When no messages exist, show centered welcome:
+Update the edit prompt (line 169-170):
 
-```tsx
-<div className="flex h-full items-center justify-center">
-  <div className="text-center space-y-6">
-    <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary">
-      <Globe className="h-10 w-10 text-white" />
-    </div>
-    <h2 className="text-3xl font-bold">
-      <span className="text-white">Describe your </span>
-      <span className="gradient-text">dream website</span>
-    </h2>
-    <p className="text-muted-foreground">
-      Tell me what you want to build
-    </p>
-  </div>
-</div>
+```typescript
+const fullPrompt = isEdit 
+  ? `EXISTING CODE TO EDIT:\n\`\`\`html\n${generatedCode}\n\`\`\`\n\nUSER'S SPECIFIC REQUEST:\n"${prompt}"\n\nIMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY the same. Return the full HTML with the minimal targeted edit.`
+  : prompt;
 ```
 
-#### 3. Glassmorphic Option Buttons
+Also pass an `isEdit` flag to the edge function so it can use the correct system prompt.
 
-Inspired by reference image - rounded rectangles with glass effect:
+---
 
-```tsx
-// Theme options
-const THEME_OPTIONS = [
-  { id: 'blue-black', label: 'Blue & Black', colors: 'from-blue-500 to-black' },
-  { id: 'purple-black', label: 'Purple & Black', colors: 'from-purple-500 to-black' },
-  { id: 'other', label: 'Other', isCustom: true }
-];
+## Problem 2: Better Technology Than HTML/CSS/JS
 
-// Font options
-const FONT_OPTIONS = [
-  { id: 'poppins', label: 'Poppins' },
-  { id: 'montserrat', label: 'Montserrat' },
-  { id: 'rubik', label: 'Rubik' }
-];
+### Current Limitations of HTML/CSS/JS
+- No database or backend functionality
+- No user authentication
+- Limited interactivity without external services
+- Can't process payments, send emails, etc.
 
-// Website type options
+### Recommended Alternatives
+
+| Technology | What It Enables | Complexity |
+|------------|-----------------|------------|
+| **React (JSX)** | Component-based UI, state management, more complex interactions | Medium |
+| **React + TailwindCSS** | Modern styling, utility classes, faster development | Medium |
+| **Svelte** | Simpler than React, compiles to vanilla JS, very fast | Medium |
+| **Vue (Single File Components)** | Easy to learn, good for interactive apps | Medium |
+| **Astro** | Static site generation with islands of interactivity | Low-Medium |
+
+### Best Option for FARABI: React + TailwindCSS
+
+This is actually what Lovable itself uses! Benefits:
+- Can run directly in CodeSandbox, StackBlitz, or similar
+- Modern component architecture
+- TailwindCSS for rapid styling
+- Can add Supabase for backend (auth, database, storage)
+- Much more maintainable than a single HTML file
+
+### Implementation Approach
+
+Add a new option in the website type selection:
+
+```typescript
 const TYPE_OPTIONS = [
-  { id: 'premium', label: 'Rich & Premium', desc: 'Luxurious, polished design' },
-  { id: 'detailed', label: 'Fully Detailed', desc: 'Complete with all features' },
-  { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' }
+  { id: 'premium', label: 'Rich & Premium', desc: 'Luxurious HTML site' },
+  { id: 'detailed', label: 'Fully Detailed', desc: 'Complete HTML site' },
+  { id: 'static', label: 'Static Testing', desc: 'Simple HTML site' },
+  { id: 'react', label: 'React App', desc: 'Modern component-based app' }  // NEW
 ];
-
-// Glass button component
-<button
-  onClick={() => setSelectedTheme(option.id)}
-  className={cn(
-    "p-4 rounded-2xl backdrop-blur-xl border transition-all duration-300",
-    "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20",
-    "hover:scale-105 hover:shadow-lg",
-    selectedTheme === option.id && "bg-primary/20 border-primary/50 shadow-[0_0_20px_rgba(236,72,153,0.3)]"
-  )}
->
-  <span className="font-medium">{option.label}</span>
-</button>
 ```
 
-#### 4. Options Message Component
-
-When user submits prompt, show options as AI message:
-
-```tsx
-const OptionsMessage = () => (
-  <div className="space-y-6">
-    {/* Theme Selection */}
-    <div className="space-y-3">
-      <p className="font-medium">What theme would you like?</p>
-      <div className="grid grid-cols-3 gap-3">
-        {THEME_OPTIONS.map(option => (
-          <GlassButton 
-            key={option.id}
-            selected={selectedTheme === option.id}
-            onClick={() => setSelectedTheme(option.id)}
-          >
-            {option.label}
-          </GlassButton>
-        ))}
-      </div>
-      {selectedTheme === 'other' && (
-        <input
-          type="text"
-          value={customTheme}
-          onChange={(e) => setCustomTheme(e.target.value)}
-          placeholder="Describe your theme..."
-          className="w-full p-3 rounded-xl bg-white/5 border border-white/10"
-        />
-      )}
-    </div>
-
-    {/* Font Selection */}
-    <div className="space-y-3">
-      <p className="font-medium">Which font?</p>
-      <div className="grid grid-cols-3 gap-3">
-        {FONT_OPTIONS.map(option => (
-          <GlassButton ...>
-            <span style={{ fontFamily: option.id }}>{option.label}</span>
-          </GlassButton>
-        ))}
-      </div>
-    </div>
-
-    {/* Website Type */}
-    <div className="space-y-3">
-      <p className="font-medium">What kind of website?</p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {TYPE_OPTIONS.map(option => (
-          <GlassButton ...>
-            <div className="text-left">
-              <p className="font-medium">{option.label}</p>
-              <p className="text-xs text-muted-foreground">{option.desc}</p>
-            </div>
-          </GlassButton>
-        ))}
-      </div>
-    </div>
-
-    {/* Submit Button */}
-    <Button 
-      onClick={handleStartGeneration}
-      disabled={!selectedTheme || !selectedFont || !selectedType}
-      className="w-full h-12 bg-gradient-to-r from-primary to-secondary"
-    >
-      <Sparkles className="mr-2" />
-      Generate Website
-    </Button>
-  </div>
-);
-```
-
-#### 5. Generating Message with Collapsible Code
-
-```tsx
-const GeneratingMessage = ({ showCode, onToggleCode, code, isGenerating }) => (
-  <div className="space-y-4">
-    <p className="text-lg">
-      Got it! I'll start creating your website. It might take a while, please wait!
-    </p>
-    
-    {/* Collapsible code section */}
-    <button
-      onClick={onToggleCode}
-      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-    >
-      <Code2 className="h-4 w-4" />
-      <span>Generating code...</span>
-      <ChevronDown className={cn(
-        "h-4 w-4 transition-transform",
-        showCode && "rotate-180"
-      )} />
-    </button>
-    
-    {showCode && (
-      <div 
-        ref={codeContainerRef}
-        className="max-h-[300px] overflow-y-scroll rounded-lg bg-black/50 border border-border/50 p-4"
-      >
-        <pre className="text-sm font-mono whitespace-pre-wrap">
-          <code>{code}</code>
-          {isGenerating && (
-            <span className="inline-block w-2 h-4 bg-primary animate-pulse" />
-          )}
-        </pre>
-      </div>
-    )}
-  </div>
-);
-```
-
-#### 6. Complete Message
-
-```tsx
-const CompleteMessage = ({ generationTime, onViewApp }) => (
-  <div className="space-y-4">
-    <div className="flex items-center gap-2 text-lg font-bold text-green-500">
-      <CheckCircle className="h-6 w-6" />
-      DONE!!!
-    </div>
-    <p>Click the View App button to visit your website!</p>
-    <p className="text-sm text-muted-foreground">
-      Generated in {(generationTime / 1000).toFixed(1)} seconds
-    </p>
-    <div className="flex gap-3">
-      <Button onClick={onViewApp} className="bg-gradient-to-r from-primary to-secondary">
-        <ExternalLink className="mr-2 h-4 w-4" />
-        View App
-      </Button>
-      <Button variant="outline" onClick={copyCode}>
-        <Copy className="mr-2 h-4 w-4" />
-        Copy Code
-      </Button>
-      <Button variant="outline" onClick={downloadCode}>
-        <Download className="mr-2 h-4 w-4" />
-        Download
-      </Button>
-    </div>
-  </div>
-);
-```
-
-#### 7. Chat Input for Edits
-
-After generation complete, show input for follow-up edits:
-
-```tsx
-{currentStep === 'complete' && (
-  <div className="p-4 border-t border-border/50">
-    <div className="max-w-3xl mx-auto">
-      <div className="flex gap-3 items-end">
-        <Textarea
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Want to make changes? e.g., 'Remove the About Me button'"
-          className="flex-1 resize-none bg-card/50 backdrop-blur-xl"
-          onKeyDown={handleKeyDown}
-        />
-        <Button onClick={handleEditRequest} className="h-12 w-12 rounded-full">
-          <Send className="h-5 w-5" />
-        </Button>
-      </div>
-    </div>
-  </div>
-)}
-```
-
-#### 8. Enhanced Prompt Building
-
-When user submits options, build enhanced prompt:
-
-```typescript
-const buildEnhancedPrompt = () => {
-  const theme = selectedTheme === 'other' ? customTheme : selectedTheme;
-  const themeText = theme === 'blue-black' ? 'blue and black color scheme' 
-                  : theme === 'purple-black' ? 'purple and black color scheme'
-                  : `custom theme: ${customTheme}`;
-  
-  const fontText = `using ${selectedFont} font`;
-  
-  const typeText = selectedType === 'premium' ? 'rich, premium, luxurious design with animations and effects'
-                 : selectedType === 'detailed' ? 'fully detailed with all features and sections'
-                 : 'simple static site for testing purposes';
-
-  return `${userPrompt}
-
-Design Requirements:
-- Theme: ${themeText}
-- Font: ${fontText}
-- Style: ${typeText}`;
-};
-```
+For React output, the system prompt would generate:
+- A complete React component with TailwindCSS
+- Can be exported and run in any React environment
+- More functional, maintainable, and extensible
 
 ---
 
-## Complete Layout Structure
-
-```tsx
-return (
-  <div className="min-h-screen flex flex-col">
-    <PremiumBackground />
-    <Header showTemporaryToggle={false} />
-    
-    <main className="flex-1 flex flex-col overflow-hidden">
-      {/* Chat Messages Area */}
-      <ScrollArea className="flex-1">
-        <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-          {messages.length === 0 ? (
-            <WelcomeScreen />
-          ) : (
-            messages.map((msg, idx) => (
-              <MessageBubble key={idx} message={msg} />
-            ))
-          )}
-        </div>
-      </ScrollArea>
-      
-      {/* Input Area */}
-      {(currentStep === 'prompt' || currentStep === 'complete') && (
-        <div className="p-4 border-t border-border/50 bg-background/80 backdrop-blur-xl">
-          <div className="max-w-3xl mx-auto">
-            {/* Model selector (Haiku on top as requested) */}
-            <div className="flex gap-2 mb-3">
-              <Button variant={model === 'haiku' ? 'default' : 'outline'} size="sm">
-                <Sparkles className="h-3.5 w-3.5 mr-1" />
-                Haiku (Best)
-              </Button>
-              <Button variant={model === 'kimi' ? 'default' : 'outline'} size="sm">
-                <Brain className="h-3.5 w-3.5 mr-1" />
-                Kimi
-              </Button>
-              <Button variant={model === 'gemini' ? 'default' : 'outline'} size="sm">
-                <Zap className="h-3.5 w-3.5 mr-1" />
-                Gemini
-              </Button>
-            </div>
-            
-            <div className="flex gap-3">
-              <Textarea ... />
-              <Button onClick={handleSend} className="h-14 w-14 rounded-full">
-                <Send className="h-6 w-6" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
-  </div>
-);
-```
-
----
-
-## Key Features Summary
-
-| Feature | Implementation |
-|---------|---------------|
-| Chat-like interface | Messages array with different types (prompt, options, generating, complete) |
-| Glass option buttons | Glassmorphic cards with backdrop-blur, subtle borders, hover/selected states |
-| Theme options | Blue/Black, Purple/Black, Other with custom textbox |
-| Font options | Poppins, Montserrat, Rubik |
-| Website type | Premium, Detailed, Static |
-| Collapsible code | Hidden by default, click chevron to expand |
-| Time tracking | Track generation start/end, display in completion message |
-| Edit support | After completion, allow follow-up prompts to modify code |
-| Model order | Haiku first (as requested), then Kimi, then Gemini |
-
----
-
-## Files to Modify
+## Summary of Changes
 
 | File | Changes |
 |------|---------|
-| `src/pages/WebGen.tsx` | Complete rewrite to chat-based interface with options flow |
+| `supabase/functions/web-gen/index.ts` | Add `EDIT_SYSTEM_PROMPT`, accept `isEdit` parameter, use different prompt for edits |
+| `src/pages/WebGen.tsx` | Update edit prompt wording, pass `isEdit` flag, optionally add React output type |
 
 ---
 
-## Important Notes
+## Technical Details
 
-- **NO changes to edge function** - it works perfectly now, we're only changing the frontend
-- Model order: Haiku → Kimi → Gemini (Haiku first as you said it works best)
-- Glass buttons inspired by the reference image's rounded, glowing card style
-- Code is hidden during generation by default, expandable with chevron
-- Full edit/iteration support after initial generation
+### Edge Function Update
+
+```typescript
+// Add separate prompt for edits
+const EDIT_SYSTEM_PROMPT = `You are making TARGETED edits to existing HTML code.
+
+RULES:
+1. ONLY change what the user specifically asked for
+2. Keep ALL other code exactly the same
+3. Do NOT rewrite, reorganize, or "improve" unchanged parts
+4. Do NOT change styling unless asked
+5. Return complete HTML with minimal changes`;
+
+// In the handler, check for isEdit flag
+const { prompt, stream = true, model = 'gemini', isEdit = false } = await req.json();
+
+// Use appropriate system prompt
+const systemPrompt = isEdit ? EDIT_SYSTEM_PROMPT : SYSTEM_PROMPT;
+```
+
+### Frontend Update
+
+```typescript
+// Pass isEdit flag to edge function
+body: JSON.stringify({ 
+  prompt: fullPrompt, 
+  stream: true,
+  model: selectedModel,
+  isEdit: isEdit  // NEW
+}),
+```
+
+---
+
+## Expected Outcome
+
+After these changes:
+- Editing "remove the about button" will ONLY remove that button
+- The rest of the code stays exactly the same
+- Much faster edits (less tokens to generate)
+- Optional: React output for more functional websites
 
