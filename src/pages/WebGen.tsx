@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Loader2, 
   Code2, 
@@ -20,7 +21,8 @@ import {
   FileCode,
   Wand2,
   Beaker,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
@@ -61,6 +63,13 @@ interface MultiModelResult {
   code: string | null;
   time: number;
   error?: string;
+}
+
+// Multi-model streaming state
+interface MultiModelStreamState {
+  gpt: { code: string; loading: boolean; error?: string; done: boolean };
+  claude: { code: string; loading: boolean; error?: string; done: boolean };
+  deepseek: { code: string; loading: boolean; error?: string; done: boolean };
 }
 
 // Model options with icons
@@ -160,6 +169,20 @@ const WebGen = () => {
   const [multiModelResults, setMultiModelResults] = useState<MultiModelResult[]>([]);
   const [multiModelBlobUrls, setMultiModelBlobUrls] = useState<Record<string, string>>({});
   const [showMultiModelComparison, setShowMultiModelComparison] = useState(false);
+  
+  // Multi-model streaming state
+  const [multiModelStreams, setMultiModelStreams] = useState<MultiModelStreamState>({
+    gpt: { code: '', loading: false, done: false },
+    claude: { code: '', loading: false, done: false },
+    deepseek: { code: '', loading: false, done: false }
+  });
+  const [isMultiModelStreaming, setIsMultiModelStreaming] = useState(false);
+  
+  // Live preview state
+  const [showLivePreview, setShowLivePreview] = useState(false);
+  const [livePreviewUrl, setLivePreviewUrl] = useState<string | null>(null);
+  const [livePreviewModel, setLivePreviewModel] = useState<ModelType | null>(null);
+  const livePreviewIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Get modes array from selected stack
   const getSelectedModes = () => {
@@ -256,6 +279,66 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
     }
   }, [generatedCode, showCode, loading]);
 
+  // Live preview auto-refresh during streaming
+  useEffect(() => {
+    if (showLivePreview && loading) {
+      const codeToPreview = livePreviewModel 
+        ? multiModelStreams[livePreviewModel]?.code || ''
+        : generatedCode;
+      
+      if (codeToPreview.length > 100) {
+        livePreviewIntervalRef.current = setInterval(() => {
+          const currentCode = livePreviewModel 
+            ? multiModelStreams[livePreviewModel]?.code || ''
+            : generatedCode;
+          
+          if (livePreviewUrl) URL.revokeObjectURL(livePreviewUrl);
+          const blob = new Blob([currentCode], { type: 'text/html' });
+          setLivePreviewUrl(URL.createObjectURL(blob));
+        }, 500);
+      }
+    }
+    
+    return () => {
+      if (livePreviewIntervalRef.current) {
+        clearInterval(livePreviewIntervalRef.current);
+        livePreviewIntervalRef.current = null;
+      }
+    };
+  }, [showLivePreview, loading, livePreviewModel]);
+  
+  // Update preview immediately when code changes (for initial preview)
+  useEffect(() => {
+    if (showLivePreview) {
+      const codeToPreview = livePreviewModel 
+        ? multiModelStreams[livePreviewModel]?.code || ''
+        : generatedCode;
+      
+      if (codeToPreview.length > 100) {
+        if (livePreviewUrl) URL.revokeObjectURL(livePreviewUrl);
+        const blob = new Blob([codeToPreview], { type: 'text/html' });
+        setLivePreviewUrl(URL.createObjectURL(blob));
+      }
+    }
+  }, [showLivePreview, livePreviewModel]);
+
+  // Cleanup live preview URL
+  const closeLivePreview = useCallback(() => {
+    if (livePreviewUrl) URL.revokeObjectURL(livePreviewUrl);
+    setShowLivePreview(false);
+    setLivePreviewUrl(null);
+    setLivePreviewModel(null);
+    if (livePreviewIntervalRef.current) {
+      clearInterval(livePreviewIntervalRef.current);
+      livePreviewIntervalRef.current = null;
+    }
+  }, [livePreviewUrl]);
+
+  const openLivePreview = useCallback((modelKey?: ModelType) => {
+    setLivePreviewModel(modelKey || null);
+    setShowLivePreview(true);
+  }, []);
+
   const handleSendPrompt = () => {
     if (!inputValue.trim()) return;
     
@@ -343,69 +426,166 @@ DESIGN REQUIREMENTS:
 ${modeText}`;
   };
 
-  // Multi-model generation
-  const generateMultiModel = async (prompt: string) => {
+  // Multi-model streaming generation - parallel streaming to all 3 models
+  const generateMultiModelStreaming = async (prompt: string) => {
     setLoading(true);
+    setIsMultiModelStreaming(true);
     setMultiModelResults([]);
     setMultiModelBlobUrls({});
-    setShowMultiModelComparison(true);
     setGenerationStartTime(Date.now());
+    
+    // Reset stream states
+    setMultiModelStreams({
+      gpt: { code: '', loading: true, done: false },
+      claude: { code: '', loading: true, done: false },
+      deepseek: { code: '', loading: true, done: false }
+    });
+    
+    const modelKeys = ['gpt', 'claude', 'deepseek'] as const;
+    const startTimes: Record<string, number> = {};
+    
+    // Start all 3 streams in parallel
+    const promises = modelKeys.map(async (modelKey) => {
+      startTimes[modelKey] = Date.now();
+      
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-gen`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ 
+              prompt: `Create a website: ${prompt}`, 
+              stream: true,
+              model: modelKey,
+              modes: getSelectedModes()
+            }),
+          }
+        );
 
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-gen`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({ 
-            prompt: `Create a website: ${prompt}`, 
-            stream: false,
-            multiModel: true,
-            modes: getSelectedModes()
-          }),
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to generate');
         }
-      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate');
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No response stream');
+
+        const decoder = new TextDecoder();
+        let accumulatedCode = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  accumulatedCode += parsed.content;
+                  // Update this model's stream state
+                  setMultiModelStreams(prev => ({
+                    ...prev,
+                    [modelKey]: { ...prev[modelKey], code: accumulatedCode }
+                  }));
+                }
+              } catch {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+
+        // Clean up code
+        let code = accumulatedCode;
+        code = code.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        if (!code.startsWith('<!DOCTYPE')) {
+          const doctypeIndex = code.indexOf('<!DOCTYPE');
+          if (doctypeIndex > 0) code = code.substring(doctypeIndex);
+        }
+        
+        const elapsed = Date.now() - startTimes[modelKey];
+        
+        // Mark as done
+        setMultiModelStreams(prev => ({
+          ...prev,
+          [modelKey]: { ...prev[modelKey], code, loading: false, done: true }
+        }));
+        
+        return {
+          model: modelKey,
+          label: MODEL_OPTIONS.find(m => m.id === modelKey)?.name || modelKey,
+          success: code.length > 100,
+          code,
+          time: elapsed
+        };
+      } catch (error) {
+        const elapsed = Date.now() - startTimes[modelKey];
+        setMultiModelStreams(prev => ({
+          ...prev,
+          [modelKey]: { 
+            ...prev[modelKey], 
+            loading: false, 
+            done: true,
+            error: error instanceof Error ? error.message : 'Failed' 
+          }
+        }));
+        
+        return {
+          model: modelKey,
+          label: MODEL_OPTIONS.find(m => m.id === modelKey)?.name || modelKey,
+          success: false,
+          code: null,
+          time: elapsed,
+          error: error instanceof Error ? error.message : 'Failed'
+        };
       }
-
-      const data = await response.json();
-      const results = data.results as MultiModelResult[];
-      
-      setMultiModelResults(results);
-      
-      // Create blob URLs for successful results
-      const urls: Record<string, string> = {};
-      results.forEach(result => {
-        if (result.success && result.code) {
-          const blob = new Blob([result.code], { type: 'text/html' });
-          urls[result.model] = URL.createObjectURL(blob);
-        }
-      });
-      setMultiModelBlobUrls(urls);
-      
-      const elapsed = Date.now() - generationStartTime;
-      setGenerationTime(elapsed);
-      
-      toast({
-        title: "All models completed!",
-        description: `Generated ${results.filter(r => r.success).length}/3 websites`,
-      });
-    } catch (error) {
-      console.error('Multi-model generation error:', error);
-      toast({
-        title: "Generation failed",
-        description: error instanceof Error ? error.message : "Failed to generate",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
+    });
+    
+    const results = await Promise.allSettled(promises);
+    const finalResults: MultiModelResult[] = results.map(r => 
+      r.status === 'fulfilled' ? r.value : {
+        model: 'unknown',
+        label: 'Unknown',
+        success: false,
+        code: null,
+        time: 0,
+        error: 'Promise rejected'
+      }
+    );
+    
+    setMultiModelResults(finalResults);
+    
+    // Create blob URLs for successful results
+    const urls: Record<string, string> = {};
+    finalResults.forEach(result => {
+      if (result.success && result.code) {
+        const blob = new Blob([result.code], { type: 'text/html' });
+        urls[result.model] = URL.createObjectURL(blob);
+      }
+    });
+    setMultiModelBlobUrls(urls);
+    
+    const elapsed = Date.now() - generationStartTime;
+    setGenerationTime(elapsed);
+    setLoading(false);
+    setIsMultiModelStreaming(false);
+    setShowMultiModelComparison(true);
+    
+    toast({
+      title: "All models completed!",
+      description: `Generated ${finalResults.filter(r => r.success).length}/3 websites`,
+    });
   };
 
   // Select a result from multi-model comparison
@@ -616,7 +796,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
     setCurrentStep('generating');
     
     if (multiModelMode) {
-      generateMultiModel(enhancedPrompt);
+      generateMultiModelStreaming(enhancedPrompt);
     } else {
       generateWebsite(enhancedPrompt);
     }
@@ -762,7 +942,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                         "rounded-xl border overflow-hidden",
                         result.success 
                           ? "border-white/10 bg-white/[0.02]" 
-                          : "border-red-500/20 bg-red-500/5"
+                          : "border-destructive/20 bg-destructive/5"
                       )}
                     >
                       {/* Model header */}
@@ -800,7 +980,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                           </div>
                         </>
                       ) : (
-                        <div className="aspect-[4/3] flex items-center justify-center text-red-400">
+                        <div className="aspect-[4/3] flex items-center justify-center text-destructive">
                           <div className="text-center p-4">
                             <p className="text-sm">{result.error || 'Generation failed'}</p>
                           </div>
@@ -814,6 +994,46 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
           </div>
         </div>
       )}
+      
+      {/* Live Preview Dialog */}
+      <Dialog open={showLivePreview} onOpenChange={(open) => !open && closeLivePreview()}>
+        <DialogContent className="max-w-6xl h-[85vh] p-0 overflow-hidden">
+          <DialogHeader className="p-4 border-b border-white/10">
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Live Preview
+              {loading && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  (Auto-refreshing every 500ms)
+                </span>
+              )}
+              {livePreviewModel && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  — {MODEL_OPTIONS.find(m => m.id === livePreviewModel)?.name}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 h-full bg-white">
+            {livePreviewUrl ? (
+              <iframe 
+                src={livePreviewUrl}
+                className="w-full h-[calc(85vh-80px)] border-0"
+                title="Live Preview"
+                key={livePreviewUrl} // Force refresh on URL change
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                  <p>Waiting for code...</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
       
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Messages Area */}
@@ -1050,15 +1270,15 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                     </div>
                   )}
 
-                  {/* Generating message */}
-                  {msg.type === 'generating' && !showMultiModelComparison && (
+                  {/* Generating message - Single Model */}
+                  {msg.type === 'generating' && !showMultiModelComparison && !isMultiModelStreaming && (
                     <div className="space-y-4">
                       <p className="text-lg text-foreground">
-                        Got it! I'll start creating your website. It might take a while, please wait!
+                        Got it! Creating your website...
                       </p>
                       
                       {loading && (
-                        <div className="flex items-center gap-2 text-white/60">
+                        <div className="flex items-center gap-2 text-muted-foreground">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           <span>Working on it...</span>
                         </div>
@@ -1066,7 +1286,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                       
                       {/* Collapsible code section */}
                       <Collapsible open={showCode} onOpenChange={setShowCode}>
-                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-white/40 hover:text-white/60 transition-colors">
+                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                           <Code2 className="h-4 w-4" />
                           <span>Generating code...</span>
                           <ChevronDown className={cn(
@@ -1080,27 +1300,116 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                             ref={codeContainerRef}
                             className="mt-3 max-h-[300px] overflow-y-auto rounded-lg bg-black/50 border border-white/5 p-4"
                           >
-                            <pre className="text-sm font-mono whitespace-pre-wrap break-words text-white/70">
+                            <pre className="text-sm font-mono whitespace-pre-wrap break-words text-muted-foreground">
                               <code>{generatedCode}</code>
                               {loading && (
-                                <span className="inline-block w-2 h-4 bg-white/50 animate-pulse ml-0.5 align-middle" />
+                                <span className="inline-block w-2 h-4 bg-primary/50 animate-pulse ml-0.5 align-middle" />
                               )}
                             </pre>
                           </div>
                         </CollapsibleContent>
                       </Collapsible>
+                      
+                      {/* Live Preview Button */}
+                      {loading && generatedCode.length > 100 && (
+                        <Button 
+                          onClick={() => openLivePreview()}
+                          variant="outline"
+                          className="border-white/10 hover:bg-white/5"
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Live Preview
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Generating message - Multi-Model Streaming */}
+                  {msg.type === 'generating' && isMultiModelStreaming && (
+                    <div className="space-y-4">
+                      <p className="text-lg text-foreground">
+                        Got it! Generating with 3 AI models simultaneously...
+                      </p>
+                      
+                      {/* 3 Side-by-side streaming panels */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {(['gpt', 'claude', 'deepseek'] as const).map((modelKey) => {
+                          const stream = multiModelStreams[modelKey];
+                          const modelInfo = MODEL_OPTIONS.find(m => m.id === modelKey);
+                          
+                          return (
+                            <div 
+                              key={modelKey}
+                              className={cn(
+                                "rounded-xl border overflow-hidden",
+                                stream.error 
+                                  ? "border-destructive/20 bg-destructive/5"
+                                  : stream.done 
+                                    ? "border-emerald-500/20 bg-emerald-500/5"
+                                    : "border-white/10 bg-white/[0.02]"
+                              )}
+                            >
+                              {/* Model header */}
+                              <div className="flex items-center justify-between p-2 border-b border-white/5">
+                                <div className="flex items-center gap-2">
+                                  <img 
+                                    src={modelInfo?.icon} 
+                                    alt={modelInfo?.name}
+                                    className="w-4 h-4 rounded"
+                                  />
+                                  <span className="text-sm font-medium text-foreground">{modelInfo?.name}</span>
+                                </div>
+                                {stream.loading && !stream.done && (
+                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                )}
+                                {stream.done && !stream.error && (
+                                  <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                                )}
+                              </div>
+                              
+                              {/* Code preview */}
+                              <div className="h-32 overflow-y-auto p-2 bg-black/30">
+                                <pre className="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">
+                                  <code>{stream.code.slice(-500) || (stream.loading ? 'Starting...' : '')}</code>
+                                  {stream.loading && !stream.done && (
+                                    <span className="inline-block w-1.5 h-3 bg-primary/50 animate-pulse ml-0.5 align-middle" />
+                                  )}
+                                  {stream.error && (
+                                    <span className="text-destructive">{stream.error}</span>
+                                  )}
+                                </pre>
+                              </div>
+                              
+                              {/* Live preview button per model */}
+                              {stream.code.length > 100 && (
+                                <div className="p-2 border-t border-white/5">
+                                  <Button 
+                                    onClick={() => openLivePreview(modelKey)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full h-7 text-xs"
+                                  >
+                                    <Eye className="mr-1 h-3 w-3" />
+                                    Live Preview
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
                   {/* Complete message */}
                   {msg.type === 'complete' && (
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-lg font-bold text-green-400">
+                      <div className="flex items-center gap-2 text-lg font-bold text-emerald-400">
                         <CheckCircle2 className="h-6 w-6" />
                         DONE!!!
                       </div>
                       <p className="text-foreground">Click the View App button to visit your website!</p>
-                      <p className="text-sm text-white/40">
+                      <p className="text-sm text-muted-foreground">
                         Generated in {((msg.generationTime || generationTime) / 1000).toFixed(1)} seconds
                       </p>
                       
