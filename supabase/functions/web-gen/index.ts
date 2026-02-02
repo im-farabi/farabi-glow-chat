@@ -170,6 +170,63 @@ ${baseRules}`;
 ${baseRules}`;
 }
 
+// Model-specific enhancements to address each model's weaknesses
+function getModelEnhancement(modelKey: string): string {
+  switch (modelKey) {
+    case 'claude':
+      // Claude is great at functionality but needs visual polish
+      return `
+
+VISUAL DESIGN PRIORITY (Claude-specific):
+You tend to focus too much on functionality. For this request, ALSO prioritize:
+- Premium visual aesthetics with glassmorphism (backdrop-blur, bg-opacity, glass cards)
+- Gradient backgrounds (linear-gradient, radial-gradient with multiple color stops)
+- Box shadows with multiple layers for depth (0 4px 6px, 0 10px 15px, 0 20px 25px)
+- Hover effects that feel expensive (scale, glow, color transitions)
+- Professional spacing and visual hierarchy
+- Make it look like a $10,000 professionally designed website
+- Include visual polish ALONGSIDE full functionality`;
+
+    case 'gpt':
+      // GPT is great at visuals but needs complete functionality
+      return `
+
+COMPLETE FUNCTIONALITY PRIORITY (GPT-specific):
+You tend to focus too much on visuals and create beautiful but empty shells. For this request:
+- Every button MUST have working onclick handlers
+- Every form MUST have validation and submit logic
+- Navigation MUST work (use hash routing or show/hide sections)
+- Include REAL mock data (names, descriptions, images from picsum.photos)
+- Modals and dropdowns MUST open/close properly
+- Include ALL features the user asked for, not just the pretty UI
+- If it's a YouTube clone: working video player, functional like/share buttons, comment system
+- If it's a dashboard: charts with real data, working filters, functional tables
+- Don't sacrifice functionality for aesthetics - include BOTH`;
+
+    case 'qwen':
+      // Qwen needs guidance on both visual and functional aspects
+      return `
+
+BALANCED QUALITY PRIORITY (Qwen-specific):
+Create a website that excels in BOTH visual design AND functionality:
+
+VISUALS:
+- Use Tailwind CSS for styling
+- Add glassmorphism effects (backdrop-blur-xl, bg-white/10)
+- Include gradients and shadows for depth
+- Smooth CSS transitions on all interactive elements
+
+FUNCTIONALITY:
+- All buttons must work with proper JavaScript
+- Forms must validate and show feedback
+- Navigation must work properly
+- Include realistic placeholder content`;
+
+    default:
+      return '';
+  }
+}
+
 // Create transform stream with proper UTF-8 handling and line buffering
 function createTransformStream() {
   let buffer = '';
@@ -234,13 +291,16 @@ async function callAPIStream(
   prompt: string, 
   modelConfig: { name: string },
   systemPrompt: string,
+  modelKey: string,
   timeoutMs: number = 90000
 ): Promise<ReadableStream> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
   try {
-    console.log(`[web-gen] Calling ${modelConfig.name} via Pollinations...`);
+    // Add model-specific enhancement to system prompt
+    const enhancedSystemPrompt = systemPrompt + getModelEnhancement(modelKey);
+    console.log(`[web-gen] Calling ${modelConfig.name} via Pollinations (with ${modelKey} enhancements)...`);
     
     const response = await fetch(POLLINATIONS_URL, {
       method: 'POST',
@@ -251,7 +311,7 @@ async function callAPIStream(
       body: JSON.stringify({
         model: modelConfig.name,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: enhancedSystemPrompt },
           { role: 'user', content: prompt }
         ],
         stream: true,
@@ -305,6 +365,7 @@ async function generateWithStreaming(
   prompt: string,
   modelConfig: { name: string; label: string },
   systemPrompt: string,
+  modelKey: string,
   timeoutMs: number = 120000  // Increased timeout for full generation
 ): Promise<{ code: string; model: string; time: number }> {
   const startTime = Date.now();
@@ -312,7 +373,9 @@ async function generateWithStreaming(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
   try {
-    console.log(`[web-gen] Multi-model: Calling ${modelConfig.name} (streaming)...`);
+    // Add model-specific enhancement to system prompt
+    const enhancedSystemPrompt = systemPrompt + getModelEnhancement(modelKey);
+    console.log(`[web-gen] Multi-model: Calling ${modelConfig.name} with ${modelKey} enhancements (streaming)...`);
     
     const response = await fetch(POLLINATIONS_URL, {
       method: 'POST',
@@ -323,7 +386,7 @@ async function generateWithStreaming(
       body: JSON.stringify({
         model: modelConfig.name,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: enhancedSystemPrompt },
           { role: 'user', content: prompt }
         ],
         stream: true,  // Must be true for max_tokens > 4096
@@ -450,7 +513,7 @@ serve(async (req) => {
       const modelKeys = ['claude', 'gpt', 'qwen'];
       const results = await Promise.allSettled(
         modelKeys.map(key => 
-          generateWithStreaming(pollinationsKey, prompt, MODELS[key], systemPrompt)
+          generateWithStreaming(pollinationsKey, prompt, MODELS[key], systemPrompt, key)
         )
       );
       
@@ -497,7 +560,7 @@ serve(async (req) => {
       
       try {
         if (stream) {
-          const upstreamStream = await callAPIStream(pollinationsKey, prompt, modelConfig, systemPrompt);
+          const upstreamStream = await callAPIStream(pollinationsKey, prompt, modelConfig, systemPrompt, modelKey);
           const transformStream = createTransformStream();
           
           console.log(`[web-gen] Success with ${modelConfig.name}`);
@@ -512,7 +575,7 @@ serve(async (req) => {
           });
         } else {
           // Non-streaming single model mode
-          const result = await generateWithStreaming(pollinationsKey, prompt, modelConfig, systemPrompt);
+          const result = await generateWithStreaming(pollinationsKey, prompt, modelConfig, systemPrompt, modelKey);
           
           if (!result.code || !result.code.includes('<!DOCTYPE')) {
             throw new Error('Response is not valid HTML');
