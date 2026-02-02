@@ -8,23 +8,26 @@ const corsHeaders = {
 const POLLINATIONS_URL = 'https://gen.pollinations.ai/v1/chat/completions';
 
 // Model configurations - Pollinations only
-const MODELS: Record<string, { name: string; label: string }> = {
-  gpt: { 
-    name: 'openai-large',
-    label: 'GPT 5.2'
-  },
+const MODELS: Record<string, { name: string; label: string; fallback?: string }> = {
   claude: { 
     name: 'claude',
-    label: 'Claude'
+    label: 'Claude',
+    fallback: 'claude-fast'
   },
-  deepseek: { 
-    name: 'deepseek',
-    label: 'DeepSeek'
+  gpt: { 
+    name: 'openai-large',
+    label: 'GPT 5.2',
+    fallback: 'openai'
+  },
+  qwen: { 
+    name: 'qwen-coder',
+    label: 'Qwen Coder',
+    fallback: 'deepseek'
   }
 };
 
-// Fallback order
-const FALLBACK_ORDER = ['gpt', 'claude', 'deepseek'];
+// Fallback order - Claude is best
+const FALLBACK_ORDER = ['claude', 'gpt', 'qwen'];
 
 // System prompt for new website generation
 const SYSTEM_PROMPT = `You are an expert web developer. Generate COMPLETE HTML code only.

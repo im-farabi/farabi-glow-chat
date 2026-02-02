@@ -38,9 +38,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
 
 // Model icons
-import gptIcon from '@/assets/gpt-icon.png';
+import gptIcon from '@/assets/gpt52-new-icon.png';
 import claudeIcon from '@/assets/claude-icon.png';
-import deepseekIcon from '@/assets/deepseek-icon.png';
+import qwenIcon from '@/assets/qwen-icon.png';
 
 // Page SEO
 const useWebGenSEO = () => {
@@ -53,7 +53,7 @@ const useWebGenSEO = () => {
   }, []);
 };
 
-type ModelType = 'gpt' | 'claude' | 'deepseek';
+type ModelType = 'claude' | 'gpt' | 'qwen';
 
 interface WebGenMessage {
   role: 'user' | 'assistant';
@@ -74,49 +74,57 @@ interface MultiModelResult {
 
 // Multi-model streaming state
 interface MultiModelStreamState {
-  gpt: { code: string; loading: boolean; error?: string; done: boolean };
   claude: { code: string; loading: boolean; error?: string; done: boolean };
-  deepseek: { code: string; loading: boolean; error?: string; done: boolean };
+  gpt: { code: string; loading: boolean; error?: string; done: boolean };
+  qwen: { code: string; loading: boolean; error?: string; done: boolean };
 }
 
-// Model options with icons
+// Model options with icons - Claude is best
 const MODEL_OPTIONS = [
-  { id: 'gpt' as ModelType, name: 'GPT 5.2', icon: gptIcon, best: true },
-  { id: 'claude' as ModelType, name: 'Claude', icon: claudeIcon },
-  { id: 'deepseek' as ModelType, name: 'DeepSeek', icon: deepseekIcon }
+  { id: 'claude' as ModelType, name: 'Claude', icon: claudeIcon, best: true },
+  { id: 'gpt' as ModelType, name: 'GPT 5.2', icon: gptIcon },
+  { id: 'qwen' as ModelType, name: 'Qwen Coder', icon: qwenIcon }
 ];
 
 // Expected generation times in milliseconds per model (based on benchmarking)
 const MODEL_EXPECTED_TIMES: Record<ModelType, number> = {
-  gpt: 60000,      // 60 seconds (~100 tokens/sec)
   claude: 90000,   // 90 seconds (~60 tokens/sec)
-  deepseek: 75000  // 75 seconds (~80 tokens/sec)
+  gpt: 60000,      // 60 seconds (~100 tokens/sec)
+  qwen: 75000      // 75 seconds (~80 tokens/sec)
 };
-
-// Rotating words for hero
-const ROTATING_WORDS = ['NEXT!', 'IMAGINATION!', 'WEB!', 'FUTURE!'];
 
 // Options
 const THEME_OPTIONS = [
+  { id: 'black-white', label: 'Black & White', recommended: true },
   { id: 'blue-black', label: 'Blue & Black' },
   { id: 'purple-black', label: 'Purple & Black' },
   { id: 'other', label: 'Other' }
 ];
 
 const FONT_OPTIONS = [
-  { id: 'Poppins', label: 'Poppins' },
+  { id: 'Poppins', label: 'Poppins', recommended: true },
   { id: 'Montserrat', label: 'Montserrat' },
-  { id: 'Rubik', label: 'Rubik' }
+  { id: 'Rubik', label: 'Rubik' },
+  { id: 'other', label: 'Other' }
 ];
 
 const TYPE_OPTIONS = [
-  { id: 'premium', label: 'Rich & Premium', desc: 'Luxurious, polished design' },
+  { id: 'premium', label: 'Rich & Premium', desc: 'Luxurious, polished design', recommended: true },
   { id: 'detailed', label: 'Fully Detailed', desc: 'Complete with all features' },
-  { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' }
+  { id: 'static', label: 'Static for Testing', desc: 'Simple, fast to generate' },
+  { id: 'other', label: 'Other', desc: 'Custom style' }
 ];
 
 // Website Stack Options
 const STACK_OPTIONS = [
+  { 
+    id: 'designed', 
+    label: 'Designed Mode', 
+    desc: 'Beautiful HTML/CSS with premium animations',
+    modes: ['designed'],
+    icon: Palette,
+    recommended: true
+  },
   { 
     id: 'game', 
     label: 'Game Mode', 
@@ -132,17 +140,17 @@ const STACK_OPTIONS = [
     icon: Zap 
   },
   { 
-    id: 'designed', 
-    label: 'Designed Mode', 
-    desc: 'Beautiful HTML/CSS with premium animations',
-    modes: ['designed'],
-    icon: Palette 
-  },
-  { 
     id: 'classic', 
     label: 'Classic Mode', 
     desc: 'Traditional HTML, CSS, and vanilla JS',
     modes: ['classic'],
+    icon: FileCode 
+  },
+  { 
+    id: 'other', 
+    label: 'Other', 
+    desc: 'Custom approach',
+    modes: [],
     icon: FileCode 
   }
 ];
@@ -154,16 +162,6 @@ const WebGen = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const codeContainerRef = useRef<HTMLDivElement>(null);
   
-  // Rotating word state
-  const [wordIndex, setWordIndex] = useState(0);
-  
-  // Rotate words every 3 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setWordIndex(prev => (prev + 1) % ROTATING_WORDS.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
   
   // Chat state
   const [messages, setMessages] = useState<WebGenMessage[]>([]);
@@ -177,6 +175,11 @@ const WebGen = () => {
   const [selectedType, setSelectedType] = useState('');
   const [selectedStack, setSelectedStack] = useState<string | null>(null);
   const [isEnhancing, setIsEnhancing] = useState(false);
+  
+  // Custom "Other" inputs
+  const [customFont, setCustomFont] = useState('');
+  const [customType, setCustomType] = useState('');
+  const [customStack, setCustomStack] = useState('');
 
   // Multi-model beta state
   const [multiModelMode, setMultiModelMode] = useState(false);
@@ -186,9 +189,9 @@ const WebGen = () => {
   
   // Multi-model streaming state
   const [multiModelStreams, setMultiModelStreams] = useState<MultiModelStreamState>({
-    gpt: { code: '', loading: false, done: false },
     claude: { code: '', loading: false, done: false },
-    deepseek: { code: '', loading: false, done: false }
+    gpt: { code: '', loading: false, done: false },
+    qwen: { code: '', loading: false, done: false }
   });
   const [isMultiModelStreaming, setIsMultiModelStreaming] = useState(false);
   
@@ -280,7 +283,7 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
   };
   
   // Generation state
-  const [selectedModel, setSelectedModel] = useState<ModelType>('gpt');
+  const [selectedModel, setSelectedModel] = useState<ModelType>('claude');
   const [userPrompt, setUserPrompt] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -293,9 +296,9 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
   // Progress bar state
   const [progressPercentage, setProgressPercentage] = useState<number>(0);
   const [multiModelProgress, setMultiModelProgress] = useState<Record<ModelType, number>>({
-    gpt: 0,
     claude: 0,
-    deepseek: 0
+    gpt: 0,
+    qwen: 0
   });
 
   // Cleanup blob URLs
@@ -340,7 +343,7 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
             console.error('Failed to update live preview:', e);
           }
         }
-      }, 500);
+      }, 1000);  // Update every 1 second
     }
     
     return () => {
@@ -378,7 +381,7 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
     if (!loading) {
       // Reset progress when not loading
       setProgressPercentage(0);
-      setMultiModelProgress({ gpt: 0, claude: 0, deepseek: 0 });
+      setMultiModelProgress({ claude: 0, gpt: 0, qwen: 0 });
       return;
     }
     
@@ -387,8 +390,8 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
       
       if (isMultiModelStreaming) {
         // Update each model's progress independently
-        const newProgress: Record<ModelType, number> = { gpt: 0, claude: 0, deepseek: 0 };
-        (['gpt', 'claude', 'deepseek'] as const).forEach(model => {
+        const newProgress: Record<ModelType, number> = { claude: 0, gpt: 0, qwen: 0 };
+        (['claude', 'gpt', 'qwen'] as const).forEach(model => {
           const expected = MODEL_EXPECTED_TIMES[model];
           const progress = Math.min(99, Math.floor((elapsed / expected) * 100));
           newProgress[model] = multiModelStreams[model].done ? 100 : progress;
@@ -517,19 +520,43 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
   };
 
   const buildEnhancedPrompt = () => {
-    const themeText = selectedTheme === 'blue-black' ? 'blue and black color scheme' 
-                    : selectedTheme === 'purple-black' ? 'purple and black color scheme'
-                    : `custom theme: ${customTheme}`;
+    // Handle theme
+    let themeText = '';
+    if (selectedTheme === 'black-white') {
+      themeText = 'black and white minimal color scheme';
+    } else if (selectedTheme === 'blue-black') {
+      themeText = 'blue and black color scheme';
+    } else if (selectedTheme === 'purple-black') {
+      themeText = 'purple and black color scheme';
+    } else {
+      themeText = `custom theme: ${customTheme}`;
+    }
     
-    const typeText = selectedType === 'premium' ? 'rich, premium, luxurious design with smooth animations, gradients, and visual effects'
-                   : selectedType === 'detailed' ? 'fully detailed website with all features, sections, and functionality'
-                   : 'simple static site for testing purposes, minimal but functional';
+    // Handle font - use custom if "other" selected
+    const fontText = selectedFont === 'other' ? customFont : selectedFont;
+    
+    // Handle type
+    let typeText = '';
+    if (selectedType === 'premium') {
+      typeText = 'rich, premium, luxurious design with smooth animations, gradients, and visual effects';
+    } else if (selectedType === 'detailed') {
+      typeText = 'fully detailed website with all features, sections, and functionality';
+    } else if (selectedType === 'static') {
+      typeText = 'simple static site for testing purposes, minimal but functional';
+    } else {
+      typeText = `custom style: ${customType}`;
+    }
     
     const selectedModes = getSelectedModes();
     
     let modeText = '';
     
-    if (selectedModes.includes('game')) {
+    // Handle custom stack
+    if (selectedStack === 'other' && customStack) {
+      modeText = `
+CUSTOM APPROACH:
+${customStack}`;
+    } else if (selectedModes.includes('game')) {
       modeText = `
 GAME MODE (Full-Featured):
 - Include Kaboom.js, Three.js if 3D needed, GSAP for animations
@@ -537,9 +564,7 @@ GAME MODE (Full-Featured):
 - Player controls, scoring system, game states (menu, playing, game over)
 - Visual effects, particle animations, smooth transitions
 - Include clear on-screen instructions`;
-    }
-    
-    if (selectedModes.includes('functional')) {
+    } else if (selectedModes.includes('functional')) {
       modeText = `
 FUNCTIONAL MODE (JavaScript-Heavy):
 - Include Tailwind CSS and Alpine.js
@@ -547,9 +572,7 @@ FUNCTIONAL MODE (JavaScript-Heavy):
 - Proper JavaScript event handling and form validation
 - Dynamic content updates and state management
 - Responsive and fully interactive`;
-    }
-    
-    if (selectedModes.includes('designed')) {
+    } else if (selectedModes.includes('designed')) {
       modeText = `
 DESIGNED MODE (Premium Design):
 - Include Tailwind CSS, GSAP + ScrollTrigger
@@ -558,9 +581,7 @@ DESIGNED MODE (Premium Design):
 - Scroll-triggered reveal animations
 - Professional typography and spacing
 - Modern, luxurious aesthetic`;
-    }
-    
-    if (selectedModes.includes('classic')) {
+    } else if (selectedModes.includes('classic')) {
       modeText = `
 CLASSIC MODE (Pure Basics):
 - HTML5 semantic elements only
@@ -575,7 +596,7 @@ CLASSIC MODE (Pure Basics):
 
 DESIGN REQUIREMENTS:
 - Color Theme: ${themeText}
-- Font Family: ${selectedFont} (import from Google Fonts)
+- Font Family: ${fontText} (import from Google Fonts)
 - Style: ${typeText}
 ${modeText}`;
   };
@@ -587,16 +608,16 @@ ${modeText}`;
     setMultiModelResults([]);
     setMultiModelBlobUrls({});
     setGenerationStartTime(Date.now());
-    setMultiModelProgress({ gpt: 0, claude: 0, deepseek: 0 });
+    setMultiModelProgress({ claude: 0, gpt: 0, qwen: 0 });
     
     // Reset stream states
     setMultiModelStreams({
-      gpt: { code: '', loading: true, done: false },
       claude: { code: '', loading: true, done: false },
-      deepseek: { code: '', loading: true, done: false }
+      gpt: { code: '', loading: true, done: false },
+      qwen: { code: '', loading: true, done: false }
     });
     
-    const modelKeys = ['gpt', 'claude', 'deepseek'] as const;
+    const modelKeys = ['claude', 'gpt', 'qwen'] as const;
     const startTimes: Record<string, number> = {};
     
     // Start all 3 streams in parallel
@@ -1342,21 +1363,15 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                     Cannot code? <span className="text-white/80 font-medium">Just an Excuse!</span>
                   </p>
                   
-                  {/* Main headline with rotating word */}
-                  <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-tight tracking-tight">
-                    <span className="text-white">Build the </span>
-                    <span 
-                      key={wordIndex}
-                      className="inline-block text-white font-black animate-fade-in"
-                    >
-                      {ROTATING_WORDS[wordIndex]}
-                    </span>
+                  {/* Main headline - static */}
+                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight text-white">
+                    What are you gonna build next?
                   </h1>
                   
                   {/* Large premium input */}
                   <div className="relative max-w-3xl mx-auto mt-12">
-                    {/* Glass input container */}
-                    <div className="relative backdrop-blur-sm bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6">
+                    {/* Glass input container with white border */}
+                    <div className="relative backdrop-blur-sm bg-white/[0.02] border border-white/20 rounded-2xl p-6">
                       <Textarea
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
@@ -1435,14 +1450,20 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                       {/* Theme Selection */}
                       <div className="space-y-3">
                         <p className="font-medium text-foreground text-sm uppercase tracking-wide text-white/60">Theme</p>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           {THEME_OPTIONS.map(option => (
                             <LuxuryCard 
                               key={option.id}
                               selected={selectedTheme === option.id}
                               onClick={() => setSelectedTheme(option.id)}
+                              className="relative"
                             >
                               <span className="font-medium text-white/90">{option.label}</span>
+                              {'recommended' in option && option.recommended && (
+                                <span className="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                  REC
+                                </span>
+                              )}
                             </LuxuryCard>
                           ))}
                         </div>
@@ -1460,44 +1481,74 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                       {/* Font Selection */}
                       <div className="space-y-3">
                         <p className="font-medium text-foreground text-sm uppercase tracking-wide text-white/60">Font</p>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           {FONT_OPTIONS.map(option => (
                             <LuxuryCard 
                               key={option.id}
                               selected={selectedFont === option.id}
                               onClick={() => setSelectedFont(option.id)}
+                              className="relative"
                             >
-                              <span className="font-medium text-white/90" style={{ fontFamily: option.id }}>
+                              <span className="font-medium text-white/90" style={{ fontFamily: option.id !== 'other' ? option.id : undefined }}>
                                 {option.label}
                               </span>
+                              {'recommended' in option && option.recommended && (
+                                <span className="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                  REC
+                                </span>
+                              )}
                             </LuxuryCard>
                           ))}
                         </div>
+                        {selectedFont === 'other' && (
+                          <input
+                            type="text"
+                            value={customFont}
+                            onChange={(e) => setCustomFont(e.target.value)}
+                            placeholder="Enter font name (e.g., Inter, Roboto)..."
+                            className="w-full p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-foreground placeholder:text-white/30 focus:outline-none focus:border-white/20"
+                          />
+                        )}
                       </div>
 
                       {/* Website Type */}
                       <div className="space-y-3">
                         <p className="font-medium text-foreground text-sm uppercase tracking-wide text-white/60">Quality</p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           {TYPE_OPTIONS.map(option => (
                             <LuxuryCard 
                               key={option.id}
                               selected={selectedType === option.id}
                               onClick={() => setSelectedType(option.id)}
+                              className="relative"
                             >
                               <div>
                                 <p className="font-medium text-white/90">{option.label}</p>
                                 <p className="text-xs text-white/40">{option.desc}</p>
                               </div>
+                              {'recommended' in option && option.recommended && (
+                                <span className="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                  REC
+                                </span>
+                              )}
                             </LuxuryCard>
                           ))}
                         </div>
+                        {selectedType === 'other' && (
+                          <input
+                            type="text"
+                            value={customType}
+                            onChange={(e) => setCustomType(e.target.value)}
+                            placeholder="Describe your quality style..."
+                            className="w-full p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-foreground placeholder:text-white/30 focus:outline-none focus:border-white/20"
+                          />
+                        )}
                       </div>
 
                       {/* Website Stack */}
                       <div className="space-y-3">
                         <p className="font-medium text-foreground text-sm uppercase tracking-wide text-white/60">Stack</p>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                           {STACK_OPTIONS.map(option => {
                             const Icon = option.icon;
                             const isSelected = selectedStack === option.id;
@@ -1506,6 +1557,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                                 key={option.id}
                                 selected={isSelected}
                                 onClick={() => setSelectedStack(option.id)}
+                                className="relative"
                               >
                                 <div className="flex items-start gap-3">
                                   <div className={cn(
@@ -1522,10 +1574,24 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                                     <p className="text-xs text-white/40">{option.desc}</p>
                                   </div>
                                 </div>
+                                {'recommended' in option && option.recommended && (
+                                  <span className="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                    REC
+                                  </span>
+                                )}
                               </LuxuryCard>
                             );
                           })}
                         </div>
+                        {selectedStack === 'other' && (
+                          <input
+                            type="text"
+                            value={customStack}
+                            onChange={(e) => setCustomStack(e.target.value)}
+                            placeholder="Describe your stack approach..."
+                            className="w-full p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-foreground placeholder:text-white/30 focus:outline-none focus:border-white/20"
+                          />
+                        )}
                       </div>
 
                       {/* Beta Multi-Model Toggle */}
@@ -1545,7 +1611,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                         </button>
                         {multiModelMode && (
                           <p className="text-xs text-white/40 mt-2 ml-1">
-                            Compare GPT 5.2, Claude, and DeepSeek side by side
+                            Compare Claude, GPT 5.2, and Qwen Coder side by side
                           </p>
                         )}
                       </div>
@@ -1563,65 +1629,76 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                     </div>
                   )}
 
-                  {/* Generating message - Single Model */}
+                  {/* Generating message - Single Model - Redesigned */}
                   {msg.type === 'generating' && !showMultiModelComparison && !isMultiModelStreaming && (
-                    <div className="space-y-4">
-                      <p className="text-lg text-foreground">
-                        Got it! Creating your website...
-                      </p>
+                    <div className="space-y-6 w-full">
+                      {/* Show user's prompt */}
+                      <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <p className="text-sm text-muted-foreground mb-1">You asked:</p>
+                        <p className="text-white">{userPrompt}</p>
+                      </div>
                       
-                      {loading && (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Working on it... {progressPercentage}%</span>
-                          </div>
-                          <Progress value={progressPercentage} className="h-2" />
-                          <p className="text-xs text-muted-foreground">
-                            {progressPercentage < 99 
-                              ? `Estimated ${Math.max(0, Math.ceil((MODEL_EXPECTED_TIMES[selectedModel] - (Date.now() - generationStartTime)) / 1000))}s remaining`
-                              : "Almost there..."}
-                          </p>
-                        </div>
-                      )}
-                      
-                      {/* Collapsible code section */}
-                      <Collapsible open={showCode} onOpenChange={setShowCode}>
-                        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                          <Code2 className="h-4 w-4" />
-                          <span>Generating code...</span>
-                          <ChevronDown className={cn(
-                            "h-4 w-4 transition-transform",
-                            showCode && "rotate-180"
-                          )} />
-                        </CollapsibleTrigger>
+                      {/* AI Response with Live Preview */}
+                      <div className="space-y-4">
+                        <p className="text-white/60 text-sm">Generating your website...</p>
                         
-                        <CollapsibleContent>
-                          <div 
-                            ref={codeContainerRef}
-                            className="mt-3 max-h-[300px] overflow-y-auto rounded-lg bg-black/50 border border-white/5 p-4"
-                          >
-                            <pre className="text-sm font-mono whitespace-pre-wrap break-words text-muted-foreground">
-                              <code>{generatedCode}</code>
-                              {loading && (
-                                <span className="inline-block w-2 h-4 bg-primary/50 animate-pulse ml-0.5 align-middle" />
-                              )}
-                            </pre>
+                        {/* 1280x720 Live Preview iframe - always show during loading */}
+                        {loading && (
+                          <div className="rounded-xl overflow-hidden border border-white/10 bg-white">
+                            <div className="relative" style={{ aspectRatio: '1280/720' }}>
+                              <iframe 
+                                ref={livePreviewIframeRef}
+                                className="w-full h-full border-0 absolute inset-0"
+                                title="Live Preview"
+                                sandbox="allow-scripts allow-same-origin"
+                              />
+                            </div>
                           </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                      
-                      {/* Live Preview Button */}
-                      {loading && generatedCode.length > 100 && (
-                        <Button 
-                          onClick={() => openLivePreview()}
-                          variant="outline"
-                          className="border-white/10 hover:bg-white/5"
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          Live Preview
-                        </Button>
-                      )}
+                        )}
+                        
+                        {/* Progress bar */}
+                        {loading && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">
+                                {progressPercentage}% complete
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {progressPercentage < 99 
+                                  ? `~${Math.max(0, Math.ceil((MODEL_EXPECTED_TIMES[selectedModel] - (Date.now() - generationStartTime)) / 1000))}s remaining`
+                                  : "Finishing up..."}
+                              </span>
+                            </div>
+                            <Progress value={progressPercentage} className="h-2" />
+                          </div>
+                        )}
+                        
+                        {/* Collapsible code section */}
+                        <Collapsible open={showCode} onOpenChange={setShowCode}>
+                          <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                            <Code2 className="h-4 w-4" />
+                            <span>Generating Code</span>
+                            <ChevronDown className={cn(
+                              "h-4 w-4 transition-transform",
+                              showCode && "rotate-180"
+                            )} />
+                          </CollapsibleTrigger>
+                          
+                          <CollapsibleContent>
+                            <div 
+                              ref={codeContainerRef}
+                              className="mt-3 max-h-[300px] overflow-y-auto rounded-lg bg-black/50 border border-white/5 p-4"
+                            >
+                              <pre className="text-sm font-mono whitespace-pre-wrap break-words text-muted-foreground">
+                                <code>{generatedCode}</code>
+                                {loading && (
+                                  <span className="inline-block w-2 h-4 bg-primary/50 animate-pulse ml-0.5 align-middle" />
+                                )}
+                              </pre>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
                     </div>
                   )}
                   
@@ -1634,7 +1711,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                       
                       {/* 3 Side-by-side streaming panels */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {(['gpt', 'claude', 'deepseek'] as const).map((modelKey) => {
+                        {(['claude', 'gpt', 'qwen'] as const).map((modelKey) => {
                           const stream = multiModelStreams[modelKey];
                           const modelInfo = MODEL_OPTIONS.find(m => m.id === modelKey);
                           
@@ -1764,8 +1841,8 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
           </div>
         </ScrollArea>
         
-        {/* Input Area */}
-        {(currentStep === 'prompt' || currentStep === 'complete') && (
+        {/* Input Area - Only show for complete step (edit mode) */}
+        {currentStep === 'complete' && (
           <div className="p-4 border-t border-white/[0.05] bg-black/50 backdrop-blur-sm">
             <div className="max-w-3xl mx-auto space-y-3">
               {/* Model selector */}
@@ -1786,34 +1863,13 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={currentStep === 'complete' 
-                      ? "Want to make changes? e.g., 'Remove the About Me button'" 
-                      : "Describe your dream website..."
-                    }
-                    className="w-full min-h-[56px] max-h-[200px] resize-none bg-white/[0.02] border-white/[0.05] pr-12 placeholder:text-white/30"
+                    placeholder="Want to make changes? e.g., 'Remove the About Me button'"
+                    className="w-full min-h-[56px] max-h-[200px] resize-none bg-white/[0.02] border border-white/20 pr-12 placeholder:text-white/30"
                     rows={1}
                   />
-                  {/* Enhance button - only show on prompt step */}
-                  {currentStep === 'prompt' && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={enhancePrompt}
-                      disabled={!inputValue.trim() || inputValue.length < 3 || isEnhancing}
-                      className="absolute right-2 bottom-2 h-8 w-8 p-0 text-white/30 hover:text-white hover:bg-white/5"
-                      title="Enhance prompt"
-                    >
-                      {isEnhancing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Wand2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
                 </div>
                 <Button 
-                  onClick={currentStep === 'complete' ? handleEditRequest : handleSendPrompt}
+                  onClick={handleEditRequest}
                   disabled={!inputValue.trim() || loading}
                   className="h-14 w-14 rounded-full bg-white text-black hover:bg-white/90"
                 >
