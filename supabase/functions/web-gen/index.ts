@@ -1,11 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 const POLLINATIONS_URL = 'https://gen.pollinations.ai/v1/chat/completions';
+
+// Model costs in dollars
+const MODEL_COSTS: Record<string, number> = {
+  claude: 1.00,
+  gpt: 1.50,
+  qwen: 0.50
+};
 
 // Model configurations - Pollinations only
 // GPT: openai-large (fallback: openai)
@@ -518,6 +526,72 @@ serve(async (req) => {
   try {
     const { prompt, stream = true, model = 'gpt', isEdit = false, modes = [], multiModel = false } = await req.json();
     
+    // Initialize Supabase client with service role for credit operations
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Get user from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Unauthorized - no token provided' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Verify the JWT and get user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('[web-gen] Auth error:', authError?.message);
+      return new Response(JSON.stringify({ error: 'Unauthorized - invalid token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.log(`[web-gen] Authenticated user: ${user.id}`);
+    
+    // Calculate cost based on mode
+    let totalCost = 0;
+    if (multiModel) {
+      totalCost = MODEL_COSTS.claude + MODEL_COSTS.gpt + MODEL_COSTS.qwen;
+    } else {
+      totalCost = MODEL_COSTS[model] || 1.00;
+    }
+    
+    // Get user credits
+    const { data: userCredits, error: creditsError } = await supabase
+      .from('user_credits')
+      .select('balance, total_spent, total_generations')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (creditsError || !userCredits) {
+      console.error('[web-gen] Credits fetch error:', creditsError?.message);
+      return new Response(JSON.stringify({ error: 'Could not fetch user credits' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Check if user has enough credits
+    if (Number(userCredits.balance) < totalCost) {
+      return new Response(JSON.stringify({ 
+        error: 'Insufficient credits',
+        required: totalCost,
+        balance: Number(userCredits.balance)
+      }), {
+        status: 402,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.log(`[web-gen] User has $${userCredits.balance}, needs $${totalCost}`);
+    
     // Choose the appropriate system prompt
     const systemPrompt = isEdit ? EDIT_SYSTEM_PROMPT : buildSystemPrompt(modes as string[]);
 
@@ -537,10 +611,44 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+    
+    // Helper function to deduct credits and log history
+    const deductCreditsAndLog = async (modelUsed: string, cost: number, success: boolean) => {
+      try {
+        // Deduct credits
+        await supabase
+          .from('user_credits')
+          .update({ 
+            balance: Number(userCredits.balance) - cost,
+            total_spent: Number(userCredits.total_spent) + cost,
+            total_generations: (userCredits.total_generations || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+        
+        // Log to history
+        await supabase
+          .from('webgen_history')
+          .insert({
+            user_id: user.id,
+            model: modelUsed,
+            cost: cost,
+            prompt: prompt.substring(0, 500),
+            success: success
+          });
+          
+        console.log(`[web-gen] Deducted $${cost} from user ${user.id}`);
+      } catch (err) {
+        console.error('[web-gen] Failed to deduct credits:', err);
+      }
+    };
 
     // Multi-model mode: generate with all 3 models in parallel
     if (multiModel) {
       console.log('[web-gen] Multi-model mode: generating with all 3 models...');
+      
+      // Deduct credits upfront for multi-model mode
+      await deductCreditsAndLog('multi', totalCost, true);
       
       const modelKeys = ['claude', 'gpt', 'qwen'];
       const results = await Promise.allSettled(
@@ -597,6 +705,9 @@ serve(async (req) => {
           
           console.log(`[web-gen] Success with ${modelConfig.name}`);
           
+          // Deduct credits on successful stream start
+          await deductCreditsAndLog(modelKey, MODEL_COSTS[modelKey] || totalCost, true);
+          
           return new Response(upstreamStream.pipeThrough(transformStream), {
             headers: {
               ...corsHeaders,
@@ -614,6 +725,9 @@ serve(async (req) => {
           }
           
           console.log(`[web-gen] Success with ${modelConfig.name}, length: ${result.code.length}`);
+          
+          // Deduct credits on successful generation
+          await deductCreditsAndLog(modelKey, MODEL_COSTS[modelKey] || totalCost, true);
           
           return new Response(JSON.stringify({ code: result.code }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }

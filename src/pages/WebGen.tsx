@@ -36,6 +36,9 @@ import WebGenBackground from '@/components/WebGenBackground';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
+import { useWebGenAuth, MODEL_COSTS } from '@/hooks/useWebGenAuth';
+import LoginGate from '@/components/webgen/LoginGate';
+import CreditsDisplay from '@/components/webgen/CreditsDisplay';
 
 // Model icons
 import gptIcon from '@/assets/gpt52-new-icon.png';
@@ -159,9 +162,9 @@ const WebGen = () => {
   useWebGenSEO();
   
   const { toast } = useToast();
+  const { user, session, credits, loading: authLoading, hasEnoughCredits, hasEnoughCreditsForMultiModel, getCost, refreshCredits, isAuthenticated } = useWebGenAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const codeContainerRef = useRef<HTMLDivElement>(null);
-  
   
   // Chat state
   const [messages, setMessages] = useState<WebGenMessage[]>([]);
@@ -213,6 +216,28 @@ const WebGen = () => {
   const [publishing, setPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   
+  // Generation state
+  const [selectedModel, setSelectedModel] = useState<ModelType>('claude');
+  const [userPrompt, setUserPrompt] = useState('');
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [generationStartTime, setGenerationStartTime] = useState<number>(0);
+  const [generationTime, setGenerationTime] = useState<number>(0);
+  
+  // Progress bar state
+  const [progressPercentage, setProgressPercentage] = useState<number>(0);
+  const [multiModelProgress, setMultiModelProgress] = useState<Record<ModelType, number>>({
+    claude: 0,
+    gpt: 0,
+    qwen: 0
+  });
+  
+  // Streaming started tracking - progress bar only starts when first content arrives
+  const [streamingStarted, setStreamingStarted] = useState(false);
+  const [streamingStartTime, setStreamingStartTime] = useState<number>(0);
   
   useEffect(() => {
     multiModelStreamsRef.current = multiModelStreams;
@@ -281,29 +306,6 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
       setIsEnhancing(false);
     }
   };
-  
-  // Generation state
-  const [selectedModel, setSelectedModel] = useState<ModelType>('claude');
-  const [userPrompt, setUserPrompt] = useState('');
-  const [generatedCode, setGeneratedCode] = useState('');
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [showCode, setShowCode] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [generationStartTime, setGenerationStartTime] = useState<number>(0);
-  const [generationTime, setGenerationTime] = useState<number>(0);
-  
-  // Progress bar state
-  const [progressPercentage, setProgressPercentage] = useState<number>(0);
-  const [multiModelProgress, setMultiModelProgress] = useState<Record<ModelType, number>>({
-    claude: 0,
-    gpt: 0,
-    qwen: 0
-  });
-  
-  // Streaming started tracking - progress bar only starts when first content arrives
-  const [streamingStarted, setStreamingStarted] = useState(false);
-  const [streamingStartTime, setStreamingStartTime] = useState<number>(0);
 
   // Cleanup blob URLs
   useEffect(() => {
@@ -431,6 +433,24 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
     setLivePreviewModel(modelKey || null);
     setShowLivePreview(true);
   }, []);
+
+  // Show login gate if not authenticated (after all hooks)
+  if (!authLoading && !isAuthenticated) {
+    return <LoginGate />;
+  }
+  
+  // Show loading while checking auth (after all hooks)
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <WebGenBackground />
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Publish website handler
   const handlePublish = async () => {
@@ -635,12 +655,12 @@ ${modeText}`;
       
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-gen`,
+          `https://gjlxuvcfoqjhwzcmpaju.supabase.co/functions/v1/web-gen`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Authorization': `Bearer ${session?.access_token}`,
             },
             body: JSON.stringify({ 
               prompt: `Create a website: ${prompt}`, 
@@ -767,6 +787,9 @@ ${modeText}`;
     setIsMultiModelStreaming(false);
     setShowMultiModelComparison(true);
     
+    // Refresh credits after multi-model generation
+    refreshCredits();
+    
     toast({
       title: "All models completed!",
       description: `Generated ${finalResults.filter(r => r.success).length}/3 websites`,
@@ -836,12 +859,12 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
         : `Create a website: ${prompt}`;
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-gen`,
+        `https://gjlxuvcfoqjhwzcmpaju.supabase.co/functions/v1/web-gen`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({ 
             prompt: fullPrompt, 
@@ -935,6 +958,9 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
       
       setCurrentStep('complete');
       
+      // Refresh credits after successful generation
+      refreshCredits();
+      
       toast({
         title: "Website generated!",
         description: "Your website is ready to view",
@@ -981,6 +1007,28 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
         variant: "destructive"
       });
       return;
+    }
+
+    // Credit check for multi-model mode
+    if (multiModelMode) {
+      if (!hasEnoughCreditsForMultiModel()) {
+        toast({
+          title: "Insufficient credits",
+          description: `Multi-model mode requires $${getCost('multi').toFixed(2)} but you only have $${credits.toFixed(2)}`,
+          variant: "destructive"
+        });
+        return;
+      }
+    } else {
+      // Credit check for single model
+      if (!hasEnoughCredits(selectedModel)) {
+        toast({
+          title: "Insufficient credits",
+          description: `${MODEL_OPTIONS.find(m => m.id === selectedModel)?.name} requires $${getCost(selectedModel).toFixed(2)} but you only have $${credits.toFixed(2)}`,
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     const enhancedPrompt = buildEnhancedPrompt();
@@ -1094,7 +1142,7 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <WebGenBackground />
-      <Header showTemporaryToggle={false} />
+      <Header showTemporaryToggle={false} rightContent={<CreditsDisplay />} />
       
       {/* Multi-model comparison modal */}
       {showMultiModelComparison && (
