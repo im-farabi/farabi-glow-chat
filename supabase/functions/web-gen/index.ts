@@ -33,22 +33,31 @@ const MODELS: Record<string, { name: string; label: string; fallback?: string }>
 const FALLBACK_ORDER = ['claude', 'gpt', 'qwen'];
 
 // System prompt for new website generation
-const SYSTEM_PROMPT = `You are an expert web developer. Generate COMPLETE HTML code only.
+const SYSTEM_PROMPT = `You are an expert web developer. Generate COMPLETE HTML code with real content.
 
-CRITICAL RULES:
-1. Return ONLY valid HTML - no markdown, no backticks, no explanations, no \`\`\`html wrapper
-2. Start IMMEDIATELY with <!DOCTYPE html>
-3. End with </html>
+CRITICAL OUTPUT RULES:
+1. DO NOT use markdown - no backticks, no \`\`\`html wrapper, no explanations
+2. Start your response DIRECTLY with: <!DOCTYPE html>
+3. End with: </html>
 4. Include all CSS in a <style> tag in <head>
 5. Include all JavaScript in a <script> tag before </body>
-6. Dark theme by default unless specified otherwise
-7. Make it responsive and modern with CSS Grid/Flexbox
-8. Use Google Fonts and Font Awesome from CDN
-9. Add smooth animations and hover effects
 
-NEVER use markdown code blocks. NEVER truncate. Complete every tag.
-Your response must start with: <!DOCTYPE html>
-Your response must end with: </html>`;
+MANDATORY VISUAL CONTENT:
+- Every section MUST contain real text (headings, paragraphs, button labels)
+- Include images using: https://picsum.photos/WIDTH/HEIGHT
+- Include Font Awesome icons: <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+- Cards need: title text, description text, and an image
+- Hero sections need: heading, subheading, CTA button with text
+- Lists need actual items with text and icons
+- NEVER create empty sections - every div must have visible content
+
+DESIGN DEFAULTS:
+- Dark theme unless specified otherwise
+- Responsive with CSS Grid/Flexbox
+- Google Fonts for typography
+- Smooth animations and hover effects
+
+NEVER truncate. Complete every tag.`;
 
 // System prompt for TARGETED edits - minimal changes only
 const EDIT_SYSTEM_PROMPT = `You are an expert web developer making TARGETED edits to existing HTML code.
@@ -72,14 +81,23 @@ Your response must end with: </html>`;
 function buildSystemPrompt(modes: string[]): string {
 const baseRules = `
 CRITICAL RULES:
-1. Return ONLY valid HTML - no markdown, no backticks, no explanations, no \`\`\`html wrapper
-2. Start IMMEDIATELY with <!DOCTYPE html>
+1. Return ONLY valid HTML - no markdown, no backticks, no explanations
+2. DO NOT start with \`\`\`html or any code fence - start DIRECTLY with <!DOCTYPE html>
 3. End with </html>
 4. Include all CSS in <style> or use appropriate CDN
 5. Include all JavaScript in <script> tags
 6. Dark theme by default unless specified otherwise
 7. Make it responsive and modern
 8. Use Google Fonts and Font Awesome from CDN
+
+MANDATORY CONTENT REQUIREMENTS:
+- Every section MUST have real, readable text content (headings, paragraphs, descriptions)
+- Include placeholder images using: https://picsum.photos/WIDTH/HEIGHT (e.g., https://picsum.photos/400/300)
+- Use Font Awesome icons throughout: <i class="fas fa-icon-name"></i>
+- Add realistic lorem ipsum or relevant placeholder text for ALL text areas
+- Cards must have titles, descriptions, and images
+- Hero sections need headings, subheadings, and call-to-action text
+- NEVER leave empty divs or sections without visible content
 
 NEVER use markdown code blocks. NEVER truncate. Complete every tag.
 Your response must start with: <!DOCTYPE html>
@@ -185,7 +203,12 @@ You tend to focus too much on functionality. For this request, ALSO prioritize:
 - Hover effects that feel expensive (scale, glow, color transitions)
 - Professional spacing and visual hierarchy
 - Make it look like a $10,000 professionally designed website
-- Include visual polish ALONGSIDE full functionality`;
+
+CONTENT REQUIREMENTS:
+- Add real images: https://picsum.photos/400/300 for cards, /800/400 for heroes
+- Include Font Awesome icons in buttons and features: <i class="fas fa-rocket"></i>
+- Write compelling placeholder text for every heading and paragraph
+- Every card needs: image, title (2-4 words), description (1-2 sentences)`;
 
     case 'gpt':
       // GPT is great at visuals but needs complete functionality
@@ -196,12 +219,17 @@ You tend to focus too much on visuals and create beautiful but empty shells. For
 - Every button MUST have working onclick handlers
 - Every form MUST have validation and submit logic
 - Navigation MUST work (use hash routing or show/hide sections)
-- Include REAL mock data (names, descriptions, images from picsum.photos)
 - Modals and dropdowns MUST open/close properly
-- Include ALL features the user asked for, not just the pretty UI
-- If it's a YouTube clone: working video player, functional like/share buttons, comment system
-- If it's a dashboard: charts with real data, working filters, functional tables
-- Don't sacrifice functionality for aesthetics - include BOTH`;
+
+MANDATORY CONTENT - DO NOT SKIP:
+- Add TEXT to every section - no empty hero sections or cards
+- Include images: https://picsum.photos/400/300?random=1 (use ?random=N for variety)
+- Every card needs: an image, a title (real words), a description paragraph
+- Hero sections need: a main heading, a subheading, button text
+- Feature sections need: icon (<i class="fas fa-star"></i>), title, description
+- If it's a YouTube clone: video thumbnails, video titles, channel names, view counts
+- If it's a dashboard: chart labels, table data, card titles with numbers
+- NEVER leave any section visually empty`;
 
     case 'qwen':
       // Qwen needs guidance on both visual and functional aspects
@@ -214,13 +242,17 @@ VISUALS:
 - Use Tailwind CSS for styling
 - Add glassmorphism effects (backdrop-blur-xl, bg-white/10)
 - Include gradients and shadows for depth
-- Smooth CSS transitions on all interactive elements
 
 FUNCTIONALITY:
 - All buttons must work with proper JavaScript
 - Forms must validate and show feedback
-- Navigation must work properly
-- Include realistic placeholder content`;
+
+MANDATORY CONTENT:
+- Include images: https://picsum.photos/400/300?random=1
+- Use Font Awesome icons: <i class="fas fa-check"></i>
+- Write real text for all headings and descriptions
+- Every card: image + title + description text
+- No empty sections allowed`;
 
     default:
       return '';
