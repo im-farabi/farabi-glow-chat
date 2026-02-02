@@ -36,8 +36,8 @@ const FALLBACK_ORDER = ['claude', 'gpt', 'qwen'];
 const SYSTEM_PROMPT = `You are an expert web developer. Generate COMPLETE HTML code only.
 
 CRITICAL RULES:
-1. Return ONLY valid HTML - no markdown, no backticks, no explanations
-2. Start with <!DOCTYPE html>
+1. Return ONLY valid HTML - no markdown, no backticks, no explanations, no \`\`\`html wrapper
+2. Start IMMEDIATELY with <!DOCTYPE html>
 3. End with </html>
 4. Include all CSS in a <style> tag in <head>
 5. Include all JavaScript in a <script> tag before </body>
@@ -46,7 +46,9 @@ CRITICAL RULES:
 8. Use Google Fonts and Font Awesome from CDN
 9. Add smooth animations and hover effects
 
-NEVER truncate. Complete every tag. Output must start with <!DOCTYPE html> and end with </html>.`;
+NEVER use markdown code blocks. NEVER truncate. Complete every tag.
+Your response must start with: <!DOCTYPE html>
+Your response must end with: </html>`;
 
 // System prompt for TARGETED edits - minimal changes only
 const EDIT_SYSTEM_PROMPT = `You are an expert web developer making TARGETED edits to existing HTML code.
@@ -60,16 +62,18 @@ CRITICAL RULES FOR EDITING:
 6. Do NOT change colors, fonts, animations, or styles unless specifically asked
 7. Do NOT reorganize or restructure the code
 8. Think like a surgeon: precise incisions, leave everything else untouched
+9. NEVER use markdown code blocks - return raw HTML only
 
 The user will provide existing code and a specific change request. Make ONLY that change.
-Output must start with <!DOCTYPE html> and end with </html>.`;
+Your response must start with: <!DOCTYPE html>
+Your response must end with: </html>`;
 
 // Build dynamic system prompt based on selected modes
 function buildSystemPrompt(modes: string[]): string {
-  const baseRules = `
+const baseRules = `
 CRITICAL RULES:
-1. Return ONLY valid HTML - no markdown, no backticks, no explanations
-2. Start with <!DOCTYPE html>
+1. Return ONLY valid HTML - no markdown, no backticks, no explanations, no \`\`\`html wrapper
+2. Start IMMEDIATELY with <!DOCTYPE html>
 3. End with </html>
 4. Include all CSS in <style> or use appropriate CDN
 5. Include all JavaScript in <script> tags
@@ -77,7 +81,9 @@ CRITICAL RULES:
 7. Make it responsive and modern
 8. Use Google Fonts and Font Awesome from CDN
 
-NEVER truncate. Complete every tag. Output must start with <!DOCTYPE html> and end with </html>.`;
+NEVER use markdown code blocks. NEVER truncate. Complete every tag.
+Your response must start with: <!DOCTYPE html>
+Your response must end with: </html>`;
 
   // GAME MODE - Full-featured games with everything
   if (modes.includes('game')) {
