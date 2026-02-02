@@ -300,6 +300,10 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
     gpt: 0,
     qwen: 0
   });
+  
+  // Streaming started tracking - progress bar only starts when first content arrives
+  const [streamingStarted, setStreamingStarted] = useState(false);
+  const [streamingStartTime, setStreamingStartTime] = useState<number>(0);
 
   // Cleanup blob URLs
   useEffect(() => {
@@ -376,7 +380,7 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
     }
   }, [showLivePreview, livePreviewModel]);
 
-  // Progress bar calculation effect
+  // Progress bar calculation effect - only starts when streaming actually starts
   useEffect(() => {
     if (!loading) {
       // Reset progress when not loading
@@ -385,8 +389,13 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
       return;
     }
     
+    // Don't calculate progress until streaming has started (first content received)
+    if (!streamingStarted) {
+      return;
+    }
+    
     const interval = setInterval(() => {
-      const elapsed = Date.now() - generationStartTime;
+      const elapsed = Date.now() - streamingStartTime;
       
       if (isMultiModelStreaming) {
         // Update each model's progress independently
@@ -406,7 +415,7 @@ Return ONLY the enhanced prompt. No explanations, no prefixes like "Here's" or "
     }, 500);
     
     return () => clearInterval(interval);
-  }, [loading, generationStartTime, selectedModel, isMultiModelStreaming, multiModelStreams]);
+  }, [loading, streamingStarted, streamingStartTime, selectedModel, isMultiModelStreaming, multiModelStreams]);
 
   // Cleanup live preview
   const closeLivePreview = useCallback(() => {
@@ -802,6 +811,9 @@ ${modeText}`;
     setShowCode(false);
     setGenerationStartTime(Date.now());
     setProgressPercentage(0);
+    setShowLivePreview(true);  // Auto-start live preview
+    setStreamingStarted(false);  // Reset streaming started flag
+    setStreamingStartTime(0);
     
     if (blobUrl) {
       URL.revokeObjectURL(blobUrl);
@@ -869,8 +881,14 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
             try {
               const parsed = JSON.parse(data);
               if (parsed.content) {
+                // Track when streaming actually starts (first content received)
+                if (!streamingStarted) {
+                  setStreamingStarted(true);
+                  setStreamingStartTime(Date.now());
+                }
                 accumulatedCode += parsed.content;
                 setGeneratedCode(accumulatedCode);
+                generatedCodeRef.current = accumulatedCode;  // Update ref for live preview
               }
             } catch {
               // Skip invalid JSON
@@ -1444,8 +1462,8 @@ IMPORTANT: Make ONLY the change requested above. Keep everything else EXACTLY th
                     <p>{msg.content}</p>
                   )}
 
-                  {/* Options message */}
-                  {msg.type === 'options' && (
+                  {/* Options message - Hidden during loading to prevent double generation */}
+                  {msg.type === 'options' && !loading && (
                     <div className="space-y-6">
                       {/* Theme Selection */}
                       <div className="space-y-3">

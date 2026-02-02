@@ -8,6 +8,9 @@ const corsHeaders = {
 const POLLINATIONS_URL = 'https://gen.pollinations.ai/v1/chat/completions';
 
 // Model configurations - Pollinations only
+// GPT: openai-large (fallback: openai)
+// Claude: claude (fallback: claude-fast)  
+// Qwen: qwen-coder (fallback: deepseek)
 const MODELS: Record<string, { name: string; label: string; fallback?: string }> = {
   claude: { 
     name: 'claude',
@@ -438,7 +441,7 @@ serve(async (req) => {
     if (multiModel) {
       console.log('[web-gen] Multi-model mode: generating with all 3 models...');
       
-      const modelKeys = ['gpt', 'claude', 'deepseek'];
+      const modelKeys = ['claude', 'gpt', 'qwen'];
       const results = await Promise.allSettled(
         modelKeys.map(key => 
           generateWithStreaming(pollinationsKey, prompt, MODELS[key], systemPrompt)
