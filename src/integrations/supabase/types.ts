@@ -249,6 +249,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_credits: {
+        Row: {
+          balance: number
+          created_at: string | null
+          id: string
+          total_generations: number
+          total_spent: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string | null
+          id?: string
+          total_generations?: number
+          total_spent?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string | null
+          id?: string
+          total_generations?: number
+          total_spent?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_sessions: {
         Row: {
           anonymous_user_id: string
@@ -360,6 +390,36 @@ export type Database = {
           verification_code?: string
           verified?: boolean | null
           verified_at?: string | null
+        }
+        Relationships: []
+      }
+      webgen_history: {
+        Row: {
+          cost: number
+          created_at: string | null
+          id: string
+          model: string
+          prompt: string | null
+          success: boolean | null
+          user_id: string
+        }
+        Insert: {
+          cost: number
+          created_at?: string | null
+          id?: string
+          model: string
+          prompt?: string | null
+          success?: boolean | null
+          user_id: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string | null
+          id?: string
+          model?: string
+          prompt?: string | null
+          success?: boolean | null
+          user_id?: string
         }
         Relationships: []
       }

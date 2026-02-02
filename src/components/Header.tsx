@@ -14,9 +14,10 @@ interface HeaderProps {
   isTemporaryChat?: boolean;
   onToggleTemporaryChat?: () => void;
   showTemporaryToggle?: boolean;
+  rightContent?: React.ReactNode;
 }
 
-const Header = ({ onMenuClick, isTemporaryChat, onToggleTemporaryChat, showTemporaryToggle = true }: HeaderProps) => {
+const Header = ({ onMenuClick, isTemporaryChat, onToggleTemporaryChat, showTemporaryToggle = true, rightContent }: HeaderProps) => {
   return (
     <>
       <InstallBanner />
@@ -40,6 +41,7 @@ const Header = ({ onMenuClick, isTemporaryChat, onToggleTemporaryChat, showTempo
         </div>
 
         <div className="flex items-center gap-2">
+          {rightContent}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import BookPage from "./pages/BookPage";
@@ -61,54 +62,56 @@ const App = () => {
 
   return (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/c/:chatId" element={<Index />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/book" element={<BookPage />} />
-          <Route path="/book/library" element={<BookLibrary />} />
-          <Route path="/book/search" element={<BookSearch />} />
-          <Route path="/book/read/:bookTitle" element={<BookReader />} />
-          <Route path="/notes" element={<NotesPage />} />
-          <Route path="/news" element={<NewsPage />} />
-          <Route path="/news/category/:categoryId" element={<NewsCategory />} />
-          <Route path="/news/articles/:categoryId/:timeFilter" element={<NewsArticles />} />
-          <Route path="/image-gen" element={<ImageGen />} />
-          <Route path="/mcq-gen" element={<MCQGen />} />
-          <Route path="/flashcard-gen" element={<FlashcardGen />} />
-          <Route path="/youtube-explain" element={<YoutubeExplain />} />
-          <Route path="/notes-share" element={<NotesShare />} />
-          <Route path="/notes/:slug" element={<ViewNote />} />
-          <Route path="/grammify" element={<Grammify />} />
-          <Route path="/video-gen" element={<VideoGen />} />
-          <Route path="/owner" element={<Owner />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/install" element={<Install />} />
-          <Route path="/new" element={<NewPage />} />
-          <Route path="/new/chat" element={<NewChat />} />
-          <Route path="/new/image" element={<NewImage />} />
-          <Route path="/new/video" element={<NewVideo />} />
-          <Route path="/horizon" element={<HorizonRedirect />} />
-          <Route path="/lovable" element={<LovableRedirect />} />
-          <Route path="/ad" element={<AdRedirect />} />
-          <Route path="/donate" element={<DonateRedirect />} />
-          <Route path="/mail" element={<MailPage />} />
-          <Route path="/web" element={<WebGen />} />
-          <Route path="/site/*" element={<SiteView />} />
-          <Route path="/study" element={<Study />} />
-          <Route path="/support" element={<Support />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-      <Analytics />
-      <SpeedInsights />
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/c/:chatId" element={<Index />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/book" element={<BookPage />} />
+            <Route path="/book/library" element={<BookLibrary />} />
+            <Route path="/book/search" element={<BookSearch />} />
+            <Route path="/book/read/:bookTitle" element={<BookReader />} />
+            <Route path="/notes" element={<NotesPage />} />
+            <Route path="/news" element={<NewsPage />} />
+            <Route path="/news/category/:categoryId" element={<NewsCategory />} />
+            <Route path="/news/articles/:categoryId/:timeFilter" element={<NewsArticles />} />
+            <Route path="/image-gen" element={<ImageGen />} />
+            <Route path="/mcq-gen" element={<MCQGen />} />
+            <Route path="/flashcard-gen" element={<FlashcardGen />} />
+            <Route path="/youtube-explain" element={<YoutubeExplain />} />
+            <Route path="/notes-share" element={<NotesShare />} />
+            <Route path="/notes/:slug" element={<ViewNote />} />
+            <Route path="/grammify" element={<Grammify />} />
+            <Route path="/video-gen" element={<VideoGen />} />
+            <Route path="/owner" element={<Owner />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/install" element={<Install />} />
+            <Route path="/new" element={<NewPage />} />
+            <Route path="/new/chat" element={<NewChat />} />
+            <Route path="/new/image" element={<NewImage />} />
+            <Route path="/new/video" element={<NewVideo />} />
+            <Route path="/horizon" element={<HorizonRedirect />} />
+            <Route path="/lovable" element={<LovableRedirect />} />
+            <Route path="/ad" element={<AdRedirect />} />
+            <Route path="/donate" element={<DonateRedirect />} />
+            <Route path="/mail" element={<MailPage />} />
+            <Route path="/web" element={<WebGen />} />
+            <Route path="/site/*" element={<SiteView />} />
+            <Route path="/study" element={<Study />} />
+            <Route path="/support" element={<Support />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        <Analytics />
+        <SpeedInsights />
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
   );
 };
