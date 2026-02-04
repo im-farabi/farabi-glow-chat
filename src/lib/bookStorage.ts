@@ -17,6 +17,15 @@ export interface ReadBook {
   readAt: number;
 }
 
+// Book Recommendation interface
+export interface BookRecommendation {
+  id: string;
+  title: string;
+  author: string;
+  coverUrl: string;
+  reason?: string;
+}
+
 // Saved Book Summary interface (for offline reading)
 export interface SavedBookSummary {
   title: string;
@@ -146,4 +155,31 @@ export const clearBookData = (): void => {
   localStorage.removeItem(BOOK_HISTORY_KEY);
   localStorage.removeItem(PREVIOUS_RECOMMENDATIONS_KEY);
   localStorage.removeItem(SAVED_SUMMARIES_KEY);
+  localStorage.removeItem(SAVED_RECOMMENDATIONS_KEY);
+};
+
+// Storage key for AI recommendations
+const SAVED_RECOMMENDATIONS_KEY = 'readme_saved_recommendations';
+
+// Save AI recommendations (keep last 10)
+export const saveRecommendations = (recommendations: BookRecommendation[]): void => {
+  const data = {
+    recommendations: recommendations.slice(0, 10),
+    lastUpdated: Date.now()
+  };
+  localStorage.setItem(SAVED_RECOMMENDATIONS_KEY, JSON.stringify(data));
+};
+
+// Get saved AI recommendations
+export const getSavedRecommendations = (): BookRecommendation[] => {
+  try {
+    const stored = localStorage.getItem(SAVED_RECOMMENDATIONS_KEY);
+    if (stored) {
+      const data = JSON.parse(stored);
+      return data.recommendations || [];
+    }
+    return [];
+  } catch {
+    return [];
+  }
 };

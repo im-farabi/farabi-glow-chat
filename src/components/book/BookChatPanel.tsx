@@ -135,31 +135,31 @@ const BookChatPanel = ({ isOpen, onClose, bookTitle, bookContext }: BookChatPane
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
         onClick={onClose}
       />
 
       {/* Chat Panel */}
       <div className="fixed right-0 top-0 h-full w-full max-w-md z-50 flex flex-col
-        bg-background/95 backdrop-blur-xl border-l border-border shadow-2xl
+        bg-zinc-950/95 backdrop-blur-xl border-l border-white/10 shadow-2xl
         animate-in slide-in-from-right duration-300">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border
-          bg-gradient-to-r from-primary/10 to-secondary/10">
+        <div className="flex items-center justify-between p-4 border-b border-white/10
+          bg-gradient-to-r from-orange-500/10 to-amber-500/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary
-              flex items-center justify-center shadow-lg">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-500
+              flex items-center justify-center shadow-lg shadow-orange-500/30">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground">Book Assistant</h3>
-              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+              <h3 className="font-semibold text-white">Book Assistant</h3>
+              <p className="text-xs text-white/50 truncate max-w-[200px]">
                 {bookTitle}
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} className="text-white/60 hover:text-white hover:bg-white/5">
             <X className="w-5 h-5" />
           </Button>
         </div>
@@ -169,14 +169,14 @@ const BookChatPanel = ({ isOpen, onClose, bookTitle, bookContext }: BookChatPane
           {messages.length === 0 && (
             <div className="text-center py-8">
               <div className="w-16 h-16 mx-auto mb-4 rounded-2xl 
-                bg-gradient-to-br from-primary/20 to-secondary/20
-                border border-primary/30 flex items-center justify-center">
-                <MessageCircle className="w-8 h-8 text-primary" />
+                bg-gradient-to-br from-orange-500/20 to-amber-500/20
+                border border-orange-500/30 flex items-center justify-center">
+                <MessageCircle className="w-8 h-8 text-orange-400" />
               </div>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-white/60 text-sm">
                 Ask me anything about this book!
               </p>
-              <p className="text-muted-foreground/60 text-xs mt-2">
+              <p className="text-white/40 text-xs mt-2">
                 Share a line you don't understand, or ask about themes & characters
               </p>
             </div>
@@ -188,17 +188,17 @@ const BookChatPanel = ({ isOpen, onClose, bookTitle, bookContext }: BookChatPane
               className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {message.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30
-                  border border-primary/30 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-primary" />
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500/30 to-amber-500/30
+                  border border-orange-500/30 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-orange-400" />
                 </div>
               )}
               
               <div
                 className={`max-w-[80%] rounded-2xl p-3 ${
                   message.role === 'user'
-                    ? 'bg-gradient-to-br from-primary to-secondary text-primary-foreground rounded-br-sm'
-                    : 'bg-card/80 border border-border/50 text-foreground rounded-bl-sm'
+                    ? 'bg-gradient-to-br from-orange-500 to-amber-500 text-white rounded-br-sm'
+                    : 'bg-white/5 border border-white/10 text-white/90 rounded-bl-sm'
                 }`}
               >
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -212,9 +212,9 @@ const BookChatPanel = ({ isOpen, onClose, bookTitle, bookContext }: BookChatPane
               </div>
 
               {message.role === 'user' && (
-                <div className="w-8 h-8 rounded-full bg-muted
+                <div className="w-8 h-8 rounded-full bg-white/10
                   flex items-center justify-center shrink-0">
-                  <span className="text-xs font-medium text-muted-foreground">You</span>
+                  <span className="text-xs font-medium text-white/60">You</span>
                 </div>
               )}
             </div>
@@ -223,7 +223,7 @@ const BookChatPanel = ({ isOpen, onClose, bookTitle, bookContext }: BookChatPane
         </div>
 
         {/* Input */}
-        <div className="p-4 border-t border-border bg-card/50">
+        <div className="p-4 border-t border-white/10 bg-black/50">
           <div className="flex gap-2">
             <input
               ref={inputRef}
@@ -233,16 +233,16 @@ const BookChatPanel = ({ isOpen, onClose, bookTitle, bookContext }: BookChatPane
               onKeyDown={handleKeyDown}
               placeholder="Ask about the book..."
               disabled={isLoading}
-              className="flex-1 px-4 py-3 bg-background border border-border rounded-xl
-                text-foreground placeholder:text-muted-foreground
-                focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary
+              className="flex-1 px-4 py-3 bg-white/5 border border-white/20 rounded-xl
+                text-white placeholder:text-white/40
+                focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50
                 disabled:opacity-50 transition-all"
             />
             <Button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="px-4 rounded-xl bg-gradient-to-r from-primary to-secondary
-                hover:opacity-90 transition-opacity"
+              className="px-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500
+                hover:opacity-90 transition-opacity text-white"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
