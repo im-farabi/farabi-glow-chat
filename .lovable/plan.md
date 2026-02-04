@@ -1,353 +1,425 @@
 
-# GitHub Authentication & Credit System for /web
+
+# Complete /book Redesign - Premium Luxurious Experience
 
 ## Overview
 
-Implement a GitHub-only authentication system specifically for the `/web` (WebGen) page with a credit-based pricing system:
-
-| Model | Cost per Generation |
-|-------|---------------------|
-| Claude | $1.00 |
-| GPT 5.2 | $1.50 |
-| Qwen Coder | $0.50 |
-
-New users receive **$5.00 free credits** upon registration.
+A complete overhaul of the `/book` feature with a premium, luxurious black-and-white theme with orange accents. The redesign will feature:
+- Dark smoky animated background
+- 3D-style glassmorphic cards
+- Smooth animations and transitions
+- Modern age selector with arrows
+- Collapsible recommendations section
+- Enhanced search that understands natural language queries
 
 ---
 
-## Architecture
+## Design System
 
+### Color Palette
+| Element | Color |
+|---------|-------|
+| Background | Pure black (#000000) |
+| Card Background | White/10 with backdrop blur |
+| Text Primary | White (#FFFFFF) |
+| Text Secondary | White/60 |
+| Accent (Buttons) | Orange (#F97316) with glow |
+| Card Stroke | White/20, Orange for buttons |
+
+### Typography
+- **Font Family**: Poppins (Google Fonts)
+- **Headings**: Bold, large with letter-spacing
+- **Body**: Regular weight, readable line-height
+
+### Effects
+- Glassmorphism: `backdrop-blur-xl bg-white/10 border-white/20`
+- Orange glow on buttons: `shadow-[0_0_30px_rgba(249,115,22,0.5)]`
+- Smooth transitions: `transition-all duration-500`
+- 3D card hover: `hover:transform hover:translate-y-[-4px]`
+
+---
+
+## File Structure
+
+### Files to Create
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                         User Flow                                    │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  /web page → Check Auth → Not logged in? → Show Login Gate          │
-│                  │                              │                    │
-│                  ▼                              ▼                    │
-│           Get user credits            GitHub OAuth Login             │
-│                  │                              │                    │
-│                  ▼                              ▼                    │
-│          Check balance ≥ cost         Create user + $5 credits       │
-│                  │                              │                    │
-│                  ▼                              ▼                    │
-│          Allow generation             Redirect back to /web          │
-│                  │                                                   │
-│                  ▼                                                   │
-│          Deduct credits on success                                   │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+src/components/book/
+  BookBackground.tsx       # Animated smoky dark background
+  BookLanding.tsx          # Landing page with GET STARTED
+  BookOnboarding.tsx       # Name + Age (arrow-based) setup
+  BookDashboard.tsx        # Main dashboard with recommendations
+  BookRecommendations.tsx  # Collapsible AI recommendations (5 visible, 10 saved)
+  BookLibrarySection.tsx   # User's starred/read books
+  BookSearchSection.tsx    # Enhanced natural language search
+  PremiumBookCard.tsx      # 3D glassmorphic book card
+```
+
+### Files to Rename/Move
+```text
+src/pages/BookPage.tsx -> src/pages/OldBookPage.tsx   # Keep old version
+src/pages/BookPage.tsx                                 # New implementation
+```
+
+### Routes Update
+```typescript
+// In App.tsx
+<Route path="/oldbook" element={<OldBookPage />} />  // Old version accessible
+<Route path="/book" element={<BookPage />} />         // New premium version
 ```
 
 ---
 
-## Database Schema
+## Components Detail
 
-### 1. User Credits Table
-
-```sql
-create table public.user_credits (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade not null unique,
-  balance decimal(10,2) not null default 5.00,
-  total_spent decimal(10,2) not null default 0.00,
-  total_generations integer not null default 0,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
-);
-
--- Enable RLS
-alter table public.user_credits enable row level security;
-
--- Users can read their own credits
-create policy "Users can view own credits"
-on public.user_credits for select
-to authenticated
-using (auth.uid() = user_id);
-
--- Create index for faster lookups
-create index idx_user_credits_user_id on public.user_credits(user_id);
-```
-
-### 2. Generation History Table (for tracking)
-
-```sql
-create table public.webgen_history (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade not null,
-  model text not null,
-  cost decimal(10,2) not null,
-  prompt text,
-  success boolean default true,
-  created_at timestamp with time zone default now()
-);
-
--- Enable RLS
-alter table public.webgen_history enable row level security;
-
--- Users can view their own history
-create policy "Users can view own history"
-on public.webgen_history for select
-to authenticated
-using (auth.uid() = user_id);
-
--- Create index
-create index idx_webgen_history_user_id on public.webgen_history(user_id);
-```
-
-### 3. Trigger for New User Credits
-
-```sql
--- Function to create credits for new users
-create or replace function public.handle_new_user_credits()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-begin
-  insert into public.user_credits (user_id, balance)
-  values (new.id, 5.00)
-  on conflict (user_id) do nothing;
-  return new;
-end;
-$$;
-
--- Trigger on auth.users
-create trigger on_auth_user_created_credits
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user_credits();
-```
-
----
-
-## Implementation Files
-
-### 1. Auth Context (`src/contexts/AuthContext.tsx`)
-
-New file providing authentication state and methods:
-- `user` - Current Supabase user
-- `session` - Current session
-- `credits` - User's current balance
-- `loading` - Auth loading state
-- `signInWithGitHub()` - Initiate GitHub OAuth
-- `signOut()` - Log out user
-- `refreshCredits()` - Fetch latest balance
-
-### 2. Auth Hook (`src/hooks/useWebGenAuth.ts`)
-
-Custom hook specifically for WebGen:
-- Check if user is authenticated
-- Fetch user credits
-- Validate sufficient balance for model
-- Deduct credits after successful generation
-
-### 3. Login Gate Component (`src/components/webgen/LoginGate.tsx`)
-
-Full-page overlay shown to unauthenticated users:
-- Premium design matching WebGen aesthetic
-- GitHub OAuth button
-- Feature highlights (free $5, per-model pricing)
-- Smooth animations
-
-### 4. Credits Display (`src/components/webgen/CreditsDisplay.tsx`)
-
-Header component showing:
-- Current balance with icon
-- User avatar from GitHub
-- Logout button
-
-### 5. Edge Function Update (`supabase/functions/web-gen/index.ts`)
-
-Add authentication and credit deduction:
-- Verify JWT token
-- Check user has sufficient credits
-- Deduct credits on successful generation
-- Log generation to history table
-
----
-
-## Updated WebGen.tsx Flow
+### 1. BookBackground.tsx
+Animated dark smoky background inspired by reference image 1:
 
 ```typescript
-// Simplified auth flow in WebGen.tsx
-
-const WebGen = () => {
-  const { user, credits, loading } = useWebGenAuth();
-  
-  // Show login gate if not authenticated
-  if (!loading && !user) {
-    return <LoginGate />;
-  }
-  
-  // Check credits before generation
-  const handleStartGeneration = async () => {
-    const cost = MODEL_COSTS[selectedModel]; // { claude: 1.00, gpt: 1.50, qwen: 0.50 }
-    
-    if (credits < cost) {
-      toast({
-        title: "Insufficient credits",
-        description: `You need $${cost.toFixed(2)} but only have $${credits.toFixed(2)}`,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Proceed with generation (credits deducted server-side)
-    await generateWebsite(enhancedPrompt);
-  };
-  
-  return (
-    <div>
-      <Header>
-        <CreditsDisplay balance={credits} user={user} />
-      </Header>
-      {/* Rest of WebGen UI */}
-    </div>
-  );
-};
+// Gradient orbs with animation
+// Smoky/foggy effect using CSS gradients
+// Subtle grain/noise overlay
+// Fixed position, z-index: -1
 ```
 
----
+Visual Elements:
+- Multiple dark gradient orbs (gray to black transitions)
+- Subtle red/orange glow in corner (like image 1)
+- Animated float effect (slow, luxurious movement)
+- Noise texture overlay at 3% opacity
 
-## Edge Function Auth Flow
-
-```typescript
-// In supabase/functions/web-gen/index.ts
-
-// Get user from JWT
-const authHeader = req.headers.get('Authorization');
-const token = authHeader?.replace('Bearer ', '');
-
-const { data: { user }, error } = await supabase.auth.getUser(token);
-
-if (!user) {
-  return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-}
-
-// Get user credits
-const { data: userCredits } = await supabase
-  .from('user_credits')
-  .select('balance')
-  .eq('user_id', user.id)
-  .single();
-
-const cost = MODEL_COSTS[model]; // 1.00, 1.50, or 0.50
-
-if (userCredits.balance < cost) {
-  return new Response(JSON.stringify({ 
-    error: 'Insufficient credits',
-    required: cost,
-    balance: userCredits.balance
-  }), { status: 402 });
-}
-
-// Generate website...
-
-// On success, deduct credits
-await supabase
-  .from('user_credits')
-  .update({ 
-    balance: userCredits.balance - cost,
-    total_spent: userCredits.total_spent + cost,
-    total_generations: userCredits.total_generations + 1,
-    updated_at: new Date().toISOString()
-  })
-  .eq('user_id', user.id);
-
-// Log to history
-await supabase
-  .from('webgen_history')
-  .insert({
-    user_id: user.id,
-    model: model,
-    cost: cost,
-    prompt: prompt.substring(0, 500),
-    success: true
-  });
-```
-
----
-
-## UI Components
-
-### Login Gate Design
+### 2. BookLanding.tsx
+Premium landing page inspired by brain.fm (image 2):
 
 ```text
+Layout:
 ┌────────────────────────────────────────────────────────────────┐
-│                                                                │
-│                    ✨ AI Website Generator                     │
-│                                                                │
-│      Create stunning websites with AI in seconds               │
-│                                                                │
-│   ┌──────────────────────────────────────────────────────┐    │
-│   │                                                      │    │
-│   │            🎉 Get $5.00 FREE Credits                 │    │
-│   │                                                      │    │
-│   │  ┌──────────────────────────────────────────────┐   │    │
-│   │  │         Sign in with GitHub                  │   │    │
-│   │  │              🐙                              │   │    │
-│   │  └──────────────────────────────────────────────┘   │    │
-│   │                                                      │    │
-│   │   Pricing per Generation:                            │    │
-│   │   • Claude (Best) .......... $1.00                  │    │
-│   │   • GPT 5.2 ................ $1.50                  │    │
-│   │   • Qwen Coder ............. $0.50                  │    │
-│   │                                                      │    │
-│   └──────────────────────────────────────────────────────┘    │
-│                                                                │
+│                    [BookBackground animated]                    │
+│                                                                 │
+│                         📖 (3D Book Icon)                       │
+│                                                                 │
+│                    "Books that change                           │
+│                       your life"                                │
+│                                                                 │
+│     Get personalized book recommendations and summaries         │
+│                                                                 │
+│   ┌─────────────────────────────────────────────────────┐      │
+│   │           GET STARTED                    →          │      │
+│   │      [Orange stroke, glow effect]                   │      │
+│   └─────────────────────────────────────────────────────┘      │
+│                                                                 │
+│    [Focus]  [Learn]  [Grow]  [Discover]  [Explore]             │
+│                                                                 │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### Credits Display (in header)
+Features:
+- Large animated book icon with 3D effect
+- Bold headline with Poppins font
+- Subtitle explaining the feature
+- Orange-stroked GET STARTED button with glow
+- Category pills at bottom (like brain.fm)
+- Smooth fade-in animations on load
+
+### 3. BookOnboarding.tsx
+Simplified 2-step onboarding:
+
+**Step 1: Name**
+```text
+┌─────────────────────────────────────────┐
+│                                         │
+│              👋 Hey there!              │
+│                                         │
+│         What should we call you?        │
+│                                         │
+│   ┌─────────────────────────────────┐   │
+│   │     [Glassmorphic input]        │   │
+│   └─────────────────────────────────┘   │
+│                                         │
+│   [Skip]              [Continue →]      │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+**Step 2: Age (Arrow-Based Selector)**
+```text
+┌─────────────────────────────────────────┐
+│                                         │
+│              🎂 Your Age                │
+│                                         │
+│     ◀ ─────────[ 18 ]───────── ▶       │
+│       (Arrows to increase/decrease)     │
+│                                         │
+│              [Continue →]               │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+The age selector:
+- Left/right arrow buttons with orange accents
+- Large number display in the center
+- Touch-friendly tap targets
+- Animated number transitions
+
+### 4. BookDashboard.tsx
+Main dashboard after onboarding:
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│  FARABI.me    [Video BETA]   💰 $4.50  [👤 Avatar ▼]       │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│  [Header: ReadME logo]                        [Library icon]   │
+├────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Good evening, John! 👋                                        │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  ┌── Recommended Books ──────────────────────────────── [▼] ─┐ │
+│  │                                                            │ │
+│  │  [Book1] [Book2] [Book3] [Book4] [Book5]                  │ │
+│  │                                                            │ │
+│  │                    [More Books]                            │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│  Your Library ─────────────────────────────────────────────     │
+│  [Book1] [Book2] [Book3] ...                                    │
+│                                                                 │
+│  ────────────────────────────────────────────────────────────   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  🔍 Search for books, authors, or topics...             │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└────────────────────────────────────────────────────────────────┘
+```
+
+Features:
+- Collapsible recommendations (arrow toggles visibility)
+- Fixed 5 visible recommendations, 10 saved total
+- "More Books" button to see saved recommendations
+- Library section showing starred/read books with remove option
+- Glassmorphic search bar at bottom
+
+### 5. BookRecommendations.tsx
+AI-powered recommendations with collapsible UI:
+
+```typescript
+interface BookRecommendation {
+  id: string;
+  title: string;
+  author: string;
+  coverUrl: string;
+  reason: string;  // Why recommended
+}
+
+// Storage: Keep last 10 recommendations
+// Display: Show 5 at a time
+// Action: "More Books" shows modal with all 10
+```
+
+Collapse behavior:
+- Down arrow (▼) = expanded, showing recommendations
+- Up arrow (▲) = collapsed, hiding recommendations
+- Smooth height transition animation
+
+### 6. Enhanced Search (Natural Language)
+Update the search AI prompt to understand:
+- Book titles in any language (including Bangla)
+- Author names
+- Topics like "best book for focus"
+- Genres and moods
+- Partial matches
+
+```typescript
+const enhancedSearchPrompt = `Find books matching: "${query}"
+
+This could be:
+- A book title (in ANY language including Bengali/Bangla)
+- An author name
+- A topic like "best books for focus" or "productivity"
+- A genre like "romance" or "self-help"
+- A mood like "uplifting" or "motivational"
+
+Return matching books with title, author. Be flexible with spelling.
+If exact match not found, suggest similar books.
+`;
+```
+
+### 7. PremiumBookCard.tsx
+3D glassmorphic book card (inspired by image 3):
+
+```typescript
+<div className="group relative overflow-hidden rounded-2xl 
+  bg-white/5 backdrop-blur-xl border border-white/10
+  hover:border-orange-500/50 hover:shadow-[0_0_30px_rgba(249,115,22,0.2)]
+  transition-all duration-500
+  hover:transform hover:translate-y-[-4px]">
+  
+  {/* Book Cover with overlay */}
+  <div className="aspect-[2/3] overflow-hidden">
+    <img className="w-full h-full object-cover 
+      group-hover:scale-110 transition-transform duration-700" />
+  </div>
+  
+  {/* Book Info */}
+  <div className="p-4 bg-gradient-to-t from-black/80 to-transparent
+    absolute bottom-0 left-0 right-0">
+    <h3 className="font-bold text-white">Book Title</h3>
+    <p className="text-white/60 text-sm">Author Name</p>
+  </div>
+</div>
 ```
 
 ---
 
-## Files to Create/Modify
+## Storage Updates
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/contexts/AuthContext.tsx` | Create | Auth provider with GitHub OAuth |
-| `src/hooks/useWebGenAuth.ts` | Create | WebGen-specific auth hook |
-| `src/components/webgen/LoginGate.tsx` | Create | Full-page login component |
-| `src/components/webgen/CreditsDisplay.tsx` | Create | Balance display component |
-| `src/pages/WebGen.tsx` | Modify | Integrate auth flow |
-| `supabase/functions/web-gen/index.ts` | Modify | Add auth & credit deduction |
-| Database | Migrate | Create user_credits and webgen_history tables |
+### bookStorage.ts Additions
 
----
+```typescript
+// Add to existing storage
+interface BookRecommendationHistory {
+  recommendations: BookRecommendation[];
+  lastUpdated: number;
+}
 
-## Security Considerations
-
-1. **Server-side credit deduction**: Credits are only deducted in the edge function after successful generation, not on the client
-2. **JWT verification**: All edge function calls verify the user's JWT token
-3. **RLS policies**: Users can only read their own data
-4. **Race condition prevention**: Use atomic updates for credit deduction
-5. **No client-side balance manipulation**: Balance is always fetched fresh from the database
+// Keep last 10 recommendations
+export const saveRecommendations = (recs: BookRecommendation[]) => {...}
+export const getRecommendations = (): BookRecommendation[] => {...}
+export const clearOldRecommendations = () => {...}  // Keep only last 10
+```
 
 ---
 
-## Multi-Model Mode Pricing
+## Animations
 
-For multi-model mode (all 3 models in parallel):
-- Total cost: $1.00 + $1.50 + $0.50 = **$3.00**
-- User must have at least $3.00 in credits
-- All 3 generations are charged upfront
+### Page Transitions
+```css
+/* Landing page fade in */
+.landing-enter { opacity: 0; transform: translateY(20px); }
+.landing-enter-active { opacity: 1; transform: translateY(0); transition: all 0.8s ease-out; }
+
+/* Card hover 3D effect */
+.book-card { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+.book-card:hover { transform: translateY(-8px) scale(1.02); }
+
+/* Collapse animation */
+.recommendations-collapse { 
+  transition: height 0.5s ease, opacity 0.3s ease;
+  overflow: hidden;
+}
+```
+
+### Background Animation (BookBackground)
+```typescript
+// Floating orbs with staggered animations
+const orbs = [
+  { size: 400, x: '-10%', y: '20%', delay: 0, duration: 25 },
+  { size: 300, x: '80%', y: '60%', delay: 5, duration: 30 },
+  { size: 350, x: '50%', y: '80%', delay: 10, duration: 20 },
+];
+
+// CSS keyframes for float effect
+@keyframes float {
+  0%, 100% { transform: translateY(0) translateX(0) scale(1); }
+  33% { transform: translateY(-20px) translateX(10px) scale(1.05); }
+  66% { transform: translateY(10px) translateX(-10px) scale(0.95); }
+}
+```
 
 ---
 
-## Summary
+## Implementation Order
 
-This implementation provides:
-- GitHub-only authentication for /web page
-- $5.00 free credits for new users
-- Per-model pricing (Claude $1.00, GPT $1.50, Qwen $0.50)
-- Server-side credit validation and deduction
-- Beautiful login gate matching WebGen aesthetic
-- Credits display in header
-- Full generation history tracking
+1. **Phase 1: Foundation**
+   - Create BookBackground.tsx (animated smoky background)
+   - Create base styling with Poppins font
+   - Rename old BookPage to OldBookPage and add route
+
+2. **Phase 2: Landing & Onboarding**
+   - Create BookLanding.tsx with premium design
+   - Create BookOnboarding.tsx with arrow-based age selector
+   - Update storage to use simplified 2-step flow
+
+3. **Phase 3: Dashboard**
+   - Create BookDashboard.tsx layout
+   - Create BookRecommendations.tsx with collapse
+   - Create PremiumBookCard.tsx with 3D effects
+   - Create BookLibrarySection.tsx
+
+4. **Phase 4: Search Enhancement**
+   - Update search prompts for natural language
+   - Add Bangla/multilingual support
+   - Improve topic-based search ("best for focus")
+
+5. **Phase 5: Polish**
+   - Add all animations and transitions
+   - Test responsive design
+   - Optimize performance
+
+---
+
+## Technical Considerations
+
+### Font Loading
+Add Poppins to index.html:
+```html
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+```
+
+### Tailwind Config
+Add custom animations and colors:
+```javascript
+// tailwind.config.ts
+theme: {
+  extend: {
+    fontFamily: {
+      poppins: ['Poppins', 'sans-serif'],
+    },
+    colors: {
+      book: {
+        orange: '#F97316',
+        orangeGlow: 'rgba(249, 115, 22, 0.5)',
+      }
+    }
+  }
+}
+```
+
+### Performance
+- Lazy load book covers
+- Use CSS transforms (GPU accelerated)
+- Debounce search input
+- Cache recommendations in localStorage
+
+---
+
+## Files Summary
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/pages/OldBookPage.tsx` | Create (copy) | Backup of old /book |
+| `src/pages/BookPage.tsx` | Rewrite | New premium entry point |
+| `src/components/book/BookBackground.tsx` | Create | Animated smoky background |
+| `src/components/book/BookLanding.tsx` | Create | Premium landing page |
+| `src/components/book/BookOnboarding.tsx` | Create | 2-step onboarding with arrow age |
+| `src/components/book/BookDashboard.tsx` | Create | Main dashboard layout |
+| `src/components/book/BookRecommendations.tsx` | Create | Collapsible recommendations |
+| `src/components/book/BookLibrarySection.tsx` | Create | User's book library |
+| `src/components/book/PremiumBookCard.tsx` | Create | 3D glassmorphic card |
+| `src/lib/bookStorage.ts` | Update | Add recommendation storage |
+| `src/pages/BookSearch.tsx` | Update | Enhanced natural language search |
+| `src/App.tsx` | Update | Add /oldbook route |
+| `index.html` | Update | Add Poppins font |
+
+---
+
+## Expected Result
+
+A completely redesigned `/book` experience that:
+- Feels luxurious and premium with black/white/orange theme
+- Has smooth, satisfying animations throughout
+- Uses modern glassmorphic 3D card design
+- Features intuitive arrow-based age selection
+- Offers collapsible recommendations (5 visible, 10 saved)
+- Understands natural language search including Bangla
+- Maintains full offline functionality
+- Keeps old version accessible at `/oldbook`
+
