@@ -4,6 +4,8 @@ import { ArrowLeft, BookOpen, Trash2, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getBooksRead, removeBookFromRead, getSavedSummaries, type ReadBook, type SavedBookSummary } from "@/lib/bookStorage";
 import { useToast } from "@/hooks/use-toast";
+import BookBackground from "@/components/book/BookBackground";
+import PremiumBookCard from "@/components/book/PremiumBookCard";
 
 const BookLibrary = () => {
   const [books, setBooks] = useState<ReadBook[]>([]);
@@ -35,88 +37,67 @@ const BookLibrary = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-black font-poppins">
+      <BookBackground />
+      
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="p-4 flex items-center gap-3">
+      <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-lg border-b border-white/10">
+        <div className="p-4 flex items-center gap-3 max-w-6xl mx-auto">
           <Link to="/book">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-white/5">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <h1 className="text-xl font-bold text-foreground">My Library</h1>
+          <h1 className="text-xl font-bold text-white">My Library</h1>
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 md:p-6 max-w-6xl mx-auto relative z-10">
         {books.length === 0 ? (
           <div className="text-center py-16">
-            <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Your library is empty</h2>
-            <p className="text-muted-foreground mb-6">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <BookOpen className="w-10 h-10 text-white/30" />
+            </div>
+            <h2 className="text-xl font-semibold text-white mb-2">Your library is empty</h2>
+            <p className="text-white/50 mb-6">
               Start adding books you've read to build your personal library
             </p>
             <Link to="/book/search">
-              <Button>Search for Books</Button>
+              <Button className="bg-transparent border-2 border-orange-500 text-white hover:bg-orange-500/10 shadow-[0_0_20px_rgba(249,115,22,0.3)]">
+                Search for Books
+              </Button>
             </Link>
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-white/50">
               {books.length} book{books.length !== 1 ? 's' : ''} in your library
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
               {books.map((book) => (
-                <div key={book.id} className="relative group">
-                  <div 
-                    className="w-full cursor-pointer"
+                <div key={book.id} className="relative">
+                  <PremiumBookCard
+                    title={book.title}
+                    author={book.author}
+                    coverUrl={book.coverUrl}
                     onClick={() => handleReadBook(book.title)}
-                  >
-                    <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-muted mb-2">
-                      <img
-                        src={book.coverUrl}
-                        alt={book.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = `https://placehold.co/200x300/1a1a2e/white?text=${encodeURIComponent(book.title.slice(0, 10))}`;
-                        }}
-                      />
-                      {/* Offline indicator */}
-                      <div className="absolute bottom-2 left-2">
-                        {hasOfflineSummary(book.title) ? (
-                          <div className="bg-green-500/90 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                            <WifiOff className="w-3 h-3" />
-                            Offline
-                          </div>
-                        ) : (
-                          <div className="bg-muted/90 text-muted-foreground text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                            <Wifi className="w-3 h-3" />
-                            Online
-                          </div>
-                        )}
+                    onRemove={() => handleRemoveBook(book.id, book.title)}
+                    showRemove
+                  />
+                  {/* Offline indicator */}
+                  <div className="absolute top-2 left-2 z-10">
+                    {hasOfflineSummary(book.title) ? (
+                      <div className="bg-emerald-500/90 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-sm">
+                        <WifiOff className="w-3 h-3" />
+                        Offline
                       </div>
-                    </div>
-                    <div className="w-full text-left">
-                      <h3 className="text-xs font-medium text-foreground line-clamp-2 leading-tight">
-                        {book.title}
-                      </h3>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
-                        {book.author}
-                      </p>
-                    </div>
+                    ) : (
+                      <div className="bg-white/20 backdrop-blur-sm text-white/70 text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                        <Wifi className="w-3 h-3" />
+                        Online
+                      </div>
+                    )}
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveBook(book.id, book.title);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
                 </div>
               ))}
             </div>

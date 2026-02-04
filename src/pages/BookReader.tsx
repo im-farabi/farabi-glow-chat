@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, BookOpen, CheckCircle, Sparkles, Target, Lightbulb, MessageCircle, StickyNote } from "lucide-react";
 import BookChatPanel from "@/components/book/BookChatPanel";
+import BookBackground from "@/components/book/BookBackground";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { addBookToRead, getBookUserProfile, saveBookSummary, getSavedSummary, type SavedBookSummary } from "@/lib/bookStorage";
@@ -173,52 +174,54 @@ IMPORTANT: The summary must be COMPREHENSIVE - covering the entire book's conten
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-black font-poppins">
+        <BookBackground />
+        
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border">
+        <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-lg border-b border-white/10">
           <div className="p-4 flex items-center gap-3">
             <Link to="/book/search">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-white/5">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             </Link>
-            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-32 bg-white/10" />
           </div>
         </div>
 
-        <div className="p-4 md:p-6 pb-24 space-y-6 max-w-4xl mx-auto">
+        <div className="p-4 md:p-6 pb-24 space-y-6 max-w-4xl mx-auto relative z-10">
           {/* Title skeleton */}
           <div className="text-center pt-4 space-y-3">
-            <Skeleton className="h-8 w-64 mx-auto" />
-            <Skeleton className="h-4 w-40 mx-auto" />
+            <Skeleton className="h-8 w-64 mx-auto bg-white/10" />
+            <Skeleton className="h-4 w-40 mx-auto bg-white/10" />
           </div>
 
           {/* Book cover placeholder */}
           <div className="flex justify-center">
-            <div className="w-32 h-48 bg-muted rounded-lg animate-pulse flex items-center justify-center">
-              <BookOpen className="w-12 h-12 text-muted-foreground/50" />
+            <div className="w-32 h-48 bg-white/5 rounded-lg animate-pulse flex items-center justify-center border border-white/10">
+              <BookOpen className="w-12 h-12 text-white/20" />
             </div>
           </div>
 
           {/* Loading message */}
           <div className="text-center py-6">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 
-              border border-primary/20 flex items-center justify-center animate-pulse">
-              <BookOpen className="w-8 h-8 text-primary" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-orange-500/20 to-orange-500/5 
+              border border-orange-500/20 flex items-center justify-center animate-pulse">
+              <BookOpen className="w-8 h-8 text-orange-400" />
             </div>
-            <p className="text-lg font-medium text-foreground">
+            <p className="text-lg font-medium text-white">
               Creating complete book overview...
             </p>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-white/50 mt-2">
               This takes a moment as we summarize the entire book
             </p>
           </div>
 
           {/* Content skeletons */}
           <div className="space-y-4">
-            <Skeleton className="h-24 w-full rounded-xl" />
-            <Skeleton className="h-40 w-full rounded-xl" />
-            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl bg-white/5" />
+            <Skeleton className="h-40 w-full rounded-xl bg-white/5" />
+            <Skeleton className="h-32 w-full rounded-xl bg-white/5" />
           </div>
         </div>
       </div>
@@ -227,12 +230,16 @@ IMPORTANT: The summary must be COMPREHENSIVE - covering the entire book's conten
 
   if (!summary) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
-        <div className="text-center">
-          <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-xl font-semibold text-foreground">Couldn't load summary</p>
-          <p className="text-muted-foreground mt-2">Please try again later</p>
-          <Button className="mt-4" onClick={() => navigate('/book/search')}>
+      <div className="min-h-screen bg-black font-poppins flex flex-col items-center justify-center px-6">
+        <BookBackground />
+        <div className="text-center relative z-10">
+          <BookOpen className="w-12 h-12 text-white/30 mx-auto mb-4" />
+          <p className="text-xl font-semibold text-white">Couldn't load summary</p>
+          <p className="text-white/50 mt-2">Please try again later</p>
+          <Button 
+            className="mt-4 bg-transparent border-2 border-orange-500 text-white hover:bg-orange-500/10" 
+            onClick={() => navigate('/book/search')}
+          >
             Back to Search
           </Button>
         </div>
@@ -252,29 +259,31 @@ Moral: ${summary.moral}
   `.trim();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-black font-poppins">
+      <BookBackground />
+      
       {/* Floating AI Chat Button */}
       <button
         onClick={() => setIsChatOpen(true)}
         className="fixed top-20 right-4 z-30 w-12 h-12 rounded-full 
-          bg-gradient-to-br from-primary to-secondary
-          border border-primary/30 shadow-lg shadow-primary/30
+          bg-gradient-to-br from-orange-500 to-amber-500
+          border border-orange-400/30 shadow-lg shadow-orange-500/30
           flex items-center justify-center
-          hover:scale-110 hover:shadow-primary/50 transition-all duration-300
+          hover:scale-110 hover:shadow-orange-500/50 transition-all duration-300
           animate-pulse-glow"
         aria-label="Chat with AI about this book"
       >
-        <MessageCircle className="w-6 h-6 text-primary-foreground" />
+        <MessageCircle className="w-6 h-6 text-white" />
       </button>
 
       {/* Floating Save Notes Button */}
       <Link
         to="/notes"
         className="fixed top-36 right-4 z-30 w-12 h-12 rounded-full 
-          bg-gradient-to-br from-pink-500 to-purple-500
-          border border-pink-500/30 shadow-lg shadow-pink-500/30
+          bg-white/5 backdrop-blur-xl
+          border border-white/20 shadow-lg
           flex items-center justify-center
-          hover:scale-110 hover:shadow-pink-500/50 transition-all duration-300"
+          hover:scale-110 hover:bg-white/10 transition-all duration-300"
         aria-label="Save notes"
       >
         <StickyNote className="w-6 h-6 text-white" />
@@ -289,42 +298,42 @@ Moral: ${summary.moral}
       />
 
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border">
+      <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-lg border-b border-white/10">
         <div className="p-4 flex items-center gap-3">
           <Link to="/book/search">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="text-white/60 hover:text-white hover:bg-white/5">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <span className="text-sm text-muted-foreground truncate">{summary.title}</span>
+          <span className="text-sm text-white/50 truncate">{summary.title}</span>
         </div>
       </div>
 
-      <div className="p-4 md:p-6 pb-24 space-y-6 max-w-4xl mx-auto">
+      <div className="p-4 md:p-6 pb-24 space-y-6 max-w-4xl mx-auto relative z-10">
         {/* Book Title & Author */}
         <div className="text-center pt-4">
-          <h1 className="text-3xl font-bold text-foreground">{summary.title}</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold text-white">{summary.title}</h1>
+          <p className="text-white/50 mt-2">
             by {summary.author} {summary.year && `· ${summary.year}`}
           </p>
         </div>
 
         {/* About Section */}
-        <div className="bg-card border border-border rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-foreground">What This Book Is About</h2>
+            <Sparkles className="w-5 h-5 text-orange-400" />
+            <h2 className="font-semibold text-white">What This Book Is About</h2>
           </div>
-          <p className="text-muted-foreground leading-relaxed">{summary.about}</p>
+          <p className="text-white/70 leading-relaxed">{summary.about}</p>
         </div>
 
         {/* Complete Book Overview */}
-        <div className="bg-card border border-border rounded-xl p-4 md:p-6">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 md:p-6">
           <div className="flex items-center gap-2 mb-4">
-            <BookOpen className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-foreground text-lg">Complete Book Overview</h2>
+            <BookOpen className="w-5 h-5 text-orange-400" />
+            <h2 className="font-semibold text-white text-lg">Complete Book Overview</h2>
           </div>
-          <div className="text-muted-foreground leading-relaxed text-base md:text-lg space-y-4">
+          <div className="text-white/70 leading-relaxed text-base md:text-lg space-y-4">
             {summary.summary.split('\n\n').map((paragraph, index) => (
               <p key={index}>{paragraph}</p>
             ))}
@@ -334,30 +343,30 @@ Moral: ${summary.moral}
         {/* Key Points & Moral - 2 column on desktop */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Key Points */}
-          <div className="bg-card border border-border rounded-xl p-4 md:p-5">
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 md:p-5">
             <div className="flex items-center gap-2 mb-3">
-              <Target className="w-5 h-5 text-primary" />
-              <h2 className="font-semibold text-foreground">Key Points</h2>
+              <Target className="w-5 h-5 text-orange-400" />
+              <h2 className="font-semibold text-white">Key Points</h2>
             </div>
             <ul className="space-y-2">
               {summary.keyPoints.map((point, index) => (
                 <li key={index} className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-sm flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="w-6 h-6 rounded-full bg-orange-500/10 text-orange-400 text-sm flex items-center justify-center flex-shrink-0 mt-0.5">
                     {index + 1}
                   </span>
-                  <span className="text-muted-foreground">{point}</span>
+                  <span className="text-white/70">{point}</span>
                 </li>
               ))}
             </ul>
           </div>
 
           {/* Moral / Summary */}
-          <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 md:p-5 h-fit">
+          <div className="bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20 rounded-xl p-4 md:p-5 h-fit">
             <div className="flex items-center gap-2 mb-3">
-              <Lightbulb className="w-5 h-5 text-primary" />
-              <h2 className="font-semibold text-foreground">The Moral</h2>
+              <Lightbulb className="w-5 h-5 text-orange-400" />
+              <h2 className="font-semibold text-white">The Moral</h2>
             </div>
-            <p className="text-foreground leading-relaxed">{summary.moral}</p>
+            <p className="text-white/80 leading-relaxed">{summary.moral}</p>
           </div>
         </div>
 
@@ -366,7 +375,7 @@ Moral: ${summary.moral}
           <Button
             onClick={handleMarkAsRead}
             disabled={isMarkedAsRead}
-            className="w-full h-14 text-lg font-semibold rounded-xl"
+            className="w-full h-14 text-lg font-semibold rounded-xl bg-transparent border-2 border-orange-500 text-white hover:bg-orange-500/10 disabled:bg-orange-500/20 disabled:border-orange-500/50 shadow-[0_0_30px_rgba(249,115,22,0.2)]"
           >
             {isMarkedAsRead ? (
               <>

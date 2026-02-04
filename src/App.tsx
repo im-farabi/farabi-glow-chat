@@ -10,6 +10,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import BookPage from "./pages/BookPage";
+import OldBookPage from "./pages/OldBookPage";
 import NewsPage from "./pages/NewsPage";
 import NewsCategory from "./pages/NewsCategory";
 import NewsArticles from "./pages/NewsArticles";
@@ -72,6 +73,7 @@ const App = () => {
             <Route path="/c/:chatId" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/book" element={<BookPage />} />
+            <Route path="/oldbook" element={<OldBookPage />} />
             <Route path="/book/library" element={<BookLibrary />} />
             <Route path="/book/search" element={<BookSearch />} />
             <Route path="/book/read/:bookTitle" element={<BookReader />} />
