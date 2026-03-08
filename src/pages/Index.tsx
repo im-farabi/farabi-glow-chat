@@ -281,6 +281,8 @@ const Index = () => {
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Deep Reasoning...' }, { time: 2000, text: 'Analyzing Multiple Angles...' }, { time: Infinity, text: image ? 'Analyzing image deeply...' : 'Thinking critically...' }]
         : mode === 'gpt52'
         ? gpt52Stages
+        : mode === 'step'
+        ? [{ time: 500, text: 'Connecting to Step 3.5...' }, { time: 1500, text: 'Processing with Step Flash...' }, { time: Infinity, text: 'Generating response...' }]
         : mode.startsWith('giyaat')
         ? giyaatStages
         : [{ time: 500, text: 'Sending...' }, { time: 2000, text: 'Reading Instructions...' }, { time: 2500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }];
