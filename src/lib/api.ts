@@ -322,7 +322,7 @@ export interface Message {
   image?: string;
 }
 
-export type ModelType = 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52';
+export type ModelType = 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52' | 'step';
 
 const GPT52_SYSTEM_PROMPT = `You are FARABI-Claude, a powerful AI assistant powered by Claude Sonnet 4.5.
 Be helpful, accurate, and conversational. Provide clear, well-structured responses.
