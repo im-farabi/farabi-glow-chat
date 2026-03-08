@@ -7,7 +7,7 @@ import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
 import PremiumBackground from '@/components/PremiumBackground';
-import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage, sendGiyaat, sendGPT52 } from '@/lib/api';
+import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage, sendGiyaat, sendGPT52, sendStep } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 
@@ -204,7 +204,7 @@ const Index = () => {
 
   const handleSendMessage = async (
     message: string, 
-    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52',
+    mode: 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52' | 'step',
     image?: File
   ) => {
     if (!message.trim() && !image) return;
@@ -281,6 +281,8 @@ const Index = () => {
         ? [{ time: 500, text: 'Sending...' }, { time: 1000, text: 'Deep Reasoning...' }, { time: 2000, text: 'Analyzing Multiple Angles...' }, { time: Infinity, text: image ? 'Analyzing image deeply...' : 'Thinking critically...' }]
         : mode === 'gpt52'
         ? gpt52Stages
+        : mode === 'step'
+        ? [{ time: 500, text: 'Connecting to Step 3.5...' }, { time: 1500, text: 'Processing with Step Flash...' }, { time: Infinity, text: 'Generating response...' }]
         : mode.startsWith('giyaat')
         ? giyaatStages
         : [{ time: 500, text: 'Sending...' }, { time: 2000, text: 'Reading Instructions...' }, { time: 2500, text: 'Searching Web...' }, { time: Infinity, text: 'Thinking...' }];
@@ -331,6 +333,9 @@ const Index = () => {
           break;
         case 'giyaatLarge':
           response = await sendGiyaat(message, 'large');
+          break;
+        case 'step':
+          response = await sendStep(message, messages, image);
           break;
         case 'gpt52':
           response = await sendGPT52(message, messages, (chunk) => {

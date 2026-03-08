@@ -7,7 +7,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import gpt52Icon from '@/assets/gpt52-icon.png';
 
-type ChatMode = 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52';
+type ChatMode = 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52' | 'step';
 
 interface ChatInputProps {
   onSendMessage: (message: string, mode: ChatMode, image?: File) => void;
@@ -125,7 +125,7 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className={`h-8 w-8 hover:bg-accent/50 ${activeMode.startsWith('giyaat') ? 'text-orange-500 bg-orange-500/10' : ''} ${activeMode === 'gpt52' ? 'text-emerald-500 bg-emerald-500/10' : ''}`}
+                    className={`h-8 w-8 hover:bg-accent/50 ${activeMode.startsWith('giyaat') ? 'text-orange-500 bg-orange-500/10' : ''} ${activeMode === 'gpt52' ? 'text-emerald-500 bg-emerald-500/10' : ''} ${activeMode === 'step' ? 'text-sky-500 bg-sky-500/10' : ''}`}
                   >
                     <Wrench className="h-4 w-4" />
                   </Button>
@@ -142,8 +142,12 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
                     <img src={gpt52Icon} alt="Claude 4.5" className="h-4 w-4 mr-2" />
                     <span className="font-medium">Claude 4.5</span>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuSub>
+                   <DropdownMenuItem onClick={() => setActiveMode('step')} className={activeMode === 'step' ? 'bg-sky-500/20' : ''}>
+                     <Zap className="h-4 w-4 mr-2 text-sky-500" />
+                     <span className="font-medium">Step 3.5 Flash</span>
+                   </DropdownMenuItem>
+                   <DropdownMenuSeparator />
+                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger className={activeMode.startsWith('giyaat') ? 'bg-orange-500/20' : ''}>
                       <span className="font-bold text-orange-500 mr-2">G</span>
                       GIYAAT AI
