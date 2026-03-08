@@ -3,7 +3,7 @@ import { ArrowRight, CheckCircle2, XCircle, Lightbulb, Loader2, RefreshCw, Rotat
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Subject, Chapter } from '@/data/studySubjects';
-import { sendRawJSON } from '@/lib/api';
+import { sendNormal } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface StudyQuizProps {
@@ -87,7 +87,7 @@ OUTPUT FORMAT - Return EXACTLY this JSON structure:
 RESPOND WITH ONLY THE JSON ARRAY. START WITH [ AND END WITH ]`;
 
     try {
-      const response = await sendRawJSON(prompt);
+      const response = await sendNormal(prompt);
       
       // Clean response - remove markdown code blocks if present (same robust logic as MCQGen)
       let cleanedResponse = response.trim();
