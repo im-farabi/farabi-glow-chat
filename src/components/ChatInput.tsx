@@ -7,7 +7,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import gpt52Icon from '@/assets/gpt52-icon.png';
 
-type ChatMode = 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52';
+type ChatMode = 'chat' | 'fast' | 'normal' | 'super' | 'imageGen' | 'coder' | 'think' | 'giyaatFast' | 'giyaatMid' | 'giyaatLarge' | 'gpt52' | 'step';
 
 interface ChatInputProps {
   onSendMessage: (message: string, mode: ChatMode, image?: File) => void;
