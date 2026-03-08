@@ -89,14 +89,21 @@ RESPOND WITH ONLY THE JSON ARRAY. START WITH [ AND END WITH ]`;
     try {
       const response = await sendNormal(prompt);
       
-      // Clean response - remove markdown code blocks if present (same robust logic as MCQGen)
+      // Extract JSON array from response - model may include extra text
       let cleanedResponse = response.trim();
-      if (cleanedResponse.startsWith('```json')) {
-        cleanedResponse = cleanedResponse.replace(/```json\n?/, '').replace(/\n?```$/, '');
-      } else if (cleanedResponse.startsWith('```')) {
-        cleanedResponse = cleanedResponse.replace(/```\n?/, '').replace(/\n?```$/, '');
+      
+      // Remove markdown code blocks if present
+      const codeBlockMatch = cleanedResponse.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (codeBlockMatch) {
+        cleanedResponse = codeBlockMatch[1].trim();
       }
-      cleanedResponse = cleanedResponse.trim();
+      
+      // Extract just the JSON array between first [ and last ]
+      const startIdx = cleanedResponse.indexOf('[');
+      const endIdx = cleanedResponse.lastIndexOf(']');
+      if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+        cleanedResponse = cleanedResponse.substring(startIdx, endIdx + 1);
+      }
 
       const parsed = JSON.parse(cleanedResponse);
       
