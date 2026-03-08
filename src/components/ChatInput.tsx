@@ -125,7 +125,7 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className={`h-8 w-8 hover:bg-accent/50 ${activeMode.startsWith('giyaat') ? 'text-orange-500 bg-orange-500/10' : ''} ${activeMode === 'gpt52' ? 'text-emerald-500 bg-emerald-500/10' : ''}`}
+                    className={`h-8 w-8 hover:bg-accent/50 ${activeMode.startsWith('giyaat') ? 'text-orange-500 bg-orange-500/10' : ''} ${activeMode === 'gpt52' ? 'text-emerald-500 bg-emerald-500/10' : ''} ${activeMode === 'step' ? 'text-sky-500 bg-sky-500/10' : ''}`}
                   >
                     <Wrench className="h-4 w-4" />
                   </Button>
