@@ -142,8 +142,12 @@ const ChatInput = ({ onSendMessage, disabled, className }: ChatInputProps) => {
                     <img src={gpt52Icon} alt="Claude 4.5" className="h-4 w-4 mr-2" />
                     <span className="font-medium">Claude 4.5</span>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuSub>
+                   <DropdownMenuItem onClick={() => setActiveMode('step')} className={activeMode === 'step' ? 'bg-sky-500/20' : ''}>
+                     <Zap className="h-4 w-4 mr-2 text-sky-500" />
+                     <span className="font-medium">Step 3.5 Flash</span>
+                   </DropdownMenuItem>
+                   <DropdownMenuSeparator />
+                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger className={activeMode.startsWith('giyaat') ? 'bg-orange-500/20' : ''}>
                       <span className="font-bold text-orange-500 mr-2">G</span>
                       GIYAAT AI

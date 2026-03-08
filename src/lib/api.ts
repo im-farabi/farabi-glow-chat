@@ -415,6 +415,41 @@ export async function sendGPT52(
 }
 
 /**
+ * Send message using Step 3.5 Flash model via pollinations-chat edge function
+ */
+export async function sendStep(
+  prompt: string,
+  messages: Message[] = [],
+  image?: File
+): Promise<string> {
+  try {
+    let imageBase64: string | undefined;
+    if (image) {
+      const buffer = await image.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      bytes.forEach(b => binary += String.fromCharCode(b));
+      imageBase64 = btoa(binary);
+    }
+
+    const { data, error } = await supabase.functions.invoke('pollinations-chat', {
+      body: {
+        prompt,
+        model: 'step-3.5-flash',
+        image: imageBase64,
+        systemPrompt: 'You are FARABI, a helpful AI assistant. Provide clear, well-structured responses using markdown formatting. Be concise but thorough.'
+      }
+    });
+
+    if (error) throw error;
+    return data.text || 'No response received';
+  } catch (error) {
+    console.error('sendStep error:', error);
+    throw error;
+  }
+}
+
+/**
  * Send message to Giyaat external API via Supabase Edge Function proxy
  * Stateless API - each message is independent (no conversation history)
  */

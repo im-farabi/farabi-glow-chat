@@ -332,6 +332,9 @@ const Index = () => {
         case 'giyaatLarge':
           response = await sendGiyaat(message, 'large');
           break;
+        case 'step':
+          response = await sendStep(message, messages, image);
+          break;
         case 'gpt52':
           response = await sendGPT52(message, messages, (chunk) => {
             setMessages(prev => {
