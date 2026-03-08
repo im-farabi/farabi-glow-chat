@@ -7,7 +7,7 @@ import ChatArea from '@/components/ChatArea';
 import TTSPlayer from '@/components/TTSPlayer';
 import AdvancedTTSPlayer from '@/components/AdvancedTTSPlayer';
 import PremiumBackground from '@/components/PremiumBackground';
-import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage, sendGiyaat, sendGPT52 } from '@/lib/api';
+import { sendFast, sendNormal, sendSuper, sendCoder, sendThink, generateImage, sendGiyaat, sendGPT52, sendStep } from '@/lib/api';
 import { 
   createNewChat, 
   saveChat, 
