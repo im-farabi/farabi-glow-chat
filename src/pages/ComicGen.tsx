@@ -210,31 +210,28 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
 
       toast({ title: `${initialPanels.length} panels planned!`, description: `"${plan.title}" — generating images...` });
 
-      // Step 2: Generate images one by one
+      // Step 2: Generate ALL images in parallel
       setPhase('generating');
 
-      for (let i = 0; i < initialPanels.length; i++) {
-        if (abortRef.current) break;
+      const generateAll = initialPanels.map((panel, i) => 
+        (async () => {
+          if (abortRef.current) return;
+          
+          // Mark as generating
+          setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'generating' } : p));
 
-        setCurrentPanelIndex(i);
+          try {
+            const imageUrl = await generatePanelImage(panel.prompt, panel.id);
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'done', imageUrl } : p));
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : 'Unknown error';
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'error', errorMsg: errMsg } : p));
+            console.error(`Panel ${i + 1} error:`, err);
+          }
+        })()
+      );
 
-        // Mark current as generating
-        setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'generating' } : p));
-
-        try {
-          const imageUrl = await generatePanelImage(initialPanels[i].prompt, initialPanels[i].id);
-          setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'done', imageUrl } : p));
-        } catch (err) {
-          const errMsg = err instanceof Error ? err.message : 'Unknown error';
-          setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'error', errorMsg: errMsg } : p));
-          console.error(`Panel ${i + 1} error:`, err);
-        }
-
-        // Small delay to avoid rate limits
-        if (i < initialPanels.length - 1 && !abortRef.current) {
-          await new Promise(r => setTimeout(r, 1000));
-        }
-      }
+      await Promise.allSettled(generateAll);
 
       setPhase('complete');
       toast({ title: "Comic complete! 🎉", description: `Generated ${initialPanels.length} panels` });
