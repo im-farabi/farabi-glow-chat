@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 interface ImageGenRequest {
@@ -12,6 +12,59 @@ interface ImageGenRequest {
   imageUrl?: string;
   width?: number;
   height?: number;
+}
+
+// Fallback model order if primary model fails
+const MODEL_FALLBACKS: Record<string, string[]> = {
+  'imagen-4': ['gptimage', 'flux', 'seedream'],
+  'gptimage': ['flux', 'imagen-4', 'seedream'],
+  'flux': ['gptimage', 'imagen-4', 'seedream'],
+};
+
+async function tryGenerateImage(
+  prompt: string,
+  model: string, 
+  width: number, 
+  height: number, 
+  seed: number, 
+  apiKey: string,
+  imageUrl?: string
+): Promise<{ success: boolean; imageBlob?: Blob; error?: string }> {
+  const encodedPrompt = encodeURIComponent(prompt);
+  let url = `https://gen.pollinations.ai/image/${encodedPrompt}?model=${model}&width=${width}&height=${height}&seed=${seed}&nologo=true&key=${apiKey}`;
+  
+  if (imageUrl) {
+    url += `&image=${encodeURIComponent(imageUrl)}`;
+  }
+
+  console.log(`[ImageGenMulti] Trying model: ${model}`);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout per attempt
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[ImageGenMulti] ${model} error: ${response.status} - ${errorText.substring(0, 200)}`);
+      return { success: false, error: `${model}: ${response.status}` };
+    }
+
+    const imageBlob = await response.blob();
+    if (imageBlob.size < 1000) {
+      console.error(`[ImageGenMulti] ${model} returned tiny image (${imageBlob.size} bytes)`);
+      return { success: false, error: `${model}: invalid image` };
+    }
+
+    return { success: true, imageBlob };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[ImageGenMulti] ${model} exception: ${msg}`);
+    return { success: false, error: `${model}: ${msg}` };
+  }
 }
 
 serve(async (req) => {
@@ -31,72 +84,49 @@ serve(async (req) => {
       throw new Error('API key not configured');
     }
 
-    // Generate safe seed within 32-bit integer range
     const safeSeed = seed ? Math.floor(seed % 1000000) : Math.floor(Math.random() * 1000000);
+    console.log(`[ImageGenMulti] Request: model=${model}, prompt=${prompt.substring(0, 50)}..., seed=${safeSeed}`);
 
-    console.log(`[ImageGenMulti] Generating with model: ${model}, prompt: ${prompt.substring(0, 50)}..., seed: ${safeSeed}`);
-
-    // Build the Pollinations API URL
-    const encodedPrompt = encodeURIComponent(prompt);
-    let url = `https://gen.pollinations.ai/image/${encodedPrompt}?model=${model}&width=${width}&height=${height}&seed=${safeSeed}&nologo=true&key=${apiKey}`;
+    // Build model attempts list: primary + fallbacks
+    const modelsToTry = [model, ...(MODEL_FALLBACKS[model] || ['gptimage', 'flux'])];
     
-    // Add reference image if provided
-    if (imageUrl) {
-      url += `&image=${encodeURIComponent(imageUrl)}`;
-    }
-
-    console.log(`[ImageGenMulti] Calling Pollinations API...`);
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[ImageGenMulti] Pollinations error: ${response.status} - ${errorText}`);
+    let lastError = '';
+    for (const tryModel of modelsToTry) {
+      const result = await tryGenerateImage(prompt, tryModel, width, height, safeSeed, apiKey, imageUrl);
       
-      // Parse error response for detailed message
-      try {
-        const errorData = JSON.parse(errorText);
-        const innerError = errorData.error?.message || errorData.message;
+      if (result.success && result.imageBlob) {
+        // Convert to base64
+        const arrayBuffer = await result.imageBlob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
         
-        if (innerError && (innerError.includes('moderation_blocked') || innerError.includes('safety system'))) {
-          throw new Error('Content blocked by safety filter');
-        } else if (innerError && innerError.includes('rate_limit')) {
-          throw new Error('Rate limit exceeded, try again');
-        } else if (innerError) {
-          throw new Error(innerError);
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let i = 0; i < uint8Array.length; i += chunkSize) {
+          const chunk = uint8Array.subarray(i, i + chunkSize);
+          binary += String.fromCharCode.apply(null, [...chunk]);
         }
-      } catch (parseErr) {
-        if (parseErr instanceof Error && parseErr.message !== 'Unexpected token') {
-          throw parseErr;
-        }
+        const base64 = btoa(binary);
+        const dataUrl = `data:image/jpeg;base64,${base64}`;
+
+        console.log(`[ImageGenMulti] Success with ${tryModel}, size: ${base64.length} chars`);
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          imageUrl: dataUrl,
+          seed: safeSeed,
+          modelUsed: tryModel
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
-      throw new Error(`Generation failed: ${response.status}`);
+      
+      lastError = result.error || 'Unknown error';
+      console.log(`[ImageGenMulti] ${tryModel} failed, trying next...`);
     }
 
-    // Get the image as blob and convert to base64
-    const imageBlob = await response.blob();
-    const arrayBuffer = await imageBlob.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    
-    // Convert to base64
-    let binary = '';
-    const chunkSize = 0x8000;
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      const chunk = uint8Array.subarray(i, i + chunkSize);
-      binary += String.fromCharCode.apply(null, [...chunk]);
-    }
-    const base64 = btoa(binary);
-    const dataUrl = `data:image/jpeg;base64,${base64}`;
+    // All models failed
+    throw new Error(`All models failed. Last: ${lastError}`);
 
-    console.log(`[ImageGenMulti] Successfully generated image, size: ${base64.length} chars`);
-
-    return new Response(JSON.stringify({ 
-      success: true,
-      imageUrl: dataUrl,
-      seed: safeSeed
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
   } catch (error) {
     console.error('[ImageGenMulti] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
