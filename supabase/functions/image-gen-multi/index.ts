@@ -40,7 +40,7 @@ async function tryGenerateImage(
   console.log(`[ImageGenMulti] Trying model: ${model}`);
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout per attempt
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout per attempt
 
   try {
     const response = await fetch(url, { signal: controller.signal });
