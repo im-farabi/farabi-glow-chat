@@ -44,6 +44,7 @@ import MailPage from "./pages/MailPage";
 import WebGen from "./pages/WebGen";
 import Study from "./pages/Study";
 import SiteView from "./pages/SiteView";
+import ComicGen from "./pages/ComicGen";
 import { getCursorPreference } from "./lib/storage";
 import { useCursorEffects } from "./hooks/useCursorEffects";
 
