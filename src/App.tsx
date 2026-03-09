@@ -106,6 +106,7 @@ const App = () => {
             <Route path="/web" element={<WebGen />} />
             <Route path="/site/*" element={<SiteView />} />
             <Route path="/study" element={<Study />} />
+            <Route path="/comic" element={<ComicGen />} />
             <Route path="/support" element={<Support />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
