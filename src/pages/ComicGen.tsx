@@ -85,8 +85,10 @@ CRITICAL RULES FOR PROMPTS:
 - Make prompts vivid and detailed (lighting, mood, camera angle, expressions)
 
 CAPTION RULES:
-- Short, punchy, comic-book style captions (max 15 words)
-- Can include dialogue in quotes or narrator text
+- Captions should be 1-3 sentences long (20-40 words). They tell the story.
+- Include dialogue in quotes, narrator text, inner thoughts, or action descriptions.
+- Each caption should advance the plot meaningfully so the reader understands the story even without images.
+- Use dramatic, engaging comic-book narration style.
 
 Return ONLY valid JSON (no markdown, no backticks, no extra text):
 {
@@ -159,7 +161,7 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
     const { data, error } = await supabase.functions.invoke('image-gen-multi', {
       body: {
         prompt,
-        model: 'imagen-4',
+        model: 'zimage',
         seed: Math.floor(Math.random() * 1000000),
         width: 1024,
         height: 1024
@@ -208,31 +210,28 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
 
       toast({ title: `${initialPanels.length} panels planned!`, description: `"${plan.title}" — generating images...` });
 
-      // Step 2: Generate images one by one
+      // Step 2: Generate ALL images in parallel
       setPhase('generating');
 
-      for (let i = 0; i < initialPanels.length; i++) {
-        if (abortRef.current) break;
+      const generateAll = initialPanels.map((panel, i) => 
+        (async () => {
+          if (abortRef.current) return;
+          
+          // Mark as generating
+          setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'generating' } : p));
 
-        setCurrentPanelIndex(i);
+          try {
+            const imageUrl = await generatePanelImage(panel.prompt, panel.id);
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'done', imageUrl } : p));
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : 'Unknown error';
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'error', errorMsg: errMsg } : p));
+            console.error(`Panel ${i + 1} error:`, err);
+          }
+        })()
+      );
 
-        // Mark current as generating
-        setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'generating' } : p));
-
-        try {
-          const imageUrl = await generatePanelImage(initialPanels[i].prompt, initialPanels[i].id);
-          setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'done', imageUrl } : p));
-        } catch (err) {
-          const errMsg = err instanceof Error ? err.message : 'Unknown error';
-          setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'error', errorMsg: errMsg } : p));
-          console.error(`Panel ${i + 1} error:`, err);
-        }
-
-        // Small delay to avoid rate limits
-        if (i < initialPanels.length - 1 && !abortRef.current) {
-          await new Promise(r => setTimeout(r, 1000));
-        }
-      }
+      await Promise.allSettled(generateAll);
 
       setPhase('complete');
       toast({ title: "Comic complete! 🎉", description: `Generated ${initialPanels.length} panels` });
@@ -290,7 +289,7 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
                 AI Comic Generator
               </CardTitle>
               <p className="text-base md:text-lg text-muted-foreground mt-3">
-                Describe a story and AI will create a full comic with 15-50 panels using Imagen 4
+                Describe a story and AI will create a full comic with 15-50 panels
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -400,7 +399,7 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
         <div className="mb-6">
           <Progress value={overallProgress} className="h-3" />
           <p className="text-sm text-muted-foreground mt-1 text-center">
-            {phase === 'generating' ? `Generating panel ${currentPanelIndex + 1} of ${totalPanels}...` : 'Generation complete!'}
+            {phase === 'generating' ? `Generating all ${totalPanels} panels simultaneously...` : 'Generation complete!'}
           </p>
         </div>
 
@@ -457,9 +456,18 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
                 </div>
               </div>
 
-              {/* Caption */}
+              {/* Caption - blurred until image is ready to avoid spoilers */}
               <div className="p-3">
-                <p className="text-sm font-medium leading-snug">{panel.caption}</p>
+                <p className={`text-sm font-medium leading-snug transition-all duration-500 ${
+                  panel.status === 'done' || panel.status === 'error' 
+                    ? 'blur-0' 
+                    : 'blur-sm select-none'
+                }`}>
+                  {panel.caption}
+                </p>
+                {panel.status !== 'done' && panel.status !== 'error' && (
+                  <p className="text-xs text-muted-foreground mt-1 italic">Caption hidden until panel generates</p>
+                )}
               </div>
             </div>
           ))}
