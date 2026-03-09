@@ -154,6 +154,8 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
   };
 
   const generatePanelImage = async (prompt: string, panelId: number): Promise<string> => {
+    console.log(`[ComicGen] Generating panel ${panelId}...`);
+    
     const { data, error } = await supabase.functions.invoke('image-gen-multi', {
       body: {
         prompt,
@@ -164,9 +166,17 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
       }
     });
 
-    if (error) throw new Error(`Panel ${panelId} failed: ${error.message}`);
-    if (!data?.success || !data?.imageUrl) throw new Error(data?.error || `Panel ${panelId}: No image returned`);
+    if (error) {
+      console.error(`[ComicGen] Panel ${panelId} edge function error:`, error);
+      throw new Error(`Panel ${panelId}: ${error.message || 'Edge function error'}`);
+    }
+    
+    if (!data?.success || !data?.imageUrl) {
+      console.error(`[ComicGen] Panel ${panelId} API error:`, data?.error);
+      throw new Error(data?.error || `Panel ${panelId}: No image returned`);
+    }
 
+    console.log(`[ComicGen] Panel ${panelId} generated successfully`);
     return data.imageUrl;
   };
 
