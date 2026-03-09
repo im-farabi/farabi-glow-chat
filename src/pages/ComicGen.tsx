@@ -85,8 +85,10 @@ CRITICAL RULES FOR PROMPTS:
 - Make prompts vivid and detailed (lighting, mood, camera angle, expressions)
 
 CAPTION RULES:
-- Short, punchy, comic-book style captions (max 15 words)
-- Can include dialogue in quotes or narrator text
+- Captions should be 1-3 sentences long (20-40 words). They tell the story.
+- Include dialogue in quotes, narrator text, inner thoughts, or action descriptions.
+- Each caption should advance the plot meaningfully so the reader understands the story even without images.
+- Use dramatic, engaging comic-book narration style.
 
 Return ONLY valid JSON (no markdown, no backticks, no extra text):
 {
