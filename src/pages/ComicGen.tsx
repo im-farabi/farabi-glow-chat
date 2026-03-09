@@ -399,7 +399,7 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
         <div className="mb-6">
           <Progress value={overallProgress} className="h-3" />
           <p className="text-sm text-muted-foreground mt-1 text-center">
-            {phase === 'generating' ? `Generating panel ${currentPanelIndex + 1} of ${totalPanels}...` : 'Generation complete!'}
+            {phase === 'generating' ? `Generating all ${totalPanels} panels simultaneously...` : 'Generation complete!'}
           </p>
         </div>
 
