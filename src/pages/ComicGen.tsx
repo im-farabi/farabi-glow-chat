@@ -289,7 +289,7 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
                 AI Comic Generator
               </CardTitle>
               <p className="text-base md:text-lg text-muted-foreground mt-3">
-                Describe a story and AI will create a full comic with 15-50 panels using Imagen 4
+                Describe a story and AI will create a full comic with 15-50 panels
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
