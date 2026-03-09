@@ -118,20 +118,37 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
     let text = data?.text?.trim();
     if (!text) throw new Error('Empty planning response');
 
-    // Clean markdown
-    text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    console.log('[ComicGen] Raw planning response length:', text.length);
 
-    // Extract JSON object
+    // Robust JSON extraction: strip markdown fences completely
+    text = text.replace(/```json\s*\n?/gi, '').replace(/```\s*\n?/g, '');
+    text = text.trim();
+
+    // Extract the JSON object between first { and last }
     const startIdx = text.indexOf('{');
     const endIdx = text.lastIndexOf('}');
-    if (startIdx === -1 || endIdx === -1) throw new Error('No valid JSON in planning response');
+    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+      console.error('[ComicGen] No valid JSON found in:', text.substring(0, 200));
+      throw new Error('No valid JSON in planning response');
+    }
     text = text.substring(startIdx, endIdx + 1);
 
-    const plan = JSON.parse(text);
+    // Fix common JSON issues: remove trailing commas before } or ]
+    text = text.replace(/,\s*([}\]])/g, '$1');
+
+    let plan;
+    try {
+      plan = JSON.parse(text);
+    } catch (parseErr) {
+      console.error('[ComicGen] JSON parse error:', parseErr, 'Text preview:', text.substring(0, 300));
+      throw new Error('Failed to parse comic plan. Please try again.');
+    }
 
     if (!plan.panels || !Array.isArray(plan.panels) || plan.panels.length < 5) {
       throw new Error('Invalid plan: not enough panels');
     }
+
+    console.log('[ComicGen] Successfully parsed plan with', plan.panels.length, 'panels');
 
     return plan;
   };
