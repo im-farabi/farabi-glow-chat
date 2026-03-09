@@ -456,9 +456,18 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
                 </div>
               </div>
 
-              {/* Caption */}
+              {/* Caption - blurred until image is ready to avoid spoilers */}
               <div className="p-3">
-                <p className="text-sm font-medium leading-snug">{panel.caption}</p>
+                <p className={`text-sm font-medium leading-snug transition-all duration-500 ${
+                  panel.status === 'done' || panel.status === 'error' 
+                    ? 'blur-0' 
+                    : 'blur-sm select-none'
+                }`}>
+                  {panel.caption}
+                </p>
+                {panel.status !== 'done' && panel.status !== 'error' && (
+                  <p className="text-xs text-muted-foreground mt-1 italic">Caption hidden until panel generates</p>
+                )}
               </div>
             </div>
           ))}
