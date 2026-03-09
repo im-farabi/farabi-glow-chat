@@ -161,7 +161,7 @@ Return ONLY valid JSON (no markdown, no backticks, no extra text):
     const { data, error } = await supabase.functions.invoke('image-gen-multi', {
       body: {
         prompt,
-        model: 'imagen-4',
+        model: 'zimage',
         seed: Math.floor(Math.random() * 1000000),
         width: 1024,
         height: 1024
