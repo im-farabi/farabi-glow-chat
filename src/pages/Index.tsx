@@ -256,7 +256,7 @@ const Index = () => {
     setMessages([...newMessages, loadingMessage]);
     
     // Update loading text dynamically for non-imageGen modes
-    let updateInterval: NodeJS.Timeout | null = null;
+    let updateInterval: ReturnType<typeof setTimeout> | null = null;
     if (mode !== 'imageGen') {
       const giyaatStages = [
         { time: 500, text: 'Connecting to GIYAAT...' },
