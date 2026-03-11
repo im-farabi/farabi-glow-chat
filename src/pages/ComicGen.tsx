@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, BookOpen, ArrowLeft, ArrowRight, RotateCcw, Sparkles, Shuffle, ChevronLeft, ChevronRight, Crown } from 'lucide-react';
+import { Loader2, BookOpen, ArrowLeft, ArrowRight, RotateCcw, Sparkles, Shuffle, ChevronLeft, ChevronRight, Crown, Star, Zap, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -16,23 +16,46 @@ import modernImg from '@/assets/comic-style-modern.png';
 
 const useComicPageSEO = () => {
   useEffect(() => {
-    document.title = "AI Comic Generator - Farabi | Create Comics with AI";
+    document.title = "AI Story Generator - Farabi | Create Illustrated Stories with AI";
     const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute('content', 'Generate AI-powered comics from any story idea. Choose art style, genre, and watch your comic come to life!');
+    if (meta) meta.setAttribute('content', 'Generate AI-powered illustrated stories from any idea. Choose art style, genre, and watch your story come to life with dual-model image generation!');
   }, []);
 };
+
+interface PanelImage {
+  url: string | null;
+  model: string;
+  status: 'waiting' | 'generating' | 'done' | 'error';
+  error?: string;
+}
 
 interface ComicPanel {
   id: number;
   prompt: string;
   dialogue: string;
   caption: string;
-  imageUrl: string | null;
-  status: 'waiting' | 'generating' | 'done' | 'error';
-  errorMsg?: string;
+  imageA: PanelImage;
+  imageB: PanelImage;
+  selectedImage: 'A' | 'B' | null;
 }
 
-type Phase = 'idle' | 'style' | 'genre' | 'planning' | 'generating' | 'complete';
+type Phase = 'idle' | 'style' | 'genre' | 'duo-select' | 'planning' | 'generating' | 'complete';
+
+interface DuoOption {
+  id: string;
+  label: string;
+  modelA: string;
+  modelB: string;
+  labelA: string;
+  labelB: string;
+  desc: string;
+  recommended?: boolean;
+}
+
+const DUOS: DuoOption[] = [
+  { id: 'duo1', label: 'FLUX + IMAGEN', modelA: 'flux-2-dev', modelB: 'imagen-4', labelA: 'Flux', labelB: 'Imagen', desc: 'Best quality, great redundancy', recommended: true },
+  { id: 'duo2', label: 'GROK + ZIMAGE', modelA: 'grok-imagine', modelB: 'zimage', labelA: 'Grok', labelB: 'ZImage', desc: 'Fast alternative pair' },
+];
 
 const SURPRISE_IDEAS = [
   "A kid finds a magic backpack that takes him to a new world every time he opens it",
@@ -156,12 +179,10 @@ const DinoGame = () => {
       g.frame++;
       ctx.clearRect(0, 0, W, H);
 
-      // Ground
       ctx.fillStyle = '#555';
       ctx.fillRect(0, GROUND, W, 2);
 
       if (!g.gameOver) {
-        // Dino physics
         g.dino.vy += 0.6;
         g.dino.y += g.dino.vy;
         if (g.dino.y >= GROUND - g.dino.height) {
@@ -170,7 +191,6 @@ const DinoGame = () => {
           g.dino.jumping = false;
         }
 
-        // Spawn obstacles
         g.spawnTimer++;
         if (g.spawnTimer > 60 + Math.random() * 40) {
           const h = 20 + Math.random() * 20;
@@ -178,13 +198,11 @@ const DinoGame = () => {
           g.spawnTimer = 0;
         }
 
-        // Move obstacles
         for (const obs of g.obstacles) {
           obs.x -= g.speed;
         }
         g.obstacles = g.obstacles.filter(o => o.x > -20);
 
-        // Collision
         const dx = 30;
         const dy = g.dino.y;
         const dw = g.dino.width;
@@ -199,18 +217,13 @@ const DinoGame = () => {
         if (g.frame % 300 === 0) g.speed += 0.3;
       }
 
-      // Draw dino (simple T-rex shape)
       ctx.fillStyle = '#ccc';
       const dy2 = g.dino.y;
-      // Body
       ctx.fillRect(30, dy2 + 6, 20, 18);
-      // Head
       ctx.fillRect(38, dy2, 16, 12);
-      // Eye
       ctx.fillStyle = '#333';
       ctx.fillRect(48, dy2 + 3, 3, 3);
       ctx.fillStyle = '#ccc';
-      // Legs (animate)
       if (!g.gameOver) {
         if (g.frame % 10 < 5) {
           ctx.fillRect(34, dy2 + 24, 4, 8);
@@ -223,19 +236,15 @@ const DinoGame = () => {
         ctx.fillRect(34, dy2 + 24, 4, 8);
         ctx.fillRect(44, dy2 + 24, 4, 8);
       }
-      // Tail
       ctx.fillRect(22, dy2 + 8, 10, 6);
 
-      // Draw obstacles (cacti)
       ctx.fillStyle = '#888';
       for (const obs of g.obstacles) {
         ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-        // Cactus arms
         ctx.fillRect(obs.x - 4, obs.y + 6, 5, 4);
         ctx.fillRect(obs.x + obs.width - 1, obs.y + 10, 5, 4);
       }
 
-      // Score
       ctx.fillStyle = '#aaa';
       ctx.font = '12px monospace';
       ctx.fillText(`Score: ${Math.floor(g.score / 5)}`, W - 90, 20);
@@ -286,13 +295,17 @@ const ComicGen = () => {
   const [phase, setPhase] = useState<Phase>('idle');
   const [selectedStyle, setSelectedStyle] = useState('');
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedDuo, setSelectedDuo] = useState<DuoOption | null>(null);
   const [comicTitle, setComicTitle] = useState('');
   const [panels, setPanels] = useState<ComicPanel[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
 
   const totalPanels = panels.length;
-  const donePanels = panels.filter(p => p.status === 'done').length;
-  const allDone = totalPanels > 0 && panels.every(p => p.status === 'done' || p.status === 'error');
+  const donePanels = panels.filter(p => p.imageA.status === 'done' || p.imageB.status === 'done').length;
+  const allDone = totalPanels > 0 && panels.every(p =>
+    (p.imageA.status === 'done' || p.imageA.status === 'error') &&
+    (p.imageB.status === 'done' || p.imageB.status === 'error')
+  );
   const overallProgress = totalPanels > 0 ? (donePanels / totalPanels) * 100 : 0;
 
   // Keyboard navigation
@@ -316,7 +329,7 @@ const ComicGen = () => {
 
   const goToStyle = () => {
     if (!storyInput.trim()) {
-      toast({ title: "Write a story first!", description: "Describe your comic idea or tap Surprise Me", variant: "destructive" });
+      toast({ title: "Write a story first!", description: "Describe your story idea or tap Surprise Me", variant: "destructive" });
       return;
     }
     setPhase('style');
@@ -327,17 +340,26 @@ const ComicGen = () => {
     setPhase('genre');
   };
 
+  const goToDuoSelect = () => {
+    if (selectedGenres.length === 0) {
+      toast({ title: "Pick at least one genre!", variant: "destructive" });
+      return;
+    }
+    setPhase('duo-select');
+  };
+
   const toggleGenre = (genreId: string) => {
     setSelectedGenres(prev =>
       prev.includes(genreId) ? prev.filter(g => g !== genreId) : [...prev, genreId]
     );
   };
 
-  const startGeneration = async () => {
-    if (selectedGenres.length === 0) {
-      toast({ title: "Pick at least one genre!", variant: "destructive" });
-      return;
-    }
+  const selectImage = (panelIndex: number, choice: 'A' | 'B') => {
+    setPanels(prev => prev.map((p, i) => i === panelIndex ? { ...p, selectedImage: choice } : p));
+  };
+
+  const startGeneration = async (duo: DuoOption) => {
+    setSelectedDuo(duo);
     setPhase('planning');
     setPanels([]);
     setComicTitle('');
@@ -349,93 +371,136 @@ const ComicGen = () => {
     const genreDescs = genres.map(g => g.desc).join('. ');
 
     try {
-      const plan = await planComic(storyInput, style, genreLabels, genreDescs);
-      setComicTitle(plan.title || 'Untitled Comic');
+      const plan = await planStory(storyInput, style, genreLabels, genreDescs);
+      setComicTitle(plan.title || 'Untitled Story');
 
       const initialPanels: ComicPanel[] = plan.panels.map((p: any) => ({
         id: p.id,
         prompt: p.prompt,
         dialogue: p.dialogue || '',
         caption: p.caption,
-        imageUrl: null,
-        status: 'waiting' as const
+        imageA: { url: null, model: duo.modelA, status: 'waiting' as const },
+        imageB: { url: null, model: duo.modelB, status: 'waiting' as const },
+        selectedImage: null,
       }));
       setPanels(initialPanels);
       setPhase('generating');
 
-      // Generate ALL panels in parallel
-      const promises = initialPanels.map((panel, i) =>
+      // Generate ALL panels — 2 images each, all in parallel
+      const promises = initialPanels.flatMap((panel, i) => [
+        // Image A
         (async () => {
-          setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'generating' } : p));
+          setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, imageA: { ...p.imageA, status: 'generating' } } : p));
           try {
-            const imageUrl = await generatePanelImage(panel.prompt, panel.id);
-            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'done', imageUrl } : p));
+            const result = await generatePanelImage(panel.prompt, duo.modelA);
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, imageA: { ...p.imageA, status: 'done', url: result.imageUrl } } : p));
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : 'Unknown error';
-            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'error', errorMsg: errMsg } : p));
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, imageA: { ...p.imageA, status: 'error', error: errMsg } } : p));
           }
-        })()
-      );
+        })(),
+        // Image B
+        (async () => {
+          setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, imageB: { ...p.imageB, status: 'generating' } } : p));
+          try {
+            const result = await generatePanelImage(panel.prompt, duo.modelB);
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, imageB: { ...p.imageB, status: 'done', url: result.imageUrl } } : p));
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : 'Unknown error';
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, imageB: { ...p.imageB, status: 'error', error: errMsg } } : p));
+          }
+        })(),
+      ]);
 
       await Promise.allSettled(promises);
       setPhase('complete');
-      toast({ title: "Comic complete! 🎉", description: `${initialPanels.length} panels generated` });
+      toast({ title: "Story complete! 🎉", description: `${initialPanels.length} scenes generated with dual images` });
     } catch (err) {
-      console.error('Comic generation error:', err);
+      console.error('Story generation error:', err);
       toast({ title: "Generation failed", description: err instanceof Error ? err.message : 'Unknown error', variant: "destructive" });
       setPhase('idle');
     }
   };
 
-  const planComic = async (story: string, style: typeof ART_STYLES[0], genreLabels: string, genreDescs: string) => {
-    const planPrompt = `You are a LEGENDARY comic book story writer. You make comics that go VIRAL. The user wants a ${genreLabels} comic about: "${story}"
+  const planStory = async (story: string, style: typeof ART_STYLES[0], genreLabels: string, genreDescs: string) => {
+    const planPrompt = `You are a LEGENDARY illustrated story writer. You write stories with such vivid scenes that every illustration matches PERFECTLY.
 
-CRITICAL RULES — READ CAREFULLY:
-- Write like you're telling a story to a 10 year old. Simple words. Short punchy sentences. NO fancy vocabulary.
-- DO NOT give characters specific names. Use descriptions like "the boy", "the girl", "the old man", "the mysterious stranger". Let the reader imagine who they are.
-- The genres are: ${genreLabels} (${genreDescs}). Make the story DEEPLY feel like these genres combined. Every panel should drip with the mood.
+The user wants a ${genreLabels} illustrated story about: "${story}"
 
-GEN Z COMIC RULES (follow ALL of these):
-1. KILLER HOOK: First 3-4 panels must SLAP. Start with something shocking, funny, or mysterious. If it doesn't grab in 2 seconds, it's trash. Open with action or a wild "what if" moment.
-2. KEEP IT CONCISE: Every panel must earn its place. No filler. Every single panel either advances the plot, drops a twist, or hits an emotion. Cut anything boring.
-3. BOLD VISUALS: Describe dynamic angles — bird's eye, extreme close-ups, over-the-shoulder, worm's eye view. Mix it up. Never just "two people standing and talking."
-4. RELATABLE CHARACTERS: Give them quirks and emotions readers feel. Make the reader think "that's literally me."
-5. CLIFFHANGER ENERGY: Every 4-8 panels, drop a mini-bomb — a reveal, a joke, a twist, an emotional gut punch. Keep a "hype map" throughout.
-6. MEMORABLE ENDING: End with a BANG. Twist, emotional payoff, or cliffhanger that makes them NEED more.
+CRITICAL — YOU ARE WRITING AN ILLUSTRATED STORY, NOT A COMIC. Each scene is a moment in the narrative. The image prompt must describe exactly what the reader would SEE in that moment as a photograph or painting.
 
-FOR TENSION/MYSTERY/UNEXPECTED GENRES:
-- Build REAL dread. Make the reader feel unsafe. Foreshadow something terrible.
+=== SPATIAL LOGIC RULES (MANDATORY) ===
+These are the #1 most important rules. Breaking them makes the story feel stupid and nonsensical:
+
+1. POSITION CONSISTENCY: If a character is LYING DOWN, describe the scene FROM their perspective (looking up at things). If they're SITTING, the view is from sitting height. NEVER show a lying-down character standing in the image.
+
+2. CAUSE AND EFFECT: If a CAT falls and gets hurt, the CAT shows pain — NOT the human. If a BOY trips, the BOY is on the ground — NOT someone else. The character who experiences something is the one who reacts.
+
+3. LOCATION CONTINUITY: If someone is in a bedroom, they stay in the bedroom until you describe them moving somewhere else. Don't teleport characters between scenes without explanation.
+
+4. PHYSICAL LOGIC: If someone is sleeping in bed and sees something, they SEE IT FROM BED — they don't magically appear next to it. If someone is running, their hair and clothes show motion.
+
+5. INTERACTION ACCURACY: If character A is chasing character B, the image shows A running BEHIND B. If someone catches something, their hands are holding it. Every interaction must make spatial sense.
+
+=== SCENE DESCRIPTION RULES ===
+Each image prompt must be a COMPLETE SCENE DESCRIPTION like a movie screenshot:
+- WHO is in the scene (full appearance from character sheet)
+- WHERE they are (specific location details)
+- WHAT POSITION each character is in (standing, sitting, lying, running, etc.)
+- WHAT they are doing (specific actions)
+- WHAT ANGLE we see this from (camera perspective)
+- WHAT MOOD/LIGHTING the scene has
+
+BAD prompt: "The boy and the cat in a room"
+GOOD prompt: "${style.prefix} A boy with short spiky black hair, light brown skin, wearing a red hoodie and blue jeans, is crouching down on a wooden floor in a small dimly-lit bedroom, reaching his arms out toward a small orange tabby cat that is sitting on a windowsill looking back at him with wide curious eyes. Warm golden light from the window casts long shadows. Low angle shot from floor level."
+
+=== STORY WRITING RULES ===
+- Write like you're telling a story to a 10 year old. Simple words. Short punchy sentences.
+- DO NOT give characters specific names. Use descriptions like "the boy", "the girl", "the old man", "the mysterious stranger".
+- The genres are: ${genreLabels} (${genreDescs}). Make the story DEEPLY feel like these genres combined.
+
+=== GEN Z STORYTELLING METHODS ===
+1. KILLER HOOK: First 3-4 scenes must SLAP. Start with something shocking, funny, or mysterious.
+2. KEEP IT CONCISE: Every scene must earn its place. No filler.
+3. BOLD VISUALS: Describe dynamic angles — bird's eye, extreme close-ups, over-the-shoulder, worm's eye view.
+4. RELATABLE CHARACTERS: Give them quirks and emotions readers feel.
+5. CLIFFHANGER ENERGY: Every 4-8 scenes, drop a mini-bomb — a reveal, a joke, a twist.
+6. MEMORABLE ENDING: End with a BANG.
+
+=== FOR TENSION/MYSTERY/UNEXPECTED GENRES ===
+- Build REAL dread. Foreshadow something terrible.
 - Plant clues early that only make sense later.
-- The twist should make the reader want to go back and re-read everything.
-- Use misdirection — make them think one thing, then flip it COMPLETELY.
-- Silence and empty spaces are scarier than monsters. Use quiet panels before the shock.
+- Use misdirection — make them think one thing, then flip it.
+- Silence and empty spaces are scarier than monsters.
 
-YOUR JOB:
-1. Create a CHARACTER SHEET. For EVERY character define:
-   - Reference name (use "the boy", "the girl", "the stranger" etc — NOT real names)
-   - Hair color and style (e.g. "short spiky black hair")
-   - Skin tone (e.g. "light brown skin")
-   - Clothing (e.g. "red hoodie, blue jeans, white sneakers") — MUST stay the same in EVERY panel
-   - Height/build (e.g. "tall and thin")
-   - One unique visual feature (e.g. "scar on left cheek" or "always wears green glasses")
+=== YOUR JOB ===
+1. Create a CHARACTER SHEET. For EVERY character:
+   - Reference name ("the boy", "the girl", "the stranger" — NOT real names)
+   - Hair color and style
+   - Skin tone
+   - Clothing (MUST stay the same in EVERY scene)
+   - Height/build
+   - One unique visual feature
 
-2. Create between 15 and 50 panels. More panels = more story detail. Use AT LEAST 25 panels for a good story. Go up to 40-50 for epic stories.
+2. Create between 15 and 50 scenes. Use AT LEAST 25 for a good story. Go up to 40-50 for epic stories.
 
-3. For EACH panel:
-   - "prompt": Detailed image generation prompt. MUST start with the exact art style prefix. MUST include FULL character appearance (hair, skin, clothes, unique feature — copy-paste from character sheet EVERY TIME). Describe setting, action, expression, mood, camera angle. The AI has NO memory — each prompt must be self-contained.
-   - "dialogue": What characters SAY or YELL. Shown at TOP of the comic page. Keep it punchy. Use CAPS for shouting. 1-2 lines max. Examples: "WHAT IS THAT?!" / "No way... it can't be..." / "RUN!!" / "I trusted you..."
-   - "caption": Narrator story text. Shown BELOW the image. 2-3 simple short sentences. Tell what happened, what the character feels, build the mood. Like: "He looked at the old door. His heart was beating fast. Something was behind it."
+3. For EACH scene:
+   - "prompt": Full illustrated scene description. MUST start with the art style prefix. MUST include FULL character appearance copied from character sheet. Must describe exact positions, actions, camera angle, lighting, and setting. Each prompt is self-contained — the AI has NO memory between images.
+   - "dialogue": What characters SAY in this moment. 1-2 lines max. Use CAPS for shouting.
+   - "caption": Narrator text. 2-3 simple short sentences telling what happened and what the character feels.
 
-ART STYLE PREFIX (use this EXACTLY at the start of every prompt):
+   IMPORTANT FOR PROMPT: Each scene prompt must include "Scene continuation:" followed by a brief note of what just happened, to maintain logical flow. Example: "Scene continuation: the boy just found a glowing door in the basement. ${style.prefix} A boy with..."
+
+ART STYLE PREFIX (use at the start of every prompt after the scene continuation note):
 "${style.prefix}"
 
-RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
+RETURN ONLY VALID JSON:
 {
-  "title": "Comic Title",
+  "title": "Story Title",
   "panels": [
     {
       "id": 1,
-      "prompt": "${style.prefix} [full scene description with character appearances]",
+      "prompt": "Scene continuation: opening scene. ${style.prefix} [full scene description with character appearances, positions, camera angle, lighting]",
       "dialogue": "WHAT IS THAT?!",
       "caption": "He saw something in the sky. It was getting closer. He couldn't move."
     }
@@ -471,20 +536,20 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
     try {
       plan = JSON.parse(text);
     } catch {
-      throw new Error('Failed to parse comic plan. Please try again.');
+      throw new Error('Failed to parse story plan. Please try again.');
     }
 
     if (!plan.panels || !Array.isArray(plan.panels) || plan.panels.length < 5) throw new Error('Invalid plan');
     return plan;
   };
 
-  const generatePanelImage = async (prompt: string, panelId: number): Promise<string> => {
+  const generatePanelImage = async (prompt: string, model: string): Promise<{ imageUrl: string; modelUsed: string }> => {
     const { data, error } = await supabase.functions.invoke('image-gen-multi', {
-      body: { prompt, model: 'zimage', seed: Math.floor(Math.random() * 1000000), width: 1024, height: 1024 }
+      body: { prompt, model, seed: Math.floor(Math.random() * 1000000), width: 1024, height: 1024 }
     });
-    if (error) throw new Error(`Panel ${panelId}: ${error.message}`);
-    if (!data?.success || !data?.imageUrl) throw new Error(data?.error || `Panel ${panelId}: No image`);
-    return data.imageUrl;
+    if (error) throw new Error(error.message);
+    if (!data?.success || !data?.imageUrl) throw new Error(data?.error || 'No image');
+    return { imageUrl: data.imageUrl, modelUsed: data.modelUsed };
   };
 
   const handleReset = () => {
@@ -494,21 +559,35 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
     setStoryInput('');
     setSelectedStyle('');
     setSelectedGenres([]);
+    setSelectedDuo(null);
     setCurrentPage(0);
   };
 
-  const retryPanel = async (index: number) => {
-    setPanels(prev => prev.map((p, i) => i === index ? { ...p, status: 'generating', errorMsg: undefined } : p));
+  const retryPanelImage = async (panelIndex: number, side: 'A' | 'B') => {
+    const panel = panels[panelIndex];
+    const model = side === 'A' ? panel.imageA.model : panel.imageB.model;
+    const key = side === 'A' ? 'imageA' : 'imageB';
+
+    setPanels(prev => prev.map((p, i) => i === panelIndex ? { ...p, [key]: { ...p[key], status: 'generating', error: undefined } } : p));
     try {
-      const imageUrl = await generatePanelImage(panels[index].prompt, panels[index].id);
-      setPanels(prev => prev.map((p, i) => i === index ? { ...p, status: 'done', imageUrl } : p));
+      const result = await generatePanelImage(panel.prompt, model);
+      setPanels(prev => prev.map((p, i) => i === panelIndex ? { ...p, [key]: { ...p[key], status: 'done', url: result.imageUrl } } : p));
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Unknown error';
-      setPanels(prev => prev.map((p, i) => i === index ? { ...p, status: 'error', errorMsg: errMsg } : p));
+      setPanels(prev => prev.map((p, i) => i === panelIndex ? { ...p, [key]: { ...p[key], status: 'error', error: errMsg } } : p));
     }
   };
 
   const currentPanel = panels[currentPage];
+
+  // Helper to get the display image for a panel (selected or first available)
+  const getDisplayImage = (panel: ComicPanel): { url: string | null; label: string } => {
+    if (panel.selectedImage === 'A' && panel.imageA.url) return { url: panel.imageA.url, label: panel.imageA.model };
+    if (panel.selectedImage === 'B' && panel.imageB.url) return { url: panel.imageB.url, label: panel.imageB.model };
+    if (panel.imageA.status === 'done' && panel.imageA.url) return { url: panel.imageA.url, label: panel.imageA.model };
+    if (panel.imageB.status === 'done' && panel.imageB.url) return { url: panel.imageB.url, label: panel.imageB.model };
+    return { url: null, label: '' };
+  };
 
   // ========== PHASE: IDLE — Story Input ==========
   if (phase === 'idle') {
@@ -527,14 +606,14 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
 
               <div className="text-center space-y-2">
                 <BookOpen className="h-10 w-10 text-primary mx-auto" />
-                <h1 className="text-3xl font-bold">AI Comic Generator</h1>
-                <p className="text-muted-foreground">Tell a story and watch it become a comic</p>
+                <h1 className="text-3xl font-bold">AI Story Generator</h1>
+                <p className="text-muted-foreground">Tell a story and watch it become an illustrated masterpiece</p>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Your Story Idea</label>
                 <Textarea
-                  placeholder="Describe your comic story... what happens, who's in it, where does it take place?"
+                  placeholder="Describe your story... what happens, who's in it, where does it take place?"
                   value={storyInput}
                   onChange={(e) => setStoryInput(e.target.value.slice(0, 500))}
                   maxLength={500}
@@ -545,7 +624,7 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
 
               <div className="flex flex-col gap-3">
                 <Button onClick={goToStyle} disabled={!storyInput.trim()} className="w-full h-12 text-lg bg-gradient-to-r from-primary to-secondary" size="lg">
-                  <Sparkles className="mr-2 h-5 w-5" /> Generate Comic
+                  <Sparkles className="mr-2 h-5 w-5" /> Generate Story
                 </Button>
                 <Button variant="outline" onClick={handleSurprise} className="w-full">
                   <Shuffle className="mr-2 h-4 w-4" /> Surprise Me
@@ -572,7 +651,7 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
               </Button>
 
               <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold">How should your comic look?</h2>
+                <h2 className="text-2xl font-bold">How should your story look?</h2>
                 <p className="text-muted-foreground">Pick an art style</p>
               </div>
 
@@ -617,7 +696,7 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
 
               <div className="text-center space-y-2">
                 <h2 className="text-2xl font-bold">What kind of story?</h2>
-                <p className="text-muted-foreground">Pick one or more genres to shape your comic's vibe</p>
+                <p className="text-muted-foreground">Pick one or more genres to shape your story's vibe</p>
               </div>
 
               <div className="flex flex-wrap gap-3 justify-center">
@@ -641,14 +720,72 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
                 <div className="flex flex-col items-center gap-2 pt-2">
                   <p className="text-sm text-muted-foreground">{selectedGenres.length} genre{selectedGenres.length > 1 ? 's' : ''} selected</p>
                   <Button
-                    onClick={startGeneration}
+                    onClick={goToDuoSelect}
                     className="h-12 px-8 text-lg bg-gradient-to-r from-primary to-secondary"
                     size="lg"
                   >
-                    <Sparkles className="mr-2 h-5 w-5" /> Generate Comic
+                    <ArrowRight className="mr-2 h-5 w-5" /> Next: Choose Image Engine
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  // ========== PHASE: DUO SELECT — Choose Image Model Duo ==========
+  if (phase === 'duo-select') {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <PremiumBackground />
+        <Header showTemporaryToggle={false} />
+        <main className="flex-1 container max-w-2xl mx-auto px-4 py-8 animate-fade-in">
+          <Card className="bg-card/60 backdrop-blur-xl border-border/50">
+            <CardContent className="pt-6 space-y-6">
+              <Button variant="ghost" size="sm" onClick={() => setPhase('genre')}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold">Choose Image Engine</h2>
+                <p className="text-muted-foreground">Each scene generates 2 images — pick the one you like best</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {DUOS.map(duo => (
+                  <button
+                    key={duo.id}
+                    onClick={() => startGeneration(duo)}
+                    className={`relative rounded-xl p-6 text-left border-2 transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                      duo.recommended
+                        ? 'border-primary/60 bg-primary/5 hover:border-primary hover:shadow-[0_0_25px_rgba(236,72,153,0.2)]'
+                        : 'border-border/50 bg-card/40 hover:border-primary/40'
+                    }`}
+                  >
+                    {duo.recommended && (
+                      <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                        <Star className="h-3 w-3" /> Recommended
+                      </div>
+                    )}
+                    <div className="space-y-3">
+                      <h3 className="text-lg font-bold text-foreground">{duo.label}</h3>
+                      <p className="text-sm text-muted-foreground">{duo.desc}</p>
+                      <div className="flex gap-2">
+                        <span className="text-xs bg-muted/50 px-2 py-1 rounded-full">{duo.labelA}</span>
+                        <span className="text-xs text-muted-foreground">+</span>
+                        <span className="text-xs bg-muted/50 px-2 py-1 rounded-full">{duo.labelB}</span>
+                      </div>
+                      <div className="pt-2">
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                          <Sparkles className="h-4 w-4" /> Generate Story
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </main>
@@ -667,8 +804,8 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
             <CardContent className="py-10 text-center space-y-6">
               <Loader2 className="h-14 w-14 animate-spin text-primary mx-auto" />
               <div>
-                <h2 className="text-2xl font-bold">GENERATING STORY</h2>
-                <p className="text-muted-foreground mt-2 text-sm">AI is writing your comic script and creating characters...</p>
+                <h2 className="text-2xl font-bold">WRITING YOUR STORY</h2>
+                <p className="text-muted-foreground mt-2 text-sm">AI is crafting your narrative and creating characters...</p>
               </div>
               <div className="border-t border-border/30 pt-4">
                 <DinoGame />
@@ -680,7 +817,10 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
     );
   }
 
-  // ========== PHASE: GENERATING / COMPLETE — Book Reader ==========
+  // ========== PHASE: GENERATING / COMPLETE — Book Reader with Dual Images ==========
+  const panelHasSelection = currentPanel?.selectedImage !== null;
+  const bothImagesReady = currentPanel && (currentPanel.imageA.status === 'done' || currentPanel.imageA.status === 'error') && (currentPanel.imageB.status === 'done' || currentPanel.imageB.status === 'error');
+
   return (
     <div className="min-h-screen flex flex-col">
       <PremiumBackground />
@@ -689,7 +829,7 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
       {/* GENERATING BANNER */}
       {!allDone && (
         <div className="bg-primary text-primary-foreground text-center py-3 px-4 font-bold text-sm animate-pulse">
-          ✨ GENERATING COMICS — {donePanels}/{totalPanels} panels ready
+          ✨ GENERATING STORY — {donePanels}/{totalPanels} scenes ready
           <Progress value={overallProgress} className="h-1.5 mt-2 max-w-md mx-auto bg-primary-foreground/20" />
         </div>
       )}
@@ -700,15 +840,15 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
 
         {/* Page indicator */}
         <p className="text-sm text-muted-foreground mb-4">
-          Panel {currentPage + 1} of {totalPanels}
+          Scene {currentPage + 1} of {totalPanels}
         </p>
 
-        {/* Comic Page */}
+        {/* Story Page */}
         {currentPanel && (
-          <div className="w-full max-w-lg space-y-0">
+          <div className="w-full max-w-2xl space-y-0">
             {/* Dialogue — top */}
             <div className="bg-card/80 backdrop-blur-sm border border-border/50 border-b-0 rounded-t-xl px-4 py-3 min-h-[48px] flex items-center justify-center">
-              {currentPanel.status === 'done' || currentPanel.status === 'error' ? (
+              {(currentPanel.imageA.status === 'done' || currentPanel.imageB.status === 'done') ? (
                 <p className="text-center font-bold text-base md:text-lg uppercase tracking-wide">
                   {currentPanel.dialogue || '...'}
                 </p>
@@ -719,36 +859,111 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
               )}
             </div>
 
-            {/* Image */}
-            <div className="aspect-square relative bg-muted/20 border border-border/50">
-              {currentPanel.status === 'done' && currentPanel.imageUrl && (
-                <img src={currentPanel.imageUrl} alt={currentPanel.caption} className="w-full h-full object-cover" />
-              )}
-              {currentPanel.status === 'generating' && (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-3">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="text-muted-foreground">Generating this panel...</p>
+            {/* Dual Image Area */}
+            {panelHasSelection ? (
+              // Selected — show single image full width
+              <div className="aspect-square relative bg-muted/20 border border-border/50">
+                {(() => {
+                  const display = getDisplayImage(currentPanel);
+                  return display.url ? (
+                    <div className="relative w-full h-full">
+                      <img src={display.url} alt={currentPanel.caption} className="w-full h-full object-cover" />
+                      <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                        <Check className="h-3 w-3 text-primary" /> {display.label}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <p className="text-muted-foreground">No image available</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              // Not selected — show side by side
+              <div className="grid grid-cols-2 gap-0 border border-border/50">
+                {/* Image A */}
+                <div className="aspect-square relative bg-muted/20 border-r border-border/30">
+                  {currentPanel.imageA.status === 'done' && currentPanel.imageA.url ? (
+                    <button
+                      onClick={() => selectImage(currentPage, 'A')}
+                      className="w-full h-full relative group cursor-pointer"
+                    >
+                      <img src={currentPanel.imageA.url} alt="Option A" className="w-full h-full object-cover group-hover:brightness-110 transition-all" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
+                        <span className="text-white text-xs font-bold bg-primary/80 px-3 py-1 rounded-full">Keep this</span>
+                      </div>
+                      <div className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm text-xs px-2 py-0.5 rounded-full">
+                        {currentPanel.imageA.model}
+                      </div>
+                    </button>
+                  ) : currentPanel.imageA.status === 'generating' ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-xs text-muted-foreground">{currentPanel.imageA.model}</p>
+                    </div>
+                  ) : currentPanel.imageA.status === 'error' ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-2">
+                      <p className="text-destructive text-xs text-center">{currentPanel.imageA.error || 'Failed'}</p>
+                      <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => retryPanelImage(currentPage, 'A')}>
+                        <RotateCcw className="mr-1 h-3 w-3" /> Retry
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                      <Loader2 className="h-6 w-6 text-muted-foreground/40 animate-spin" />
+                      <p className="text-[10px] text-muted-foreground/50">In queue...</p>
+                    </div>
+                  )}
                 </div>
-              )}
-              {currentPanel.status === 'waiting' && (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                  <Loader2 className="h-8 w-8 text-muted-foreground/40 animate-spin" />
-                  <p className="text-xs text-muted-foreground/50">In queue...</p>
+
+                {/* Image B */}
+                <div className="aspect-square relative bg-muted/20">
+                  {currentPanel.imageB.status === 'done' && currentPanel.imageB.url ? (
+                    <button
+                      onClick={() => selectImage(currentPage, 'B')}
+                      className="w-full h-full relative group cursor-pointer"
+                    >
+                      <img src={currentPanel.imageB.url} alt="Option B" className="w-full h-full object-cover group-hover:brightness-110 transition-all" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
+                        <span className="text-white text-xs font-bold bg-primary/80 px-3 py-1 rounded-full">Keep this</span>
+                      </div>
+                      <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-xs px-2 py-0.5 rounded-full">
+                        {currentPanel.imageB.model}
+                      </div>
+                    </button>
+                  ) : currentPanel.imageB.status === 'generating' ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-xs text-muted-foreground">{currentPanel.imageB.model}</p>
+                    </div>
+                  ) : currentPanel.imageB.status === 'error' ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-2">
+                      <p className="text-destructive text-xs text-center">{currentPanel.imageB.error || 'Failed'}</p>
+                      <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => retryPanelImage(currentPage, 'B')}>
+                        <RotateCcw className="mr-1 h-3 w-3" /> Retry
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                      <Loader2 className="h-6 w-6 text-muted-foreground/40 animate-spin" />
+                      <p className="text-[10px] text-muted-foreground/50">In queue...</p>
+                    </div>
+                  )}
                 </div>
-              )}
-              {currentPanel.status === 'error' && (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-4">
-                  <p className="text-destructive text-sm text-center">{currentPanel.errorMsg || 'Failed'}</p>
-                  <Button size="sm" variant="outline" onClick={() => retryPanel(currentPage)}>
-                    <RotateCcw className="mr-1 h-3 w-3" /> Retry
-                  </Button>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Selection hint */}
+            {bothImagesReady && !panelHasSelection && (currentPanel.imageA.status === 'done' || currentPanel.imageB.status === 'done') && (
+              <div className="bg-primary/10 border border-primary/20 px-3 py-2 text-center">
+                <p className="text-xs text-primary font-medium">👆 Click the image you like best to keep it</p>
+              </div>
+            )}
 
             {/* Caption — bottom */}
             <div className="bg-card/80 backdrop-blur-sm border border-border/50 border-t-0 rounded-b-xl px-4 py-3 min-h-[64px] flex items-center justify-center">
-              {currentPanel.status === 'done' || currentPanel.status === 'error' ? (
+              {(currentPanel.imageA.status === 'done' || currentPanel.imageB.status === 'done') ? (
                 <p className="text-center text-sm md:text-base leading-relaxed text-muted-foreground">
                   {currentPanel.caption}
                 </p>
@@ -792,7 +1007,7 @@ RETURN ONLY VALID JSON (no markdown, no backticks, no extra text):
         {allDone && (
           <div className="mt-8">
             <Button variant="outline" onClick={handleReset}>
-              <RotateCcw className="mr-2 h-4 w-4" /> Create Another Comic
+              <RotateCcw className="mr-2 h-4 w-4" /> Create Another Story
             </Button>
           </div>
         )}
