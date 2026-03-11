@@ -21,6 +21,7 @@ const MODEL_FALLBACKS: Record<string, string[]> = {
   'gptimage': ['flux', 'zimage', 'seedream'],
   'flux': ['gptimage', 'zimage', 'seedream'],
   'flux-2-dev': ['zimage', 'gptimage', 'flux'],
+  'grok-imagine': ['flux-2-dev', 'gptimage', 'zimage'],
 };
 
 async function tryGenerateImage(
@@ -42,7 +43,7 @@ async function tryGenerateImage(
   console.log(`[ImageGenMulti] Trying model: ${model}`);
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout per attempt
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout per attempt
 
   try {
     const response = await fetch(url, { signal: controller.signal });
