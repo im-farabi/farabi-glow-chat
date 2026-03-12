@@ -21,8 +21,8 @@ serve(async (req) => {
     console.log('Generating TTS with voice:', voice, 'model:', model);
 
     const encodedText = encodeURIComponent(text);
-    // Use new gen.pollinations.ai endpoint with key as query param
-    const audioUrl = `https://gen.pollinations.ai/text/${encodedText}?model=${model || 'openai-audio'}&voice=${voice || 'nova'}&key=${apiKey}`;
+    // Use /audio/ endpoint (updated from deprecated /text/ endpoint)
+    const audioUrl = `https://gen.pollinations.ai/audio/${encodedText}?model=${model || 'openai-audio'}&voice=${voice || 'nova'}&key=${apiKey}`;
 
     const response = await fetch(audioUrl, {
       method: 'GET'
