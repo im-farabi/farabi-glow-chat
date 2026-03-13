@@ -3,22 +3,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, BookOpen, ArrowLeft, ArrowRight, RotateCcw, Sparkles, Shuffle, ChevronLeft, ChevronRight, Crown, Zap, Volume2, VolumeX, Pause, Play } from 'lucide-react';
+import { Loader2, BookOpen, ArrowLeft, RotateCcw, Sparkles, Shuffle, ChevronLeft, ChevronRight, Zap, Volume2, VolumeX, Pause, Play, Square } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import PremiumBackground from '@/components/PremiumBackground';
+import { useIsMobile } from '@/hooks/use-mobile';
 
-import pixelImg from '@/assets/comic-style-pixel.png';
-import colorlessImg from '@/assets/comic-style-colorless.png';
 import modernImg from '@/assets/comic-style-modern.png';
 
 const useComicPageSEO = () => {
   useEffect(() => {
     document.title = "AI Story Generator - Farabi | Create Illustrated Stories with AI";
     const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute('content', 'Generate AI-powered illustrated stories from any idea. Choose art style, genre, and watch your story come to life!');
+    if (meta) meta.setAttribute('content', 'Generate AI-powered illustrated stories from any idea. Choose genre and watch your story come to life!');
   }, []);
 };
 
@@ -31,9 +30,11 @@ interface ComicPanel {
   model: string;
   status: 'waiting' | 'generating' | 'done' | 'error';
   errorMsg?: string;
+  audioUrl?: string | null;
+  audioStatus?: 'waiting' | 'generating' | 'done' | 'error';
 }
 
-type Phase = 'idle' | 'style' | 'genre' | 'planning' | 'generating' | 'complete';
+type Phase = 'idle' | 'genre' | 'mode-select' | 'planning' | 'generating' | 'complete';
 
 const SURPRISE_IDEAS = [
   "A kid finds a magic backpack that takes him to a new world every time he opens it",
@@ -53,11 +54,7 @@ const SURPRISE_IDEAS = [
   "Two siblings find a map that leads to their missing parents in another world",
 ];
 
-const ART_STYLES = [
-  { id: 'pixel', label: 'Pixelated', image: pixelImg, prefix: 'Pixel art style, Minecraft-inspired blocky voxel aesthetic, 16-bit retro video game look, chunky square pixels, limited color palette like old games, pixelated characters and environments, nostalgic retro gaming feel.' },
-  { id: 'colorless', label: 'Colorless', image: colorlessImg, prefix: 'Black and white pencil sketch, hand-drawn look, NO color at all, pure grayscale, rough pencil strokes, sketchy line art, like a notebook doodle or manga draft, crosshatching for shadows, zero saturation.' },
-  { id: 'modern', label: 'Modern', image: modernImg, prefix: 'Ultra high quality digital comic art, professional comic book illustration, vibrant saturated colors, dramatic cinematic lighting with volumetric rays, bold clean outlines, detailed backgrounds, dynamic perspective and foreshortening, professional color grading, studio quality rendering, masterpiece comic panel.', recommended: true },
-];
+const MODERN_STYLE_PREFIX = 'Ultra high quality digital comic art, professional comic book illustration, vibrant saturated colors, dramatic cinematic lighting with volumetric rays, bold clean outlines, detailed backgrounds, dynamic perspective and foreshortening, professional color grading, studio quality rendering, masterpiece comic panel.';
 
 const GENRES = [
   { id: 'romantic', label: '💕 Romantic', desc: 'deeply heartfelt love story that makes you feel butterflies' },
@@ -77,11 +74,14 @@ const GENRES = [
   { id: 'survival', label: '🏝️ Survival', desc: 'fight to stay alive against impossible odds' },
 ];
 
-const AI_MODEL_INFO = `Available image models and their strengths:
-1. flux-2-dev: Best overall photorealism + prompt adherence. Excellent character consistency with multi-reference. Best for realistic/production stories, detailed scenes, and consistent characters across poses. Slightly less artistic than Grok.
-2. zimage: Extremely fast & cheap. Strong photorealism. Great for quick generations. Consistency is prompt-dependent without extras. Good for action-heavy stories with less character focus.
-3. grok-imagine: Most uncensored/creative. Artistic flair, good for edgy/dark/violent content. Creative meme-like style. Good for horror, dark, thriller genres. New reference support helps consistency.
-4. imagen-4: Outstanding photorealism and clarity. Best text rendering. But heavily censored — blocks violent/scary content. Best for romantic, wholesome, light-hearted stories only.`;
+const SPEED_OPTIONS = [
+  { label: '0.75x', value: 0.75 },
+  { label: '1x', value: 1 },
+  { label: '1.10x', value: 1.1 },
+  { label: '1.15x', value: 1.15 },
+  { label: '1.25x', value: 1.25 },
+  { label: '2x', value: 2 },
+];
 
 // ===== CHROME DINO GAME COMPONENT =====
 const DinoGame = () => {
@@ -150,10 +150,7 @@ const DinoGame = () => {
         jump();
       }
     };
-    const handleTouch = (e: TouchEvent) => {
-      e.preventDefault();
-      jump();
-    };
+    const handleTouch = (e: TouchEvent) => { e.preventDefault(); jump(); };
 
     window.addEventListener('keydown', handleKey);
     canvas.addEventListener('touchstart', handleTouch);
@@ -265,48 +262,62 @@ const ComicGen = () => {
   useComicPageSEO();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [storyInput, setStoryInput] = useState('');
   const [phase, setPhase] = useState<Phase>('idle');
-  const [selectedStyle, setSelectedStyle] = useState('');
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [selectedModel, setSelectedModel] = useState('');
   const [comicTitle, setComicTitle] = useState('');
   const [panels, setPanels] = useState<ComicPanel[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [planningProgress, setPlanningProgress] = useState(0);
   const [aiPickingGenre, setAiPickingGenre] = useState(false);
+  const [generationMode, setGenerationMode] = useState<'fast' | 'detailed' | null>(null);
+  const [planningDuration, setPlanningDuration] = useState(15000);
 
   // Audiobook state
   const [audiobookActive, setAudiobookActive] = useState(false);
   const [audiobookPaused, setAudiobookPaused] = useState(false);
   const [audiobookLoading, setAudiobookLoading] = useState(false);
+  const [audiobookSpeed, setAudiobookSpeed] = useState(1);
+  const [allAudioReady, setAllAudioReady] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const panelAudiosRef = useRef<Map<number, string>>(new Map());
 
   const totalPanels = panels.length;
   const donePanels = panels.filter(p => p.status === 'done').length;
   const allDone = totalPanels > 0 && panels.every(p => p.status === 'done' || p.status === 'error');
   const overallProgress = totalPanels > 0 ? (donePanels / totalPanels) * 100 : 0;
+  const audiosDone = panels.filter(p => p.audioStatus === 'done').length;
+  const allAudiosDone = totalPanels > 0 && panels.every(p => p.audioStatus === 'done' || p.audioStatus === 'error');
 
-  // Planning progress bar — fills to 99% over ~23 seconds
+  // Planning progress bar
   useEffect(() => {
     if (phase !== 'planning') {
       setPlanningProgress(0);
       return;
     }
     const startTime = Date.now();
-    const duration = 23000; // 23 seconds to reach 99%
+    const duration = planningDuration;
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min((elapsed / duration) * 99, 99);
       setPlanningProgress(progress);
     }, 200);
     return () => clearInterval(interval);
-  }, [phase]);
+  }, [phase, planningDuration]);
 
-  // Keyboard navigation (only when not in dino game phases)
+  // Check if all audios are ready
+  useEffect(() => {
+    if (allAudiosDone && totalPanels > 0) {
+      setAllAudioReady(true);
+    }
+  }, [allAudiosDone, totalPanels]);
+
+  // Keyboard navigation (disabled during audiobook)
   useEffect(() => {
     if (phase !== 'generating' && phase !== 'complete') return;
+    if (audiobookActive) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         setCurrentPage(p => Math.min(p + 1, totalPanels - 1));
@@ -316,102 +327,130 @@ const ComicGen = () => {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [phase, totalPanels]);
+  }, [phase, totalPanels, audiobookActive]);
 
-  // Audiobook: auto-advance to next page when audio ends
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !audiobookActive) return;
-    const onEnded = () => {
-      if (currentPage < totalPanels - 1) {
-        setCurrentPage(p => p + 1);
-      } else {
-        // Story finished
-        setAudiobookActive(false);
-        toast({ title: "Audiobook finished! 📖" });
-      }
-    };
-    audio.addEventListener('ended', onEnded);
-    return () => audio.removeEventListener('ended', onEnded);
-  }, [audiobookActive, currentPage, totalPanels, toast]);
-
-  // Audiobook: generate TTS for current page when active
+  // Audiobook: auto-advance + play from cache
   useEffect(() => {
     if (!audiobookActive || audiobookPaused) return;
     const panel = panels[currentPage];
-    if (!panel || panel.status !== 'done') return;
+    if (!panel) return;
 
-    const text = `${panel.dialogue ? panel.dialogue + '. ' : ''}${panel.caption}`;
-    if (!text.trim()) return;
-
-    let cancelled = false;
-    const generateAudio = async () => {
-      setAudiobookLoading(true);
-      try {
-        // Stop any current audio
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current = null;
-        }
-
-        const response = await fetch(
-          `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID || 'gjlxuvcfoqjhwzcmpaju'}.supabase.co/functions/v1/pollinations-tts`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqbHh1dmNmb3FqaHd6Y21wYWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3OTI5NjEsImV4cCI6MjA3ODM2ODk2MX0.5QgFtSCjSbwzudA8iz2-laO1st46ekY_tJIE2a41Vms',
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqbHh1dmNmb3FqaHd6Y21wYWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3OTI5NjEsImV4cCI6MjA3ODM2ODk2MX0.5QgFtSCjSbwzudA8iz2-laO1st46ekY_tJIE2a41Vms'}`,
-            },
-            body: JSON.stringify({ text, voice: 'nova', model: 'openai-audio' }),
+    const cachedUrl = panelAudiosRef.current.get(currentPage);
+    if (!cachedUrl) {
+      // Audio not ready yet, generate on the fly
+      let cancelled = false;
+      const genAudio = async () => {
+        setAudiobookLoading(true);
+        try {
+          const text = `${panel.dialogue ? panel.dialogue + '. ' : ''}${panel.caption}`;
+          if (!text.trim()) {
+            if (currentPage < totalPanels - 1) setCurrentPage(p => p + 1);
+            return;
           }
-        );
-
-        if (!response.ok) throw new Error('TTS failed');
-        if (cancelled) return;
-
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        setAudiobookLoading(false);
-        await audio.play();
-      } catch (err) {
-        console.error('Audiobook TTS error:', err);
-        setAudiobookLoading(false);
-        if (!cancelled) {
-          // Auto-advance even on error
-          if (currentPage < totalPanels - 1) {
-            setTimeout(() => setCurrentPage(p => p + 1), 2000);
+          const url = await generateTTSAudio(text);
+          if (cancelled) return;
+          panelAudiosRef.current.set(currentPage, url);
+          playAudioFromUrl(url);
+        } catch {
+          setAudiobookLoading(false);
+          if (!cancelled && currentPage < totalPanels - 1) {
+            setTimeout(() => setCurrentPage(p => p + 1), 1500);
           }
         }
+      };
+      genAudio();
+      return () => { cancelled = true; };
+    } else {
+      playAudioFromUrl(cachedUrl);
+    }
+  }, [audiobookActive, audiobookPaused, currentPage]);
+
+  const playAudioFromUrl = (url: string) => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    const audio = new Audio(url);
+    audio.playbackRate = audiobookSpeed;
+    audioRef.current = audio;
+
+    audio.oncanplaythrough = () => {
+      setAudiobookLoading(false);
+      audio.play().catch(() => {});
+    };
+
+    audio.onended = () => {
+      if (currentPage < totalPanels - 1) {
+        setCurrentPage(p => p + 1);
+      } else {
+        setAudiobookActive(false);
+        toast({ title: "Story finished! 📖🎉" });
       }
     };
 
-    generateAudio();
-    return () => {
-      cancelled = true;
-      if (audioRef.current) {
-        audioRef.current.pause();
+    audio.onerror = () => {
+      setAudiobookLoading(false);
+      if (currentPage < totalPanels - 1) {
+        setTimeout(() => setCurrentPage(p => p + 1), 1500);
       }
     };
-  }, [audiobookActive, audiobookPaused, currentPage, panels, totalPanels]);
 
-  const handleSurprise = () => {
-    const random = SURPRISE_IDEAS[Math.floor(Math.random() * SURPRISE_IDEAS.length)];
-    setStoryInput(random);
+    audio.load();
   };
 
-  const goToStyle = () => {
+  // Update playback speed when changed
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = audiobookSpeed;
+    }
+  }, [audiobookSpeed]);
+
+  const generateTTSAudio = async (text: string): Promise<string> => {
+    const cleanText = text
+      .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+      .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
+      .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
+      .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '')
+      .replace(/[\u{2600}-\u{26FF}]/gu, '')
+      .replace(/[\u{2700}-\u{27BF}]/gu, '')
+      .replace(/[\u{FE00}-\u{FE0F}]/gu, '')
+      .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')
+      .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')
+      .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')
+      .replace(/#\w+/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/`/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const response = await fetch(
+      `https://gjlxuvcfoqjhwzcmpaju.supabase.co/functions/v1/pollinations-tts`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqbHh1dmNmb3FqaHd6Y21wYWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3OTI5NjEsImV4cCI6MjA3ODM2ODk2MX0.5QgFtSCjSbwzudA8iz2-laO1st46ekY_tJIE2a41Vms',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqbHh1dmNmb3FqaHd6Y21wYWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3OTI5NjEsImV4cCI6MjA3ODM2ODk2MX0.5QgFtSCjSbwzudA8iz2-laO1st46ekY_tJIE2a41Vms`,
+        },
+        body: JSON.stringify({ text: cleanText, voice: 'matilda', model: 'openai-audio' }),
+      }
+    );
+
+    if (!response.ok) throw new Error('TTS failed');
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  };
+
+  const handleSurprise = () => {
+    setStoryInput(SURPRISE_IDEAS[Math.floor(Math.random() * SURPRISE_IDEAS.length)]);
+  };
+
+  const goToGenre = () => {
     if (!storyInput.trim()) {
       toast({ title: "Write a story first!", description: "Describe your story idea or tap Surprise Me", variant: "destructive" });
       return;
     }
-    setPhase('style');
-  };
-
-  const goToGenre = (styleId: string) => {
-    setSelectedStyle(styleId);
     setPhase('genre');
   };
 
@@ -421,113 +460,93 @@ const ComicGen = () => {
     );
   };
 
-  // === LET AI PICK — Genre ===
+  // === LET AI PICK — Genre (improved reliability) ===
   const letAiPickGenre = async () => {
     setAiPickingGenre(true);
     try {
       const { data, error } = await supabase.functions.invoke('pollinations-chat', {
         body: {
-          prompt: `You are a story genre expert. Read this story idea and pick the 2-4 BEST genres that would make it amazing.
+          prompt: `Pick 2-4 best genres for this story. Story: "${storyInput}"
 
-Story: "${storyInput}"
+Available: ${GENRES.map(g => g.id).join(', ')}
 
-Available genres (pick by ID): ${GENRES.map(g => `${g.id} (${g.label}: ${g.desc})`).join(', ')}
-
-Think about what would make this story the most engaging, emotional, and entertaining. Pick genres that COMPLEMENT each other.
-
-Return ONLY a JSON array of genre IDs. Example: ["dark", "mystery", "thriller"]
-No explanation, just the JSON array.`,
+Reply with ONLY a JSON array like ["dark","mystery"]. No other text.`,
           model: 'mistral',
-          temperature: 0.3,
-          max_tokens: 100,
+          temperature: 0.2,
+          max_tokens: 60,
         }
       });
 
       if (error) throw error;
-      let text = data?.text?.trim() || '[]';
+      let text = data?.text?.trim() || '';
       text = text.replace(/```json\s*\n?/gi, '').replace(/```\s*\n?/g, '').trim();
-      const startIdx = text.indexOf('[');
-      const endIdx = text.lastIndexOf(']');
-      if (startIdx !== -1 && endIdx !== -1) {
-        const arr = JSON.parse(text.substring(startIdx, endIdx + 1));
+      
+      // Try to extract JSON array
+      const match = text.match(/\[[\s\S]*?\]/);
+      if (match) {
+        const arr = JSON.parse(match[0]);
         const validIds = arr.filter((id: string) => GENRES.some(g => g.id === id));
         if (validIds.length > 0) {
           setSelectedGenres(validIds);
           toast({ title: "AI picked genres! 🎯", description: validIds.map((id: string) => GENRES.find(g => g.id === id)?.label).join(', ') });
+          setAiPickingGenre(false);
+          return;
         }
+      }
+      
+      // Fallback: try to find genre IDs in the text
+      const foundGenres = GENRES.filter(g => text.toLowerCase().includes(g.id)).map(g => g.id);
+      if (foundGenres.length > 0) {
+        setSelectedGenres(foundGenres.slice(0, 4));
+        toast({ title: "AI picked genres! 🎯", description: foundGenres.slice(0, 4).map(id => GENRES.find(g => g.id === id)?.label).join(', ') });
+      } else {
+        // Ultimate fallback: pick random 3
+        const shuffled = [...GENRES].sort(() => Math.random() - 0.5).slice(0, 3);
+        setSelectedGenres(shuffled.map(g => g.id));
+        toast({ title: "AI picked genres! 🎯", description: shuffled.map(g => g.label).join(', ') });
       }
     } catch (err) {
       console.error('AI genre pick error:', err);
-      toast({ title: "AI couldn't pick, choose manually!", variant: "destructive" });
+      // Fallback on error: pick 3 random
+      const shuffled = [...GENRES].sort(() => Math.random() - 0.5).slice(0, 3);
+      setSelectedGenres(shuffled.map(g => g.id));
+      toast({ title: "AI picked genres! 🎯", description: shuffled.map(g => g.label).join(', ') });
     }
     setAiPickingGenre(false);
   };
 
-  // === AI picks best model during planning ===
-  const aiPickModel = async (story: string, genres: string[], styleName: string): Promise<string> => {
-    try {
-      const genreNames = genres.map(id => GENRES.find(g => g.id === id)?.label || id).join(', ');
-      const { data, error } = await supabase.functions.invoke('pollinations-chat', {
-        body: {
-          prompt: `You are an AI image model expert. Pick the BEST image generation model for this story.
-
-Story: "${story}"
-Genres: ${genreNames}
-Art Style: ${styleName}
-
-${AI_MODEL_INFO}
-
-Rules:
-- If genres include horror, dark, thriller, or action → prefer grok-imagine or flux-2-dev (NOT imagen-4, it censors violence)
-- If genres include romantic, humor, or wholesome → imagen-4 is great
-- For pixel art style → zimage or flux-2-dev work well
-- For maximum quality and consistency → flux-2-dev
-- For speed → zimage
-
-Return ONLY the model name (one of: flux-2-dev, zimage, grok-imagine, imagen-4). Nothing else.`,
-          model: 'mistral',
-          temperature: 0.2,
-          max_tokens: 30,
-        }
-      });
-
-      if (error) throw error;
-      const text = (data?.text || '').trim().toLowerCase();
-      const validModels = ['flux-2-dev', 'zimage', 'grok-imagine', 'imagen-4'];
-      const picked = validModels.find(m => text.includes(m));
-      return picked || 'flux-2-dev';
-    } catch {
-      return 'flux-2-dev'; // fallback
-    }
-  };
-
-  const startGeneration = async () => {
+  const showModeSelect = () => {
     if (selectedGenres.length === 0) {
       toast({ title: "Pick at least one genre!", variant: "destructive" });
       return;
     }
+    setPhase('mode-select');
+  };
 
+  const startGeneration = async (mode: 'fast' | 'detailed') => {
+    setGenerationMode(mode);
+    const duration = mode === 'fast' ? 15000 : 38000;
+    setPlanningDuration(duration);
     setPhase('planning');
     setPanels([]);
     setComicTitle('');
     setCurrentPage(0);
     setAudiobookActive(false);
+    setAllAudioReady(false);
+    panelAudiosRef.current.clear();
 
-    const style = ART_STYLES.find(s => s.id === selectedStyle)!;
-    const genres = selectedGenres;
-    const genreLabels = genres.map(id => GENRES.find(g => g.id === id)?.label || id).join(', ');
-    const genreDescs = genres.map(id => GENRES.find(g => g.id === id)?.desc || '').join('. ');
+    const storyModel = mode === 'fast' ? 'mistral' : 'openai-fast';
+    const genreLabels = selectedGenres.map(id => GENRES.find(g => g.id === id)?.label || id).join(', ');
+    const genreDescs = selectedGenres.map(id => GENRES.find(g => g.id === id)?.desc || '').join('. ');
 
     try {
-      // Run story planning and AI model pick in parallel
-      const [plan, pickedModel] = await Promise.all([
-        planStory(storyInput, style, genreLabels, genreDescs),
-        aiPickModel(storyInput, genres, style.label),
-      ]);
+      const plan = await planStory(storyInput, genreLabels, genreDescs, storyModel);
 
       setPlanningProgress(100);
-      setSelectedModel(pickedModel);
       setComicTitle(plan.title || 'Untitled Story');
+
+      // Always use imagen-4, fallback handled by image-gen-multi
+      const primaryModel = 'imagen-4';
 
       const initialPanels: ComicPanel[] = plan.panels.map((p: any) => ({
         id: p.id,
@@ -535,21 +554,23 @@ Return ONLY the model name (one of: flux-2-dev, zimage, grok-imagine, imagen-4).
         dialogue: p.dialogue || '',
         caption: p.caption,
         imageUrl: null,
-        model: pickedModel,
+        model: primaryModel,
         status: 'waiting' as const,
+        audioUrl: null,
+        audioStatus: 'waiting' as const,
       }));
       setPanels(initialPanels);
       setPhase('generating');
 
-      toast({ title: `AI picked: ${pickedModel}`, description: "Starting image generation..." });
+      toast({ title: "Story planned! 📖", description: "Generating images and audio..." });
 
-      // Generate all images in parallel
+      // Generate images + audio in parallel for each panel
       const promises = initialPanels.map((panel, i) =>
         (async () => {
           setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'generating' } : p));
           try {
-            const result = await generatePanelImage(panel.prompt, pickedModel);
-            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'done', imageUrl: result.imageUrl } : p));
+            const result = await generatePanelImage(panel.prompt, primaryModel);
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'done', imageUrl: result.imageUrl, model: result.modelUsed } : p));
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : 'Unknown error';
             setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'error', errorMsg: errMsg } : p));
@@ -557,7 +578,26 @@ Return ONLY the model name (one of: flux-2-dev, zimage, grok-imagine, imagen-4).
         })()
       );
 
-      await Promise.allSettled(promises);
+      // Generate audio for all panels in parallel
+      const audioPromises = initialPanels.map((panel, i) =>
+        (async () => {
+          setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, audioStatus: 'generating' } : p));
+          try {
+            const text = `${panel.dialogue ? panel.dialogue + '. ' : ''}${panel.caption}`;
+            if (!text.trim()) {
+              setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, audioStatus: 'done' } : p));
+              return;
+            }
+            const audioUrl = await generateTTSAudio(text);
+            panelAudiosRef.current.set(i, audioUrl);
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, audioStatus: 'done', audioUrl } : p));
+          } catch {
+            setPanels(prev => prev.map((p, idx) => idx === i ? { ...p, audioStatus: 'error' } : p));
+          }
+        })()
+      );
+
+      await Promise.allSettled([...promises, ...audioPromises]);
       setPhase('complete');
       toast({ title: "Story complete! 🎉", description: `${initialPanels.length} scenes generated` });
     } catch (err) {
@@ -567,87 +607,61 @@ Return ONLY the model name (one of: flux-2-dev, zimage, grok-imagine, imagen-4).
     }
   };
 
-  const planStory = async (story: string, style: typeof ART_STYLES[0], genreLabels: string, genreDescs: string) => {
-    const planPrompt = `You are a LEGENDARY illustrated story writer. You write stories with such vivid scenes that every illustration matches PERFECTLY.
+  const planStory = async (story: string, genreLabels: string, genreDescs: string, model: string) => {
+    const planPrompt = `You are a story writer for KIDS aged 8-14. Write in SIMPLE, EASY English. Short words. Short sentences. Fun and exciting!
 
 The user wants a ${genreLabels} illustrated story about: "${story}"
 
-CRITICAL — YOU ARE WRITING AN ILLUSTRATED STORY, NOT A COMIC. Each scene is a moment in the narrative. The image prompt must describe exactly what the reader would SEE in that moment as a photograph or painting.
+IMPORTANT LANGUAGE RULES:
+- Write like you're talking to a 10 year old kid
+- Use simple words a kid would understand
+- Keep sentences SHORT (max 15 words each)
+- Use fun expressions like "WOW!", "OH NO!", "WHAT IS THAT?!", "NO WAY!", "AWESOME!", "UH OH!"
+- NO big fancy words. NO complex sentences.
+- The dialogue should sound like how real kids talk
+- The captions should be easy to read out loud
 
-=== SPATIAL LOGIC RULES (MANDATORY) ===
-These are the #1 most important rules. Breaking them makes the story feel stupid and nonsensical:
-
-1. POSITION CONSISTENCY: If a character is LYING DOWN, describe the scene FROM their perspective (looking up at things). If they're SITTING, the view is from sitting height. NEVER show a lying-down character standing in the image.
-
-2. CAUSE AND EFFECT: If a CAT falls and gets hurt, the CAT shows pain — NOT the human. If a BOY trips, the BOY is on the ground — NOT someone else. The character who experiences something is the one who reacts.
-
-3. LOCATION CONTINUITY: If someone is in a bedroom, they stay in the bedroom until you describe them moving somewhere else. Don't teleport characters between scenes without explanation.
-
-4. PHYSICAL LOGIC: If someone is sleeping in bed and sees something, they SEE IT FROM BED — they don't magically appear next to it. If someone is running, their hair and clothes show motion.
-
-5. INTERACTION ACCURACY: If character A is chasing character B, the image shows A running BEHIND B. If someone catches something, their hands are holding it. Every interaction must make spatial sense.
+CRITICAL — Each scene is illustrated. The image prompt must describe EXACTLY what you'd see.
 
 === SCENE DESCRIPTION RULES ===
-Each image prompt must be a COMPLETE SCENE DESCRIPTION like a movie screenshot:
-- WHO is in the scene (full appearance from character sheet)
-- WHERE they are (specific location details)
-- WHAT POSITION each character is in (standing, sitting, lying, running, etc.)
-- WHAT they are doing (specific actions)
-- WHAT ANGLE we see this from (camera perspective)
-- WHAT MOOD/LIGHTING the scene has
+Each prompt must be a COMPLETE scene description:
+- WHO is there (full look from character sheet)
+- WHERE they are
+- WHAT POSITION (standing, sitting, running, etc.)
+- WHAT they are doing
+- CAMERA ANGLE
+- LIGHTING and MOOD
 
-BAD prompt: "The boy and the cat in a room"
-GOOD prompt: "${style.prefix} A boy with short spiky black hair, light brown skin, wearing a red hoodie and blue jeans, is crouching down on a wooden floor in a small dimly-lit bedroom, reaching his arms out toward a small orange tabby cat that is sitting on a windowsill looking back at him with wide curious eyes. Warm golden light from the window casts long shadows. Low angle shot from floor level."
+=== CHARACTER RULES ===
+- Do NOT give characters names. Use "the boy", "the girl", "the old man" etc.
+- Create a character sheet with: hair, skin, clothes, height, one special feature
+- Clothes STAY THE SAME in every scene
 
-=== STORY WRITING RULES ===
-- Write like you're telling a story to a 10 year old. Simple words. Short punchy sentences.
-- DO NOT give characters specific names. Use descriptions like "the boy", "the girl", "the old man", "the mysterious stranger".
-- The genres are: ${genreLabels} (${genreDescs}). Make the story DEEPLY feel like these genres combined.
+=== STORY RULES ===
+- Start with a HOOK that grabs attention
+- Keep it exciting — every scene matters
+- Drop twists and surprises
+- End with a BANG
+- Genres: ${genreLabels} (${genreDescs}). Make the story FEEL like these genres.
 
-=== GEN Z STORYTELLING METHODS ===
-1. KILLER HOOK: First 3-4 scenes must SLAP. Start with something shocking, funny, or mysterious.
-2. KEEP IT CONCISE: Every scene must earn its place. No filler.
-3. BOLD VISUALS: Describe dynamic angles — bird's eye, extreme close-ups, over-the-shoulder, worm's eye view.
-4. RELATABLE CHARACTERS: Give them quirks and emotions readers feel.
-5. CLIFFHANGER ENERGY: Every 4-8 scenes, drop a mini-bomb — a reveal, a joke, a twist.
-6. MEMORABLE ENDING: End with a BANG.
+=== SPATIAL LOGIC (MANDATORY) ===
+1. If a character is lying down, show their view looking UP
+2. If character A gets hurt, A shows pain — not someone else
+3. Characters stay in same location until they move
+4. Actions must make physical sense
 
-=== FOR TENSION/MYSTERY/UNEXPECTED GENRES ===
-- Build REAL dread. Foreshadow something terrible.
-- Plant clues early that only make sense later.
-- Use misdirection — make them think one thing, then flip it.
-- Silence and empty spaces are scarier than monsters.
+ART STYLE PREFIX (use at start of every prompt):
+"${MODERN_STYLE_PREFIX}"
 
-=== YOUR JOB ===
-1. Create a CHARACTER SHEET. For EVERY character:
-   - Reference name ("the boy", "the girl", "the stranger" — NOT real names)
-   - Hair color and style
-   - Skin tone
-   - Clothing (MUST stay the same in EVERY scene)
-   - Height/build
-   - One unique visual feature
-
-2. Create between 15 and 50 scenes. Use AT LEAST 25 for a good story. Go up to 40-50 for epic stories.
-
-3. For EACH scene:
-   - "prompt": Full illustrated scene description. MUST start with the art style prefix. MUST include FULL character appearance copied from character sheet. Must describe exact positions, actions, camera angle, lighting, and setting. Each prompt is self-contained — the AI has NO memory between images.
-   - "dialogue": What characters SAY in this moment. 1-2 lines max. Use CAPS for shouting.
-   - "caption": Narrator text. 2-3 simple short sentences telling what happened and what the character feels.
-
-   IMPORTANT FOR PROMPT: Each scene prompt must include "Scene continuation:" followed by a brief note of what just happened, to maintain logical flow. Example: "Scene continuation: the boy just found a glowing door in the basement. ${style.prefix} A boy with..."
-
-ART STYLE PREFIX (use at the start of every prompt after the scene continuation note):
-"${style.prefix}"
-
-RETURN ONLY VALID JSON:
+Create 15-40 scenes. Return ONLY valid JSON:
 {
   "title": "Story Title",
   "panels": [
     {
       "id": 1,
-      "prompt": "Scene continuation: opening scene. ${style.prefix} [full scene description with character appearances, positions, camera angle, lighting]",
+      "prompt": "Scene continuation: opening. ${MODERN_STYLE_PREFIX} [full scene description]",
       "dialogue": "WHAT IS THAT?!",
-      "caption": "He saw something in the sky. It was getting closer. He couldn't move."
+      "caption": "He saw something weird in the sky. It was coming closer. He couldn't move!"
     }
   ]
 }`;
@@ -655,13 +669,10 @@ RETURN ONLY VALID JSON:
     const { data, error } = await supabase.functions.invoke('pollinations-chat', {
       body: {
         prompt: planPrompt,
-        model: 'gemini-fast',
+        model: model,
         seed: Math.floor(Math.random() * 1000000),
-        image: null,
-        useFallback: false,
         temperature: 0.85,
         max_tokens: 32000,
-        fallbackModel: 'mistral'
       }
     });
 
@@ -702,12 +713,13 @@ RETURN ONLY VALID JSON:
     setPanels([]);
     setComicTitle('');
     setStoryInput('');
-    setSelectedStyle('');
     setSelectedGenres([]);
-    setSelectedModel('');
     setCurrentPage(0);
     setAudiobookActive(false);
     setAudiobookPaused(false);
+    setGenerationMode(null);
+    setAllAudioReady(false);
+    panelAudiosRef.current.clear();
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -718,25 +730,32 @@ RETURN ONLY VALID JSON:
     const panel = panels[panelIndex];
     setPanels(prev => prev.map((p, i) => i === panelIndex ? { ...p, status: 'generating', errorMsg: undefined } : p));
     try {
-      const result = await generatePanelImage(panel.prompt, panel.model);
-      setPanels(prev => prev.map((p, i) => i === panelIndex ? { ...p, status: 'done', imageUrl: result.imageUrl } : p));
+      const result = await generatePanelImage(panel.prompt, 'imagen-4');
+      setPanels(prev => prev.map((p, i) => i === panelIndex ? { ...p, status: 'done', imageUrl: result.imageUrl, model: result.modelUsed } : p));
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Unknown error';
       setPanels(prev => prev.map((p, i) => i === panelIndex ? { ...p, status: 'error', errorMsg: errMsg } : p));
     }
   };
 
-  const toggleAudiobook = () => {
-    if (audiobookActive) {
-      setAudiobookActive(false);
-      setAudiobookPaused(false);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    } else {
-      setAudiobookActive(true);
-      setAudiobookPaused(false);
+  const startAudiobook = () => {
+    if (!allAudioReady) {
+      setAudiobookLoading(true);
+      toast({ title: "Audio is still loading...", description: "Please wait, it will start automatically." });
+    }
+    setCurrentPage(0);
+    setAudiobookActive(true);
+    setAudiobookPaused(false);
+    setAudiobookLoading(!allAudioReady);
+  };
+
+  const stopAudiobook = () => {
+    setAudiobookActive(false);
+    setAudiobookPaused(false);
+    setAudiobookLoading(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
     }
   };
 
@@ -751,6 +770,9 @@ RETURN ONLY VALID JSON:
   };
 
   const currentPanel = panels[currentPage];
+  const cardClass = isMobile
+    ? "bg-card/60 backdrop-blur-xl border border-primary/20 shadow-[0_8px_32px_rgba(236,72,153,0.15)] rounded-xl"
+    : "bg-card/60 backdrop-blur-xl border-2 border-primary/30 shadow-[0_12px_48px_rgba(236,72,153,0.2),0_0_80px_rgba(147,51,234,0.1)] rounded-2xl";
 
   // ========== PHASE: IDLE — Story Input ==========
   if (phase === 'idle') {
@@ -758,9 +780,9 @@ RETURN ONLY VALID JSON:
       <div className="min-h-screen flex flex-col">
         <PremiumBackground />
         <Header showTemporaryToggle={false} />
-        <main className="flex-1 container max-w-2xl mx-auto px-4 py-8 animate-fade-in">
-          <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-[0_8px_32px_rgba(236,72,153,0.15)]">
-            <CardContent className="pt-6 space-y-6">
+        <main className={`flex-1 container mx-auto px-4 py-8 animate-fade-in ${isMobile ? 'max-w-lg' : 'max-w-3xl'}`}>
+          <Card className={cardClass}>
+            <CardContent className={`space-y-6 ${isMobile ? 'pt-6 px-4' : 'pt-8 px-10'}`}>
               <div className="flex items-center justify-between">
                 <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
@@ -768,8 +790,8 @@ RETURN ONLY VALID JSON:
               </div>
 
               <div className="text-center space-y-2">
-                <BookOpen className="h-10 w-10 text-primary mx-auto" />
-                <h1 className="text-3xl font-bold">AI Story Generator</h1>
+                <BookOpen className={`text-primary mx-auto ${isMobile ? 'h-10 w-10' : 'h-14 w-14'}`} />
+                <h1 className={`font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent ${isMobile ? 'text-3xl' : 'text-4xl'}`}>AI Story Generator</h1>
                 <p className="text-muted-foreground">Tell a story and watch it become an illustrated masterpiece</p>
               </div>
 
@@ -780,16 +802,16 @@ RETURN ONLY VALID JSON:
                   value={storyInput}
                   onChange={(e) => setStoryInput(e.target.value.slice(0, 500))}
                   maxLength={500}
-                  className="min-h-[120px] text-base"
+                  className={`text-base border-primary/20 focus:border-primary/50 ${isMobile ? 'min-h-[120px]' : 'min-h-[160px] text-lg'}`}
                 />
                 <p className="text-xs text-muted-foreground text-right">{storyInput.length}/500</p>
               </div>
 
               <div className="flex flex-col gap-3">
-                <Button onClick={goToStyle} disabled={!storyInput.trim()} className="w-full h-12 text-lg bg-gradient-to-r from-primary to-secondary" size="lg">
-                  <Sparkles className="mr-2 h-5 w-5" /> Generate Story
+                <Button onClick={goToGenre} disabled={!storyInput.trim()} className={`w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity ${isMobile ? 'h-12 text-lg' : 'h-14 text-xl'}`} size="lg">
+                  <Sparkles className="mr-2 h-5 w-5" /> Next: Pick Genre
                 </Button>
-                <Button variant="outline" onClick={handleSurprise} className="w-full">
+                <Button variant="outline" onClick={handleSurprise} className="w-full border-primary/30 hover:bg-primary/5">
                   <Shuffle className="mr-2 h-4 w-4" /> Surprise Me
                 </Button>
               </div>
@@ -800,75 +822,31 @@ RETURN ONLY VALID JSON:
     );
   }
 
-  // ========== PHASE: STYLE — Art Style Selection ==========
-  if (phase === 'style') {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <PremiumBackground />
-        <Header showTemporaryToggle={false} />
-        <main className="flex-1 container max-w-3xl mx-auto px-4 py-8 animate-fade-in">
-          <Card className="bg-card/60 backdrop-blur-xl border-border/50">
-            <CardContent className="pt-6 space-y-6">
-              <Button variant="ghost" size="sm" onClick={() => setPhase('idle')}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
-              </Button>
-
-              <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold">How should your story look?</h2>
-                <p className="text-muted-foreground">Pick an art style</p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {ART_STYLES.map(style => (
-                  <button
-                    key={style.id}
-                    onClick={() => goToGenre(style.id)}
-                    className="group relative rounded-xl overflow-hidden border-2 border-border/50 hover:border-primary transition-all hover:shadow-[0_0_20px_rgba(236,72,153,0.3)] focus:outline-none focus:border-primary"
-                  >
-                    <img src={style.image} alt={style.label} className="w-full aspect-[3/4] object-cover" />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background/95 to-transparent p-4">
-                      <p className="font-bold text-lg text-foreground">{style.label}</p>
-                    </div>
-                    {style.recommended && (
-                      <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                        <Crown className="h-3 w-3" /> Recommended
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
-  // ========== PHASE: GENRE — Story Type Selection with LET AI PICK ==========
+  // ========== PHASE: GENRE — Story Type Selection ==========
   if (phase === 'genre') {
     return (
       <div className="min-h-screen flex flex-col">
         <PremiumBackground />
         <Header showTemporaryToggle={false} />
-        <main className="flex-1 container max-w-3xl mx-auto px-4 py-8 animate-fade-in">
-          <Card className="bg-card/60 backdrop-blur-xl border-border/50">
-            <CardContent className="pt-6 space-y-6">
-              <Button variant="ghost" size="sm" onClick={() => setPhase('style')}>
+        <main className={`flex-1 container mx-auto px-4 py-8 animate-fade-in ${isMobile ? 'max-w-lg' : 'max-w-4xl'}`}>
+          <Card className={cardClass}>
+            <CardContent className={`space-y-6 ${isMobile ? 'pt-6 px-4' : 'pt-8 px-10'}`}>
+              <Button variant="ghost" size="sm" onClick={() => setPhase('idle')}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
               </Button>
 
               <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold">What kind of story?</h2>
+                <h2 className={`font-bold ${isMobile ? 'text-2xl' : 'text-3xl'}`}>What kind of story?</h2>
                 <p className="text-muted-foreground">Pick genres or let AI choose for you</p>
               </div>
 
-              {/* LET AI PICK button */}
+              {/* LET AI PICK */}
               <div className="flex justify-center">
                 <Button
                   variant="outline"
                   onClick={letAiPickGenre}
                   disabled={aiPickingGenre}
-                  className="border-primary/50 hover:bg-primary/10 hover:border-primary"
+                  className="border-primary/50 hover:bg-primary/10 hover:border-primary px-6 py-3"
                 >
                   {aiPickingGenre ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> AI is thinking...</>
@@ -878,15 +856,15 @@ RETURN ONLY VALID JSON:
                 </Button>
               </div>
 
-              <div className="flex flex-wrap gap-3 justify-center">
+              <div className={`flex flex-wrap gap-3 justify-center ${isMobile ? '' : 'gap-4'}`}>
                 {GENRES.map(genre => (
                   <Button
                     key={genre.id}
                     variant={selectedGenres.includes(genre.id) ? "default" : "outline"}
-                    className={`h-auto py-3 px-5 text-base transition-all ${
+                    className={`h-auto transition-all ${isMobile ? 'py-3 px-4 text-sm' : 'py-4 px-6 text-base'} ${
                       selectedGenres.includes(genre.id)
-                        ? 'bg-primary text-primary-foreground shadow-lg scale-105'
-                        : 'hover:bg-primary/10 hover:border-primary'
+                        ? 'bg-primary text-primary-foreground shadow-[0_0_20px_rgba(236,72,153,0.3)] scale-105'
+                        : 'hover:bg-primary/10 hover:border-primary border-primary/20'
                     }`}
                     onClick={() => toggleGenre(genre.id)}
                   >
@@ -896,11 +874,11 @@ RETURN ONLY VALID JSON:
               </div>
 
               {selectedGenres.length > 0 && (
-                <div className="flex flex-col items-center gap-2 pt-2">
-                  <p className="text-sm text-muted-foreground">{selectedGenres.length} genre{selectedGenres.length > 1 ? 's' : ''} selected — AI will pick the best image model</p>
+                <div className="flex flex-col items-center gap-3 pt-2">
+                  <p className="text-sm text-muted-foreground">{selectedGenres.length} genre{selectedGenres.length > 1 ? 's' : ''} selected</p>
                   <Button
-                    onClick={startGeneration}
-                    className="h-12 px-8 text-lg bg-gradient-to-r from-primary to-secondary"
+                    onClick={showModeSelect}
+                    className={`bg-gradient-to-r from-primary to-secondary hover:opacity-90 ${isMobile ? 'h-12 px-8 text-lg' : 'h-14 px-12 text-xl'}`}
                     size="lg"
                   >
                     <Sparkles className="mr-2 h-5 w-5" /> Generate Story
@@ -914,25 +892,78 @@ RETURN ONLY VALID JSON:
     );
   }
 
-  // ========== PHASE: PLANNING (with Progress Bar + Dino Game) ==========
+  // ========== PHASE: MODE SELECT — Fast vs Detailed ==========
+  if (phase === 'mode-select') {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <PremiumBackground />
+        <Header showTemporaryToggle={false} />
+        <main className={`flex-1 container mx-auto px-4 py-8 animate-fade-in flex items-center justify-center ${isMobile ? 'max-w-lg' : 'max-w-3xl'}`}>
+          <Card className={cardClass + ' w-full'}>
+            <CardContent className={`space-y-8 ${isMobile ? 'pt-6 px-4' : 'pt-10 px-10'}`}>
+              <Button variant="ghost" size="sm" onClick={() => setPhase('genre')}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+
+              <div className="text-center space-y-2">
+                <h2 className={`font-bold ${isMobile ? 'text-2xl' : 'text-3xl'}`}>How do you want your story?</h2>
+                <p className="text-muted-foreground">Choose speed or quality</p>
+              </div>
+
+              <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                {/* FAST */}
+                <button
+                  onClick={() => startGeneration('fast')}
+                  className={`group relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-card/80 backdrop-blur-sm p-6 text-left transition-all hover:border-primary hover:shadow-[0_0_30px_rgba(236,72,153,0.3)] ${isMobile ? '' : 'p-8'}`}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <Zap className="h-8 w-8 text-yellow-400" />
+                    <h3 className="text-xl font-bold">⚡ FAST</h3>
+                  </div>
+                  <p className="text-muted-foreground text-sm">Quick story generation using Mistral AI. Ready in ~15 seconds.</p>
+                  <p className="text-xs text-muted-foreground mt-2">Best for: Quick stories, testing ideas</p>
+                </button>
+
+                {/* MORE DETAILED */}
+                <button
+                  onClick={() => startGeneration('detailed')}
+                  className={`group relative overflow-hidden rounded-2xl border-2 border-secondary/30 bg-card/80 backdrop-blur-sm p-6 text-left transition-all hover:border-secondary hover:shadow-[0_0_30px_rgba(147,51,234,0.3)] ${isMobile ? '' : 'p-8'}`}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <Sparkles className="h-8 w-8 text-purple-400" />
+                    <h3 className="text-xl font-bold">✨ MORE DETAILED</h3>
+                  </div>
+                  <p className="text-muted-foreground text-sm">Rich, detailed story using OpenAI. Takes ~38 seconds but much better quality.</p>
+                  <p className="text-xs text-muted-foreground mt-2">Best for: Epic stories, longer narratives</p>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  // ========== PHASE: PLANNING ==========
   if (phase === 'planning') {
     return (
       <div className="min-h-screen flex flex-col">
         <PremiumBackground />
         <Header showTemporaryToggle={false} />
         <main className="flex-1 flex items-center justify-center px-4">
-          <Card className="bg-card/60 backdrop-blur-xl border-border/50 w-full max-w-md">
-            <CardContent className="py-10 text-center space-y-6">
-              <Loader2 className="h-14 w-14 animate-spin text-primary mx-auto" />
+          <Card className={`${cardClass} w-full ${isMobile ? 'max-w-sm' : 'max-w-lg'}`}>
+            <CardContent className={`text-center space-y-6 ${isMobile ? 'py-8' : 'py-12'}`}>
+              <Loader2 className={`animate-spin text-primary mx-auto ${isMobile ? 'h-12 w-12' : 'h-16 w-16'}`} />
               <div>
-                <h2 className="text-2xl font-bold">GENERATING YOUR STORY</h2>
-                <p className="text-muted-foreground mt-2 text-sm">AI is crafting your narrative and choosing the best image model...</p>
+                <h2 className={`font-bold ${isMobile ? 'text-xl' : 'text-2xl'}`}>GENERATING YOUR STORY</h2>
+                <p className="text-muted-foreground mt-2 text-sm">
+                  {generationMode === 'fast' ? 'Using Mistral AI for quick generation...' : 'Using OpenAI for detailed generation...'}
+                </p>
               </div>
 
-              {/* Progress Bar */}
               <div className="space-y-2 px-4">
-                <Progress value={planningProgress} className="h-2.5" />
-                <p className="text-xs text-muted-foreground">{Math.floor(planningProgress)}%</p>
+                <Progress value={planningProgress} className="h-3" />
+                <p className="text-sm text-muted-foreground font-medium">{Math.floor(planningProgress)}%</p>
               </div>
 
               <div className="border-t border-border/30 pt-4">
@@ -945,19 +976,19 @@ RETURN ONLY VALID JSON:
     );
   }
 
-  // ========== PHASE: GENERATING / COMPLETE — Book Reader with Side Nav ==========
+  // ========== PHASE: GENERATING / COMPLETE — Book Reader ==========
   return (
     <div className="min-h-screen flex flex-col">
       <PremiumBackground />
       <Header showTemporaryToggle={false} />
 
-      {/* GENERATING BANNER with progress + dino game */}
+      {/* GENERATING BANNER */}
       {!allDone && (
-        <div className="bg-primary/10 border-b border-primary/20 text-center py-4 px-4">
+        <div className="bg-gradient-to-r from-primary/10 to-secondary/10 border-b-2 border-primary/20 text-center py-4 px-4">
           <p className="font-bold text-sm text-primary">
-            ✨ GENERATING IMAGES — {donePanels}/{totalPanels} scenes ready ({selectedModel})
+            ✨ GENERATING — {donePanels}/{totalPanels} images • {audiosDone}/{totalPanels} audio clips ready
           </p>
-          <Progress value={overallProgress} className="h-2 mt-2 max-w-md mx-auto" />
+          <Progress value={overallProgress} className={`h-2.5 mt-2 mx-auto ${isMobile ? 'max-w-xs' : 'max-w-lg'}`} />
           <p className="text-xs text-muted-foreground mt-1">🎮 Play while you wait!</p>
           <div className="mt-3">
             <DinoGame />
@@ -965,60 +996,92 @@ RETURN ONLY VALID JSON:
         </div>
       )}
 
-      {/* Audiobook controls */}
+      {/* AUDIOBOOK OVERLAY — locks everything when active */}
+      {audiobookActive && (
+        <div className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm" onClick={(e) => e.stopPropagation()} />
+      )}
+
+      {/* Audiobook controls bar */}
       {allDone && (
-        <div className="bg-card/80 border-b border-border/30 py-2 px-4 flex items-center justify-center gap-3">
-          <Button
-            variant={audiobookActive ? "default" : "outline"}
-            size="sm"
-            onClick={toggleAudiobook}
-            className="gap-2"
-          >
-            {audiobookActive ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            {audiobookActive ? 'Stop Audiobook' : '🔊 Listen Audiobook'}
-          </Button>
-          {audiobookActive && (
-            <Button variant="ghost" size="sm" onClick={toggleAudiobookPause}>
-              {audiobookPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+        <div className={`border-b-2 border-primary/20 py-3 px-4 flex items-center justify-center gap-3 flex-wrap ${audiobookActive ? 'fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-primary to-secondary shadow-[0_4px_30px_rgba(236,72,153,0.4)]' : 'bg-card/80'}`}>
+          {!audiobookActive ? (
+            <Button
+              variant="outline"
+              size="default"
+              onClick={startAudiobook}
+              className="gap-2 border-primary/40 hover:bg-primary/10 font-bold"
+            >
+              <Volume2 className="h-4 w-4" />
+              🔊 Listen Audiobook
             </Button>
-          )}
-          {audiobookLoading && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin" /> Loading audio...
-            </span>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={stopAudiobook}
+                className="text-primary-foreground hover:bg-white/20 font-bold gap-2"
+              >
+                <Square className="h-4 w-4" /> STOP AUDIOBOOK
+              </Button>
+              <Button variant="ghost" size="sm" onClick={toggleAudiobookPause} className="text-primary-foreground hover:bg-white/20">
+                {audiobookPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+              </Button>
+              {/* Speed selector */}
+              <div className="flex items-center gap-1">
+                {SPEED_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setAudiobookSpeed(opt.value)}
+                    className={`text-xs px-2 py-1 rounded-full transition-all ${
+                      audiobookSpeed === opt.value
+                        ? 'bg-white/30 text-white font-bold'
+                        : 'text-white/60 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {audiobookLoading && (
+                <span className="text-xs text-white/80 flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Loading...
+                </span>
+              )}
+            </>
           )}
         </div>
       )}
 
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-6">
+      <main className={`flex-1 flex flex-col items-center justify-center px-4 py-6 ${audiobookActive ? 'relative z-50' : ''}`}>
         {/* Title */}
-        <h1 className="text-2xl md:text-3xl font-bold mb-2 text-center">{comicTitle}</h1>
+        <h1 className={`font-bold mb-2 text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent ${isMobile ? 'text-2xl' : 'text-4xl'}`}>{comicTitle}</h1>
         <p className="text-sm text-muted-foreground mb-4">
-          Scene {currentPage + 1} of {totalPanels} • {selectedModel}
+          Scene {currentPage + 1} of {totalPanels}
         </p>
 
         {/* Story Page with SIDE NAVIGATION */}
         {currentPanel && (
-          <div className="w-full max-w-3xl flex items-stretch gap-2">
+          <div className={`w-full flex items-stretch gap-2 ${isMobile ? 'max-w-lg' : 'max-w-5xl'}`}>
             {/* LEFT ARROW */}
             <div className="flex items-center">
               <Button
                 variant="ghost"
                 size="lg"
-                disabled={currentPage === 0}
+                disabled={currentPage === 0 || audiobookActive}
                 onClick={() => setCurrentPage(p => p - 1)}
-                className="h-full min-h-[200px] w-10 md:w-12 p-0 rounded-xl hover:bg-primary/10"
+                className={`h-full p-0 rounded-xl hover:bg-primary/10 ${isMobile ? 'min-h-[200px] w-10' : 'min-h-[400px] w-14'}`}
               >
-                <ChevronLeft className="h-6 w-6" />
+                <ChevronLeft className={isMobile ? 'h-6 w-6' : 'h-8 w-8'} />
               </Button>
             </div>
 
             {/* STORY CONTENT */}
             <div className="flex-1 space-y-0">
               {/* Dialogue — top */}
-              <div className="bg-card/80 backdrop-blur-sm border border-border/50 border-b-0 rounded-t-xl px-4 py-3 min-h-[48px] flex items-center justify-center">
+              <div className={`bg-card/80 backdrop-blur-sm border-2 border-primary/20 border-b-0 rounded-t-2xl flex items-center justify-center ${isMobile ? 'px-4 py-3 min-h-[48px]' : 'px-8 py-5 min-h-[70px]'}`}>
                 {currentPanel.status === 'done' ? (
-                  <p className="text-center font-bold text-base md:text-lg uppercase tracking-wide">
+                  <p className={`text-center font-bold uppercase tracking-wide text-foreground ${isMobile ? 'text-base' : 'text-xl'}`}>
                     {currentPanel.dialogue || '...'}
                   </p>
                 ) : (
@@ -1029,23 +1092,23 @@ RETURN ONLY VALID JSON:
               </div>
 
               {/* Image */}
-              <div className="aspect-square relative bg-muted/20 border-x border-border/50">
+              <div className={`relative bg-muted/20 border-x-2 border-primary/20 ${isMobile ? 'aspect-square' : 'aspect-[16/10]'}`}>
                 {currentPanel.status === 'done' && currentPanel.imageUrl ? (
                   <div className="relative w-full h-full">
                     <img src={currentPanel.imageUrl} alt={currentPanel.caption} className="w-full h-full object-cover" />
-                    <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-full">
+                    <div className="absolute top-3 right-3 bg-background/80 backdrop-blur-sm text-xs px-3 py-1.5 rounded-full border border-primary/20 font-medium">
                       {currentPanel.model}
                     </div>
                   </div>
                 ) : currentPanel.status === 'generating' ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    <p className="text-sm text-muted-foreground">Generating with {currentPanel.model}...</p>
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Generating image...</p>
                   </div>
                 ) : currentPanel.status === 'error' ? (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-4">
                     <p className="text-destructive text-sm text-center">{currentPanel.errorMsg || 'Failed'}</p>
-                    <Button size="sm" variant="outline" onClick={() => retryPanelImage(currentPage)}>
+                    <Button size="sm" variant="outline" onClick={() => retryPanelImage(currentPage)} className="border-primary/30">
                       <RotateCcw className="mr-1 h-3 w-3" /> Retry
                     </Button>
                   </div>
@@ -1058,9 +1121,9 @@ RETURN ONLY VALID JSON:
               </div>
 
               {/* Caption — bottom */}
-              <div className="bg-card/80 backdrop-blur-sm border border-border/50 border-t-0 rounded-b-xl px-4 py-3 min-h-[64px] flex items-center justify-center">
+              <div className={`bg-card/80 backdrop-blur-sm border-2 border-primary/20 border-t-0 rounded-b-2xl flex items-center justify-center ${isMobile ? 'px-4 py-3 min-h-[64px]' : 'px-8 py-5 min-h-[80px]'}`}>
                 {currentPanel.status === 'done' ? (
-                  <p className="text-center text-sm md:text-base leading-relaxed text-muted-foreground">
+                  <p className={`text-center leading-relaxed text-muted-foreground ${isMobile ? 'text-sm' : 'text-lg'}`}>
                     {currentPanel.caption}
                   </p>
                 ) : (
@@ -1076,23 +1139,25 @@ RETURN ONLY VALID JSON:
               <Button
                 variant="ghost"
                 size="lg"
-                disabled={currentPage >= totalPanels - 1}
+                disabled={currentPage >= totalPanels - 1 || audiobookActive}
                 onClick={() => setCurrentPage(p => p + 1)}
-                className="h-full min-h-[200px] w-10 md:w-12 p-0 rounded-xl hover:bg-primary/10"
+                className={`h-full p-0 rounded-xl hover:bg-primary/10 ${isMobile ? 'min-h-[200px] w-10' : 'min-h-[400px] w-14'}`}
               >
-                <ChevronRight className="h-6 w-6" />
+                <ChevronRight className={isMobile ? 'h-6 w-6' : 'h-8 w-8'} />
               </Button>
             </div>
           </div>
         )}
 
         {/* Page hint */}
-        <p className="text-xs text-muted-foreground mt-3">Use ← → arrow keys to navigate</p>
+        {!audiobookActive && (
+          <p className="text-xs text-muted-foreground mt-3">Use ← → arrow keys to navigate</p>
+        )}
 
         {/* Actions */}
-        {allDone && (
+        {allDone && !audiobookActive && (
           <div className="mt-6">
-            <Button variant="outline" onClick={handleReset}>
+            <Button variant="outline" onClick={handleReset} className="border-primary/30 hover:bg-primary/5">
               <RotateCcw className="mr-2 h-4 w-4" /> Create Another Story
             </Button>
           </div>

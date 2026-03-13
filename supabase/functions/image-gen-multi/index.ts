@@ -16,12 +16,12 @@ interface ImageGenRequest {
 
 // Fallback model order if primary model fails
 const MODEL_FALLBACKS: Record<string, string[]> = {
-  'zimage': ['flux-2-dev', 'gptimage', 'flux'],
-  'imagen-4': ['gptimage', 'flux', 'seedream'],
-  'gptimage': ['flux', 'zimage', 'seedream'],
-  'flux': ['gptimage', 'zimage', 'seedream'],
-  'flux-2-dev': ['zimage', 'gptimage', 'flux'],
-  'grok-imagine': ['flux-2-dev', 'gptimage', 'zimage'],
+  'imagen-4': ['flux-2-dev', 'grok-imagine'],
+  'flux-2-dev': ['grok-imagine'],
+  'grok-imagine': ['flux-2-dev', 'imagen-4'],
+  'zimage': ['flux-2-dev', 'grok-imagine'],
+  'gptimage': ['flux-2-dev', 'grok-imagine'],
+  'flux': ['flux-2-dev', 'grok-imagine'],
 };
 
 async function tryGenerateImage(
