@@ -3,12 +3,12 @@ import App from "./App.tsx";
 import "./index.css";
 import { registerSW } from 'virtual:pwa-register';
 
-// Register service worker with auto-update
+// Auto-update service worker instantly — no prompt, like Discord
 const updateSW = registerSW({
+  immediate: true,
   onNeedRefresh() {
-    if (confirm('New version available! Reload to update?')) {
-      updateSW(true);
-    }
+    // Auto-reload without asking — users always get latest version
+    updateSW(true);
   },
   onOfflineReady() {
     console.log('FARABI is ready to work offline!');
